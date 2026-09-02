@@ -1,0 +1,3054 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LABD — Logiciels Au Bout des Doigts</title>
+<meta name="description" content="LABD — Logiciels Au Bout des Doigts. Apprendre. Concevoir. Réaliser.">
+<!--
+  ============================================================
+  GUIDE D'ÉDITION — LABD
+  ============================================================
+  1) Contenu fixe (vision, bureau de base, cotisations, règlement,
+     textes) : objet "CONFIG" tout en bas du fichier, avant </body>.
+  2) Contenu publié au fil du temps (articles, projets, photos,
+     candidatures, commentaires) : bouton "Espace admin" en bas
+     à droite du site une fois publié en ligne.
+     Mot de passe par défaut : labd2026 (à changer dans
+     CONFIG.adminPassword, ou depuis Paramètres > admin une fois
+     connecté).
+  3) L'espace admin enregistre ses données dans une base Firebase
+     (Google, gratuite). Il faut coller la config de TON projet
+     Firebase dans le bloc <script type="module"> juste avant le
+     script principal (zone "CONFIG FIREBASE"). Tant que ce bloc
+     contient encore "COLLE_ICI", l'espace admin ne pourra rien
+     sauvegarder. Voir le guide fourni pour créer le projet
+     Firebase et récupérer cette config.
+  ============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal:       #05b3c2;
+    --teal-dark:  #048b98;
+    --teal-soft:  rgba(5,179,194,0.10);
+    --navy:       #0b1c33;
+    --navy-2:     #13284a;
+    --black:      #05070a;
+    --paper:      #ffffff;
+    --paper-2:    #f6f8f9;
+    --line:       rgba(11,28,51,0.10);
+    --line-dark:  rgba(238,244,245,0.16);
+    --ink:        #0b1c33;
+    --muted:      rgba(11,28,51,0.62);
+    --muted-2:    rgba(11,28,51,0.42);
+    --light:      #eef4f5;
+    --light-muted: rgba(238,244,245,0.7);
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(11,28,51,0.05), 0 4px 16px rgba(11,28,51,0.06);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;} }
+  #siteLoader{
+    position:fixed; inset:0; z-index:9999;
+    background:var(--navy);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:16px;
+    transition:opacity 0.4s ease, visibility 0.4s ease;
+  }
+  #siteLoader.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+  #siteLoader .loader-spinner{
+    width:40px; height:40px; border-radius:50%;
+    border:3px solid rgba(238,244,245,0.18);
+    border-top-color:var(--teal);
+    animation:loaderSpin 0.8s linear infinite;
+  }
+  #siteLoader .loader-text{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:13px; letter-spacing:0.04em;
+    color:var(--light-muted);
+  }
+  @keyframes loaderSpin{ to{ transform:rotate(360deg); } }
+  body{font-family:'IBM Plex Sans', sans-serif; color:var(--ink); background:var(--paper); line-height:1.62; -webkit-font-smoothing:antialiased;}
+  a{color:inherit; text-decoration:none;}
+  ul{list-style:none;}
+  img{max-width:100%; display:block;}
+  button{font:inherit; cursor:pointer;}
+  svg{display:block;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .display{font-family:'Space Grotesk', sans-serif;}
+  :focus-visible{outline:2px solid var(--teal); outline-offset:3px;}
+  .wrap{max-width:1160px; margin:0 auto; padding:0 32px;}
+  .icon{flex-shrink:0;}
+  .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
+
+  /* ---------- NAV ---------- */
+  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);}
+  .nav-inner{max-width:1160px; margin:0 auto; padding:0 32px; height:68px; display:flex; align-items:center; justify-content:space-between;}
+  .brand-block{display:flex; flex-direction:column; line-height:1.25;}
+  .brand{display:flex; align-items:center; gap:12px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
+  .brand img{width:53px; height:53px; border-radius:50%; object-fit:cover; border:1px solid var(--line);}
+  .brand img.is-logo, .footer-brand img.is-logo{border-radius:50%; object-fit:cover;}
+  .watermark img.is-logo{border-radius:50%; object-fit:cover; box-shadow:none;}
+  .brand-name{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
+  nav.links{display:none; align-items:center; gap:18px;}
+  @media(min-width:1080px){ nav.links{display:flex;} }
+  nav.links a{color:var(--ink); font-size:0.85rem; opacity:0.75; white-space:nowrap;}
+  nav.links a:hover{opacity:1; color:var(--teal-dark);}
+  .nav-cta{background:var(--teal); color:#fff; font-weight:600; font-size:0.88rem; padding:10px 18px; border-radius:8px; border:1px solid var(--teal);}
+  .nav-cta:hover{background:var(--teal-dark);}
+  .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
+  @media(min-width:1080px){ .burger{display:none;} }
+  #mobileMenu{display:none; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 32px 20px;}
+  #mobileMenu.open{display:block;}
+  #mobileMenu a{display:block; padding:12px 0; font-size:0.95rem; border-bottom:1px solid var(--line); color:var(--ink);}
+
+  /* ---------- HERO ---------- */
+  .hero{background:linear-gradient(150deg, var(--navy) 0%, var(--navy-2) 55%, var(--black) 100%); color:var(--light); padding:150px 0 0; position:relative; overflow:hidden;}
+  .hero-photo{position:absolute; inset:0; z-index:0;}
+  .hero-photo img{width:100%; height:100%; object-fit:cover; object-position:60% 35%;}
+  .hero-photo::after{content:""; position:absolute; inset:0; background:linear-gradient(100deg, var(--navy) 0%, rgba(11,28,51,0.88) 38%, rgba(11,28,51,0.55) 65%, rgba(11,28,51,0.3) 100%);}
+  @media(max-width:820px){ .hero-photo::after{background:linear-gradient(180deg, rgba(11,28,51,0.75) 0%, rgba(11,28,51,0.93) 60%, var(--navy) 100%);} }
+  .hero-inner{max-width:1160px; margin:0 auto; padding:0 32px 60px; position:relative; z-index:2;}
+  .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:0.74rem; letter-spacing:0.1em; color:var(--teal); display:flex; align-items:center; gap:10px; margin-bottom:20px;}
+  h1.headline{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:clamp(2.1rem, 5vw, 3.7rem); line-height:1.12; letter-spacing:-0.01em; max-width:640px;}
+  h1.headline em{font-style:normal; color:var(--teal);}
+  .hero-sub{margin-top:22px; max-width:560px; font-size:1.06rem; color:var(--light-muted);}
+  .hero-ctas{display:flex; flex-wrap:wrap; gap:14px; margin-top:34px;}
+  .btn-primary{background:var(--teal); color:#fff; font-weight:600; padding:13px 24px; font-size:0.94rem; border:1px solid var(--teal); border-radius:8px; transition:background 0.2s ease; display:inline-flex; align-items:center; gap:8px;}
+  .btn-primary:hover{background:var(--teal-dark);}
+  .btn-primary:disabled{opacity:0.4; cursor:not-allowed;}
+  .btn-ghost{background:transparent; color:var(--light); padding:13px 24px; font-size:0.94rem; border:1px solid var(--line-dark); border-radius:8px;}
+  .btn-ghost:hover{border-color:var(--teal); background:rgba(5,179,194,0.1);}
+  .badge-row{display:flex; flex-wrap:wrap; gap:10px; margin-top:34px;}
+  .badge-pill{font-size:0.8rem; padding:7px 14px; border-radius:20px; border:1px solid var(--line-dark); color:var(--light-muted); display:flex; align-items:center; gap:7px;}
+  .badge-pill .icon{color:var(--teal);}
+
+  /* ---------- CARROUSEL LOGICIELS (dans le hero) ---------- */
+  .hero-tools-strip{background:rgba(5,179,194,0.08); border-top:1px solid var(--line-dark); overflow:hidden; position:relative; z-index:2;}
+  .hero-tools-track{display:flex; width:max-content; white-space:nowrap; animation:ticker-scroll 28s linear infinite; padding:18px 0;}
+  .hero-tools-track .tool-pill{display:inline-flex; align-items:center; padding:0 34px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.85rem; color:var(--light); position:relative; flex-shrink:0;}
+  .hero-tools-track .tool-pill::after{content:"·"; position:absolute; right:0; color:rgba(255,255,255,0.25);}
+  @media(prefers-reduced-motion:reduce){ .hero-tools-track{animation:none;} }
+
+  /* ---------- SECTION GENERIC ---------- */
+  section{padding:88px 0;}
+  .section-head{display:flex; flex-direction:column; gap:12px; margin-bottom:44px; max-width:640px;}
+  .tag-num{font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.09em; color:var(--teal-dark); text-transform:uppercase;}
+  h2.section-title{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:clamp(1.6rem, 3vw, 2.2rem); letter-spacing:-0.01em; color:var(--ink); position:relative; padding-bottom:14px;}
+  h2.section-title::after{content:""; position:absolute; left:0; bottom:0; width:44px; height:3px; background:var(--teal); border-radius:2px;}
+  .section-desc{color:var(--muted); font-size:1rem;}
+  .alt-bg{background:var(--paper-2);}
+  .dark-bg{background:var(--navy); color:var(--light);}
+  .dark-bg .section-desc{color:var(--light-muted);}
+  .dark-bg .tag-num{color:var(--teal);}
+  .dark-bg h2.section-title{color:var(--light);}
+
+  /* ---------- VISION ---------- */
+  .grid-2{display:grid; grid-template-columns:1fr; gap:20px;}
+  @media(min-width:700px){ .grid-2{grid-template-columns:repeat(2,1fr);} }
+  .vision-card{padding:28px; position:relative; transition:transform 0.25s ease, box-shadow 0.25s ease;}
+  .vision-card.has-thumb{padding-right:190px;}
+  @media(max-width:520px){ .vision-card.has-thumb{padding-right:28px; padding-top:170px;} .vision-card.has-thumb .v-thumb{top:14px; right:14px; left:14px; width:auto;} }
+  .vision-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
+  .vision-card .v-thumb{position:absolute; top:14px; right:14px; width:161px; height:140px; border-radius:10px; object-fit:cover; border:1px solid var(--line); box-shadow:0 3px 10px rgba(11,28,51,0.14);}
+  .icon-badge{width:42px; height:42px; border-radius:10px; background:var(--teal-soft); color:var(--teal-dark); display:flex; align-items:center; justify-content:center; margin-bottom:16px; transition:transform 0.35s cubic-bezier(.34,1.56,.64,1);}
+  .vision-card:hover .icon-badge{transform:translateY(-4px) rotate(-6deg) scale(1.08);}
+  .vision-card h3{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; margin-bottom:8px; max-width:calc(100% - 78px);}
+  .vision-card p{color:var(--muted); font-size:0.93rem;}
+  .vision-card.has-thumb h3{font-size:0.98rem; max-width:100%;}
+  .vision-card.has-thumb p{font-size:0.86rem;}
+  .objectif-card{padding:28px; transition:transform 0.25s ease, box-shadow 0.25s ease;}
+  .objectif-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
+  .objectif-card:hover .icon-badge{transform:translateY(-4px) rotate(-6deg) scale(1.08);}
+  .objectif-card h3{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; margin-bottom:8px;}
+  .objectif-card p{color:var(--muted); font-size:0.93rem;}
+
+  /* ---------- TICKER OUTILS (RUBAN) ---------- */
+  @keyframes ticker-scroll{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+  /* ---------- HISTOIRE ---------- */
+  .history-teaser{margin-top:24px; max-width:620px; padding:22px 24px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s; background:linear-gradient(135deg, var(--teal-soft), var(--paper-2)); flex-wrap:wrap;}
+  .history-teaser:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(11,28,51,0.12);}
+  .history-teaser-icon{flex:0 0 auto; width:44px; height:44px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center;}
+  .history-teaser-title{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; font-weight:700; color:var(--ink); margin-bottom:6px;}
+  .history-teaser-sub{color:var(--muted); font-size:0.9rem; margin-bottom:0;}
+  .history-teaser-cta{flex:0 0 auto; font-weight:700; color:var(--teal-dark); white-space:nowrap; margin-left:auto;}
+  .history-modal-body{max-height:65vh; overflow-y:auto; padding-right:4px;}
+  .history-modal-body h4{font-family:'Space Grotesk', sans-serif; font-size:1.02rem; color:var(--teal-dark); margin:20px 0 8px;}
+  .history-modal-body h4:first-child{margin-top:0;}
+  .history-modal-body p{color:var(--muted); font-size:0.95rem; line-height:1.75; margin-bottom:10px;}
+  .history-modal-body strong{color:var(--ink);}
+  .history-edit-box{margin:18px 30px 26px; padding-top:18px; border-top:1px dashed var(--line);}
+  .history-edit-toolbar{display:flex; gap:6px; margin-bottom:8px;}
+  .history-edit-toolbar button{background:var(--paper-2); border:1px solid var(--line); border-radius:6px; padding:5px 10px; font-size:0.78rem; font-weight:700;}
+  .history-edit-toolbar button:hover{border-color:var(--teal);}
+
+  /* ---------- BUREAU ---------- */
+  .grid-3{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:18px;}
+  .bureau-card{padding:22px; display:flex; flex-direction:column; gap:12px; position:relative;}
+  .bureau-top{display:flex; align-items:center; gap:14px;}
+  .avatar-wrap{position:relative; width:54px; height:54px; flex-shrink:0;}
+  .avatar{width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.92rem; color:#fff; object-fit:cover;}
+  .avatar-upload{position:absolute; bottom:-2px; right:-2px; width:20px; height:20px; border-radius:50%; background:var(--teal); color:#fff; display:none; align-items:center; justify-content:center; border:2px solid var(--paper); cursor:pointer;}
+  .admin-on .avatar-upload{display:flex;}
+  .avatar-remove{position:absolute; top:-2px; right:-2px; width:18px; height:18px; border-radius:50%; background:#c0392b; color:#fff; display:none; align-items:center; justify-content:center; border:2px solid var(--paper); cursor:pointer; font-size:0.7rem; line-height:1; font-weight:700;}
+  .admin-on .avatar-remove{display:flex;}
+  .bureau-card .name{font-family:'Space Grotesk', sans-serif; font-size:1rem;}
+  .role-badge{display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono', monospace; font-size:0.66rem; letter-spacing:0.05em; color:var(--teal-dark); background:var(--teal-soft); padding:3px 8px; border-radius:5px; width:fit-content;}
+  .bureau-card .phone{display:flex; align-items:center; gap:7px; font-size:0.85rem; color:var(--muted); margin-top:2px;}
+  .tenure-note{display:flex; align-items:center; gap:6px; font-size:0.72rem; color:var(--muted-2); margin-top:2px;}
+  .members-list{margin-top:34px; padding-top:30px; border-top:1px solid var(--line);}
+  .discover-cta{display:flex; justify-content:center; margin-bottom:8px;}
+  .discover-cta .btn-primary{padding:13px 26px; font-size:0.95rem;}
+  .members-list .k{font-family:'IBM Plex Mono', monospace; font-size:0.68rem; letter-spacing:0.09em; color:var(--muted); margin-bottom:16px; text-transform:uppercase;}
+  .members-tags{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px 18px;}
+  .members-tags .m-row{display:flex; align-items:center; gap:10px; font-size:0.92rem;}
+  .members-tags .m-row .icon{color:var(--teal-dark);}
+
+  /* ---------- TABS ---------- */
+  .tabs{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:32px;}
+  .tab-btn{background:var(--paper-2); border:1px solid var(--line); color:var(--muted); font-size:0.88rem; padding:9px 18px; border-radius:20px;}
+  .tab-btn:hover{border-color:var(--teal); color:var(--ink);}
+  .tab-btn.active{background:var(--teal); border-color:var(--teal); color:#fff; font-weight:600;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block; animation:fadein 0.3s ease;}
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .cycle-meta{margin-bottom:26px; color:var(--muted); font-size:0.94rem; padding:16px 18px; border-radius:var(--radius); background:var(--paper-2); border:1px solid var(--line); display:block; width:100%; max-width:100%; box-sizing:border-box; white-space:normal; overflow-wrap:anywhere; word-break:break-word; hyphens:auto;}
+  .podium{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px;}
+  .podium-card{padding:16px; display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden;}
+  .file-name-trunc{display:block; width:100%; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.76rem; color:var(--muted-2); font-family:'IBM Plex Mono', monospace;}
+  .podium-card .thumb{width:calc(100% + 32px); margin:-16px -16px 4px; aspect-ratio:16/7; object-fit:cover; border-radius:10px 10px 0 0; display:block; background:var(--paper-2); cursor:pointer;}
+  .podium-card .rang{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.3rem; color:var(--teal-dark);}
+  .podium-card .nom{font-size:0.94rem;}
+  .podium-card .mention{font-size:0.78rem; color:var(--muted-2);}
+  .pager-nav{display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap;}
+  .pager-btn{background:var(--paper-2); border:1px solid var(--line); color:var(--teal-dark); font-weight:600; font-size:0.85rem; padding:9px 16px; border-radius:20px;}
+  .pager-btn:hover:not(:disabled){border-color:var(--teal); background:var(--teal-soft);}
+  .pager-btn:disabled{opacity:0.35; cursor:not-allowed;}
+  .frame-picker{position:relative; margin-top:10px; border:1px solid var(--line); border-radius:8px; overflow:hidden; max-width:260px; display:none; cursor:crosshair;}
+  .frame-picker.show{display:block;}
+  .frame-picker img{width:100%; display:block; pointer-events:none;}
+  .frame-picker .marker{position:absolute; width:16px; height:16px; border:2px solid var(--teal); border-radius:50%; background:rgba(5,179,194,0.25); transform:translate(-50%,-50%); pointer-events:none; box-shadow:0 0 0 2px rgba(255,255,255,0.85);}
+  .frame-hint{font-size:0.72rem; color:var(--muted-2); margin-top:4px;}
+  .play-badge{position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); display:flex; align-items:center; justify-content:center; color:#fff; font-size:0.62rem; z-index:2;}
+
+  /* ---------- CLASSEMENTS : cartes lauréats avec grande photo (format galerie) ---------- */
+  .laureate-card{padding:0; overflow:hidden; display:flex; flex-direction:column;}
+  .laureate-photo-wrap{position:relative; aspect-ratio:4/3; width:100%; overflow:hidden;}
+  .laureate-photo{width:100%; height:100%; object-fit:cover; display:block;}
+  .laureate-photo-fallback{display:flex; align-items:center; justify-content:center; background:var(--navy); color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.6rem;}
+  .laureate-photo-wrap .rang{position:absolute; top:10px; left:10px; background:rgba(11,28,51,0.82); color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:0.85rem; padding:4px 10px; border-radius:20px;}
+  .laureate-body{padding:16px 18px 18px; display:flex; flex-direction:column; gap:8px;}
+  .laureate-body .nom{font-family:'Space Grotesk', sans-serif; font-size:0.98rem;}
+  .laureate-body .role-badge{align-self:flex-start;}
+  .laureate-body .mention{font-size:0.78rem; color:var(--muted-2);}
+  .empty-state{border:1px dashed var(--line); border-radius:var(--radius); padding:26px 24px; color:var(--muted-2); font-size:0.9rem; display:flex; align-items:center; gap:12px; background:var(--paper-2);}
+
+  /* ---------- GALERIE ---------- */
+  .gallery-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px;}
+  .gallery-tile{aspect-ratio:4/3; border-radius:var(--radius); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted-2); background:var(--paper-2); overflow:hidden; position:relative; border:1px solid var(--line);}
+  .gallery-tile img, .gallery-tile video{width:100%; height:100%; object-fit:cover;}
+  .gallery-tile span{font-size:0.72rem; text-align:center; padding:0 10px;}
+  .gallery-tile .cap{position:absolute; bottom:0; left:0; right:0; background:rgba(11,28,51,0.72); color:#fff; font-size:0.72rem; padding:7px 9px;}
+  .gallery-tile{cursor:pointer;}
+  .gallery-tile .tile-admin{position:absolute; top:34px; right:8px; display:none; gap:6px; z-index:2;}
+  .admin-on .gallery-tile .tile-admin{display:flex;}
+  .tile-admin button{width:24px; height:24px; border-radius:50%; background:rgba(11,28,51,0.8); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:0.68rem;}
+  .tile-admin button.del{background:#c0392b;}
+  .mute-toggle{position:absolute; bottom:14px; left:8px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
+  .play-toggle{position:absolute; bottom:14px; left:40px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
+  .tile-progress{position:absolute; bottom:0; left:0; right:0; height:4px; background:rgba(255,255,255,0.25); z-index:2;}
+  .tile-progress-fill{height:100%; width:0%; background:var(--teal, #2f9e8f); transition:width 0.1s linear;}
+  .watermark{position:absolute; top:8px; right:10px; display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; color:rgba(255,255,255,0.9); text-shadow:0 1px 3px rgba(0,0,0,0.6); pointer-events:none;}
+  .watermark img{width:15px; height:15px; border-radius:4px; object-fit:cover; opacity:0.92; box-shadow:0 1px 3px rgba(0,0,0,0.5);}
+  .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
+  .watermark-large img{width:53px; height:53px; border-radius:50%; object-fit:cover; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
+  .watermark-large .wm-text{font-family:'Space Grotesk', sans-serif; font-size:1.6rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap;}
+  .gallery-add{display:none; align-items:center; justify-content:center; flex-direction:column; gap:8px; border:2px dashed var(--line); color:var(--muted); cursor:pointer; background:var(--paper-2);}
+  .gallery-add:hover{border-color:var(--teal); color:var(--teal-dark);}
+  .gallery-add span{font-size:0.78rem; text-align:center; padding:0 12px;}
+  .admin-on .gallery-add{display:flex;}
+
+  /* ---------- ACTIVITES LABDIENNES ---------- */
+  .activites-columns{display:grid; grid-template-columns:1fr; gap:40px; align-items:start;}
+  @media(min-width:860px){ .activites-columns{grid-template-columns:repeat(3,1fr);} }
+  .activite-col h3{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; margin-bottom:18px; padding-bottom:10px; border-bottom:2px solid var(--teal);}
+  .activite-col .article-grid{grid-template-columns:1fr; gap:18px;}
+  .empty-col-note{font-size:0.86rem; color:var(--muted-2); font-style:italic;}
+  .desc-text p{margin:0;}
+  .desc-text p.clamped{display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden;}
+  .desc-text a{color:var(--teal-dark); text-decoration:underline;}
+  .desc-toggle{display:none; margin-top:6px; background:none; border:none; color:var(--teal-dark); font-weight:600; font-size:0.8rem; cursor:pointer; padding:0;}
+  .desc-toggle.show{display:inline-block;}
+  .col-more{margin-top:16px; text-align:center;}
+
+  /* ---------- ARTICLES / ACTUALITES ---------- */
+  .article-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px;}
+  .locked-preview-wrap{position:relative; grid-column:1/-1; display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:20px; min-height:220px;}
+  .locked-preview-compact{max-width:320px; margin:0 auto; grid-template-columns:1fr; min-height:0;}
+  .locked-preview-compact .locked-teaser-card{max-height:190px;}
+  .locked-preview-compact .locked-teaser-card .thumb{aspect-ratio:16/9;}
+  .locked-preview-compact .locked-teaser-card .body{padding:12px 14px 14px;}
+  .locked-preview-compact .locked-teaser-card h4{font-size:0.9rem; margin-bottom:0;}
+  .locked-teaser-card{filter:blur(3px) saturate(0.7); opacity:0.75; user-select:none; pointer-events:none;}
+  .locked-teaser-card .thumb img{filter:blur(6px); transform:scale(1.08);}
+  .locked-overlay{position:absolute; inset:0; background:rgba(11,28,51,0.58); backdrop-filter:blur(1px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; border-radius:var(--radius); color:#fff; z-index:2;}
+  .locked-overlay p{font-size:0.92rem; max-width:320px; margin:0;}
+  .locked-overlay input{padding:10px 12px; border:1px solid var(--line-dark); border-radius:8px; font-size:0.85rem; background:rgba(255,255,255,0.95);}
+  .article-card{overflow:hidden; display:flex; flex-direction:column;}
+  .article-card .thumb{width:100%; aspect-ratio:16/10; object-fit:cover; background:var(--paper-2); overflow:hidden;}
+  .article-card .body{padding:20px 20px 22px;}
+  .article-card .meta{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .type-badge{font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; text-transform:uppercase; padding:3px 8px; border-radius:5px; background:var(--teal-soft); color:var(--teal-dark);}
+  .article-card .date{font-size:0.76rem; color:var(--muted-2);}
+  .article-card h4{font-family:'Space Grotesk', sans-serif; font-size:1.02rem; margin-bottom:8px;}
+  .article-card p{font-size:0.89rem; color:var(--muted);}
+
+  /* ---------- COTISATIONS ---------- */
+  .fee-grid{display:grid; grid-template-columns:1fr; gap:18px;}
+  @media(min-width:600px){ .fee-grid{grid-template-columns:repeat(2,1fr);} }
+  .fee-card{padding:26px 24px;}
+  .fee-card .k{font-family:'IBM Plex Mono', monospace; font-size:0.66rem; letter-spacing:0.08em; color:var(--teal-dark); margin-bottom:12px; text-transform:uppercase;}
+  .fee-card .amount{font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.8rem; margin-bottom:8px; color:var(--ink);}
+  .fee-card .amount span{font-family:'IBM Plex Mono', monospace; font-weight:400; font-size:0.82rem; color:var(--muted-2);}
+  .fee-card p{font-size:0.86rem; color:var(--muted);}
+  .fee-tag{display:inline-flex; align-items:center; gap:6px; margin-top:10px; font-size:0.72rem; padding:5px 10px; border-radius:14px; background:var(--teal-soft); color:var(--teal-dark);}
+
+  /* ---------- FORMS ---------- */
+  form{display:flex; flex-direction:column; gap:16px;}
+  .field label{display:block; font-size:0.85rem; font-weight:500; color:var(--ink); margin-bottom:8px;}
+  .field input, .field textarea, .field select{width:100%; background:var(--paper); border:1px solid var(--line); border-radius:8px; color:var(--ink); padding:12px 14px; font-family:'IBM Plex Sans', sans-serif; font-size:0.93rem;}
+  .field input:focus, .field textarea:focus, .field select:focus{border-color:var(--teal); outline:none;}
+  .field textarea{resize:vertical; min-height:90px;}
+  .field-file{border:1px dashed var(--line); border-radius:8px; padding:14px; background:var(--paper-2);}
+  .field-file input{background:transparent; border:none; padding:0; color:var(--muted);}
+  .form-note{font-size:0.82rem; color:var(--muted); line-height:1.6;}
+  .form-panel{padding:32px; max-width:640px;}
+  .form-panel h3{font-family:'Space Grotesk', sans-serif; font-size:1.2rem; margin-bottom:8px;}
+  .form-panel > p.lead{color:var(--muted); font-size:0.92rem; margin-bottom:22px;}
+  .check-step{border:1px solid var(--line); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:10px; background:var(--paper-2);}
+  .check-step-head{display:flex; align-items:flex-start; gap:10px;}
+  .check-step-head input{margin-top:3px;}
+  .check-step-head label{font-size:0.9rem;}
+  .success-box{text-align:center; padding:20px 10px;}
+  .success-box .icon-badge{margin:0 auto 14px; background:var(--teal-soft); color:var(--teal-dark);}
+  .success-box h4{font-family:'Space Grotesk', sans-serif; margin-bottom:8px;}
+  .success-box p{color:var(--muted); font-size:0.92rem;}
+
+  /* ---------- CONTACT / FOOTER ---------- */
+  .contact-grid{display:grid; grid-template-columns:1fr; gap:16px;}
+  @media(min-width:700px){ .contact-grid{grid-template-columns:repeat(2,1fr);} }
+  .contact-card{border:1px solid var(--line-dark); border-radius:var(--radius); padding:22px; display:flex; flex-direction:column; gap:8px; background:rgba(255,255,255,0.04);}
+  .contact-card .k{font-family:'IBM Plex Mono', monospace; font-size:0.64rem; letter-spacing:0.08em; color:var(--teal); text-transform:uppercase;}
+  .contact-card .v{font-family:'Space Grotesk', sans-serif; font-size:0.98rem;}
+  footer{background:var(--black); padding:52px 0 30px; color:var(--light);}
+  .footer-top{display:flex; flex-wrap:wrap; justify-content:space-between; gap:28px; margin-bottom:34px;}
+  .footer-brand{display:flex; gap:14px; max-width:360px;}
+  .footer-brand img{width:58px; height:58px; border-radius:50%; object-fit:cover;}
+  .footer-brand .display{font-size:1.08rem; margin-bottom:6px;}
+  .footer-brand p{color:var(--light-muted); font-size:0.85rem;}
+  .footer-social{display:flex; gap:10px; margin-top:14px;}
+  .footer-social a{width:36px; height:36px; border:1px solid var(--line-dark); border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--light);}
+  .footer-social a:hover{border-color:var(--teal);}
+  .footer-links{display:flex; gap:46px; flex-wrap:wrap;}
+  .footer-links .col h5{font-size:0.72rem; letter-spacing:0.05em; color:var(--muted-2); margin-bottom:12px; text-transform:uppercase;}
+  .footer-links .col a{display:block; font-size:0.87rem; color:var(--light-muted); padding:5px 0;}
+  .footer-links .col a:hover{color:var(--teal);}
+  .footer-bottom{padding-top:20px; border-top:1px solid var(--line-dark); display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; font-size:0.8rem; color:var(--muted-2);}
+
+  /* ---------- MODALS ---------- */
+  #modalOverlay{position:fixed; inset:0; background:rgba(5,7,10,0.6); z-index:400; display:none; align-items:center; justify-content:center; padding:20px;}
+  #modalOverlay.open{display:flex;}
+  .modal-box{background:var(--paper); border-radius:14px; padding:30px; max-width:420px; width:100%; max-height:86vh; overflow-y:auto;}
+  .modal-box.wide{max-width:900px;}
+  .modal-box h3{font-family:'Space Grotesk', sans-serif; margin-bottom:14px;}
+  .modal-box p{font-size:0.9rem; color:var(--muted); margin-bottom:14px;}
+  .modal-box .row{display:flex; gap:10px; margin-top:16px;}
+  .reglement-text ol{padding-left:20px; display:flex; flex-direction:column; gap:12px;}
+  .reglement-text li{font-size:0.9rem; color:var(--muted);}
+  .reglement-text li strong{color:var(--ink);}
+
+  /* ---------- ADMIN DASHBOARD ---------- */
+  .admin-badge{display:inline-flex; align-items:center; gap:6px; background:var(--teal-soft); color:var(--teal-dark); font-size:0.78rem; padding:5px 10px; border-radius:14px; margin-bottom:16px;}
+  .admin-layout{display:flex; gap:24px; flex-wrap:wrap;}
+  .admin-nav{display:flex; flex-direction:row; flex-wrap:wrap; gap:8px; border-bottom:1px solid var(--line); padding-bottom:16px; margin-bottom:20px; width:100%;}
+  .admin-nav button{background:var(--paper-2); border:1px solid var(--line); padding:8px 14px; border-radius:16px; font-size:0.82rem; color:var(--muted);}
+  .admin-nav button.active{background:var(--navy); border-color:var(--navy); color:#fff;}
+  .admin-content{width:100%;}
+  .admin-list-row{display:flex; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); font-size:0.86rem;}
+  .admin-list-row .meta{color:var(--muted-2); font-size:0.78rem;}
+  .link-btn{background:none; border:none; color:#c0392b; font-size:0.75rem; cursor:pointer; text-decoration:underline; padding:0; margin-left:8px; font-family:inherit;}
+  #adminFab{position:fixed; bottom:22px; right:22px; z-index:300; background:var(--navy); color:#fff; border:1px solid var(--teal); border-radius:30px; padding:12px 18px; display:flex; align-items:center; gap:8px; font-size:0.85rem; box-shadow:0 8px 22px rgba(0,0,0,0.18);}
+  #adminFab:hover{background:var(--teal-dark);}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if(window.pdfjsLib){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+</script>
+</head>
+<body>
+
+<div id="siteLoader">
+  <div class="loader-spinner"></div>
+  <div class="loader-text">LABD — chargement du site...</div>
+</div>
+<script>
+  // Filet de sécurité : si le chargement traîne anormalement (souci réseau),
+  // on masque quand même l'écran de chargement après 8s pour ne pas bloquer
+  // le visiteur indéfiniment.
+  setTimeout(() => {
+    const l = document.getElementById('siteLoader');
+    if(l) l.classList.add('hide');
+  }, 8000);
+</script>
+
+<div id="modalOverlay"><div class="modal-box" id="modalContent"></div></div>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand-block">
+      <a href="#top" class="brand">
+        <img src="images/visuel_labd_01.jpg" alt="Logo LABD" id="headerLogoImg">
+        <span class="brand-name">LABD Org</span>
+      </a>
+    </div>
+    <nav class="links">
+      <a href="#vision">Vision</a>
+      <a href="#histoire">Histoire</a>
+      <a href="#bureau">Bureau</a>
+      <a href="#projets">Projets</a>
+      <a href="#cycles">Classements</a>
+      <a href="#galerie">Galerie</a>
+      <a href="#actualites">Actualités</a>
+      <a href="#avis">Avis</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a href="#adhesion" class="nav-cta">Rejoindre</a>
+    <button class="burger" id="burgerBtn" aria-expanded="false" aria-controls="mobileMenu">MENU</button>
+  </div>
+  <div id="mobileMenu">
+    <a href="#vision">Vision</a>
+    <a href="#objectif">Objectif</a>
+    <a href="#histoire">Histoire</a>
+    <a href="#bureau">Bureau</a>
+    <a href="#cycles">Classements</a>
+    <a href="#galerie">Galerie</a>
+    <a href="#actualites">Actualités</a>
+    <a href="#evenements">Événements</a>
+    <a href="#formations">Formations</a>
+    <a href="#projets">Projets</a>
+    <a href="#cotisations">Cotisations</a>
+    <a href="#adhesion">Adhésion</a>
+    <a href="#avis">Avis &amp; propositions</a>
+    <a href="#contact">Contact</a>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-photo"><img src="images/hero.jpg" alt="LABDiens en séance de travail" id="heroPhotoImg"></div>
+
+    <div class="hero-inner">
+      <p class="eyebrow" id="heroEyebrow">LES LOGICIELS AU BOUT DES DOIGTS · GÉNIE CIVIL</p>
+      <h1 class="headline" id="heroHeadline">L'ingénierie s'apprend. <em>Le bureau d'étude se construit.</em></h1>
+      <p class="hero-sub" id="heroSub">LABD réunit des étudiants en génie civil autour des logiciels de conception — Archicad, AutoCAD, Revit, Robot — avec un objectif clair : passer de l'apprentissage à la réalisation, jusqu'à devenir un bureau d'étude reconnu en Afrique de l'Ouest.</p>
+      <div class="hero-ctas">
+        <a href="#adhesion" class="btn-primary">Rejoindre le groupe</a>
+        <a href="#cycles" class="btn-ghost">Voir les classements</a>
+      </div>
+      <div class="badge-row">
+        <span class="badge-pill"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>Fondé le 16.10.2025</span>
+        <span class="badge-pill"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s7-6 7-12a7 7 0 1 0-14 0c0 6 7 12 7 12z"/><circle cx="12" cy="10" r="2.4"/></svg>UAC, EPAC</span>
+        <span class="badge-pill"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 10L12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.4 2.7 2.6 6 2.6s6-1.2 6-2.6v-5"/></svg>Département de génie civil</span>
+      </div>
+    </div>
+
+    <div class="hero-tools-strip">
+      <div class="hero-tools-track" id="heroToolsTicker"></div>
+    </div>
+  </section>
+
+  <!-- VISION -->
+  <section id="vision">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Notre ambition</span>
+        <h2 class="section-title">Une famille qui vise loin</h2>
+        <p class="section-desc">LABD n'a pas vocation à rester un simple club de formation. Voici la direction que nous nous donnons.</p>
+      </div>
+      <div class="grid-2" id="visionGrid"></div>
+    </div>
+  </section>
+
+  <!-- OBJECTIF DU GROUPE -->
+  <section id="objectif">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Notre raison d'être</span>
+        <h2 class="section-title">Objectif du groupe</h2>
+        <p class="section-desc">Pourquoi le LABD existe, comment il fonctionne, et où il veut aller.</p>
+      </div>
+      <div class="grid-3">
+        <div class="objectif-card card">
+          <div class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4L2 9l10 5 10-5-10-5z"/><path d="M6 12v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/></svg></div>
+          <h3>Apprendre les logiciels</h3>
+          <p>LABD a été créé pour permettre à ses membres de maîtriser les logiciels de dessin et de calcul en génie civil.</p>
+        </div>
+        <div class="objectif-card card">
+          <div class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21l4-1 11-11-3-3L4 17l-1 4z"/><path d="M14 6l3 3"/></svg></div>
+          <h3>Concevoir des plans</h3>
+          <p>Notre démarche commence par l'apprentissage et la pratique sur des projets existants, où chaque membre apprend à concevoir des plans et à travailler sur des projets concrets.</p>
+        </div>
+        <div class="objectif-card card">
+          <div class="icon-badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 6h7v7"/></svg></div>
+          <h3>Réaliser des projets</h3>
+          <p>L'objectif final est de transformer ces apprentissages et ces pratiques en projets livrés, jusqu'à faire de LABD un grand bureau d'étude reconnu.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HISTOIRE -->
+  <section id="histoire" class="alt-bg">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Depuis le 16.10.2025</span>
+        <h2 class="section-title">Notre histoire</h2>
+        <p class="section-desc">LABD est né d'une rencontre entre étudiants du département de génie civil, au bâtiment B-2610. Depuis, le groupe s'est structuré autour d'un bureau, d'un règlement, et de cycles de projets notés et primés.</p>
+      </div>
+      <div class="history-teaser card" onclick="openHistoireModal()">
+        <div class="history-teaser-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></svg></div>
+        <div>
+          <div class="history-teaser-title" id="histoireTeaserTitle">D'une idée à un groupe : comment tout a commencé</div>
+          <p class="history-teaser-sub" id="histoireTeaserSub">Une rencontre, une soirée de discussions, et six postes attribués par acclamation. Découvrez le récit complet de la fondation de LABD.</p>
+        </div>
+        <span class="history-teaser-cta">Lire notre histoire &rarr;</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUREAU -->
+  <section id="bureau">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Organisation</span>
+        <h2 class="section-title">Le bureau administratif</h2>
+        <p class="section-desc">Élu lors de la séance fondatrice du 16 octobre 2025.</p>
+      </div>
+      <div class="grid-3" id="bureauGrid"></div>
+      <div class="members-list">
+        <div class="k">La famille LABD</div>
+        <p style="color:var(--muted); font-size:0.9rem; margin-bottom:16px;">Chaque LABDien fait avancer le groupe à sa manière — voici tous ceux qui portent le projet avec le bureau.</p>
+        <div id="membersWrap"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CYCLES / CLASSEMENTS -->
+  <section id="cycles" class="alt-bg">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Sessions de notation</span>
+        <h2 class="section-title">Cycles de projets &amp; classement</h2>
+        <p class="section-desc">À la fin d'un lot de projets, les notes de chaque membre sont recensées et les meilleurs sont primés. Nous en sommes au <span id="cycleCountLabel">3ᵉ</span> cycle.</p>
+      </div>
+      <div class="tabs" id="cycleTabs"></div>
+      <div id="cyclePanels"></div>
+      <div id="cyclePager"></div>
+    </div>
+  </section>
+
+  <!-- GALERIE -->
+  <section id="galerie">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Souvenirs</span>
+        <h2 class="section-title">Galerie</h2>
+        <p class="section-desc">Photos des rencontres et des moments forts du groupe.</p>
+      </div>
+      <div class="gallery-grid" id="galleryGrid"></div>
+      <div id="galleryPager"></div>
+    </div>
+  </section>
+
+  <!-- ACTIVITES LABDIENNES -->
+  <section id="activites" class="alt-bg">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Vie du groupe</span>
+        <h2 class="section-title">Actualités LABD</h2>
+        <p class="section-desc">Les dernières actualités, événements et formations du groupe.</p>
+      </div>
+      <div class="activites-columns" id="activitesColumns">
+        <div class="activite-col" id="actualites">
+          <h3>Actualités</h3>
+          <div class="article-grid" id="grid-actualite"></div>
+        </div>
+        <div class="activite-col" id="evenements">
+          <h3>Événements</h3>
+          <div class="article-grid" id="grid-evenement"></div>
+        </div>
+        <div class="activite-col" id="formations">
+          <h3>Formations</h3>
+          <div class="article-grid" id="grid-formation"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROJETS -->
+  <section id="projets">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Réalisations</span>
+        <h2 class="section-title">Nos projets</h2>
+        <p class="section-desc">D'un côté, les projets déjà réalisés par les LABDiens. De l'autre, le projet en cours — nos exercices de la semaine, réservés aux membres du groupe.</p>
+      </div>
+      <div class="tabs" id="projectTabs"></div>
+      <div id="projectPanels"></div>
+    </div>
+  </section>
+
+  <!-- COTISATIONS -->
+  <section id="cotisations" class="alt-bg">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Vie du groupe</span>
+        <h2 class="section-title">Cotisations</h2>
+        <p class="section-desc">LABD n'a pas de sponsor : notre seul financement, c'est nous-mêmes. Pour faire évoluer les activités du groupe et tenir nos ambitions, la cotisation mensuelle est indispensable.</p>
+      </div>
+      <div class="fee-grid">
+        <div class="fee-card card">
+          <div class="k">Cotisation mensuelle</div>
+          <div class="amount" id="feeMensuelleAmount">500 <span>F CFA / mois</span></div>
+          <p>Versée chaque mois par tous les membres. Elle finance directement les activités du groupe — matériel, événements, projets communs.</p>
+        </div>
+        <div class="fee-card card">
+          <div class="k">Frais d'adhésion</div>
+          <div class="amount" id="feeAdhesionAmount">2 675 <span>F CFA · unique</span></div>
+          <p>À verser au Trésorier Général lors de l'adhésion.</p>
+          <span class="fee-tag"><svg class="icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg>Obligatoire</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADHESION -->
+  <section id="adhesion">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Adhésion</span>
+        <h2 class="section-title">Rejoindre LABD</h2>
+        <p class="section-desc">Trois conditions sont nécessaires avant l'envoi de votre dossier.</p>
+      </div>
+
+      <div class="form-panel card" id="adhesionPanel">
+        <h3>Dossier de candidature</h3>
+        <p class="lead">Remplissez le formulaire et joignez votre CV et votre lettre de motivation manuscrite (scannée ou photographiée). Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
+
+        <form id="adhesionForm">
+          <div class="field"><label for="j-nom">Nom complet</label><input id="j-nom" type="text" placeholder="Votre nom et prénom" required></div>
+          <div class="field"><label for="j-contact">Email ou téléphone</label><input id="j-contact" type="text" placeholder="Comment vous joindre" required></div>
+          <div class="field field-file"><label for="j-file">CV + lettre de motivation manuscrite (scan ou photo)</label><input id="j-file" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple required></div>
+
+          <div class="check-step">
+            <div class="check-step-head">
+              <input type="checkbox" id="chk-reglement" disabled>
+              <label for="chk-reglement">J'ai lu et j'approuve le règlement intérieur</label>
+            </div>
+            <button type="button" class="btn-ghost" style="align-self:flex-start; border-color:var(--line); color:var(--ink);" onclick="openReglementModal()">Lire le règlement</button>
+          </div>
+
+          <div class="check-step">
+            <div class="check-step-head">
+              <input type="checkbox" id="chk-paiement">
+              <label for="chk-paiement" id="chkPaiementLabel">Je confirme avoir versé 2 675 F CFA au Trésorier Général</label>
+            </div>
+            <p class="form-note">Numéro Mobile Money du TG (HEVOU Bénitez) : <strong>+229 01 46 30 00 66</strong>. Cette case reste décochée tant que le versement n'est pas fait — le dossier n'est enregistré qu'après.</p>
+          </div>
+
+          <button type="submit" class="btn-primary" id="submitCandidature" disabled>Enregistrer mon dossier</button>
+        </form>
+        <div id="candidatureSuccess" style="display:none;" class="success-box">
+          <div class="icon-badge" style="margin:0 auto 14px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg></div>
+          <h4>Dossier bien reçu</h4>
+          <p>Votre dossier sera enregistré et transmis au bureau une fois le paiement validé par le Trésorier Général. Le bureau étudiera ensuite votre candidature, et la Secrétaire Générale reviendra vers vous dès que votre dossier sera officiellement enregistré.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AVIS -->
+  <section id="avis" class="alt-bg">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Votre voix</span>
+        <h2 class="section-title">Avis &amp; propositions</h2>
+        <p class="section-desc">Une idée pour le groupe, une remarque, une proposition de projet ? Le bureau lit chaque message.</p>
+      </div>
+      <div class="form-panel card">
+        <h3>Écrire au bureau</h3>
+        <p class="lead">Membre ou non, votre avis compte.</p>
+        <form id="avisForm">
+          <div class="field"><label for="a-nom">Nom (facultatif)</label><input id="a-nom" type="text" placeholder="Anonyme si vous préférez"></div>
+          <div class="field"><label for="a-msg">Votre message</label><textarea id="a-msg" placeholder="Votre avis ou votre proposition" required></textarea></div>
+          <button type="submit" class="btn-primary">Envoyer</button>
+        </form>
+        <div id="avisSuccess" style="display:none;" class="success-box">
+          <div class="icon-badge" style="margin:0 auto 14px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg></div>
+          <h4>Message envoyé</h4>
+          <p>Merci — le bureau prendra connaissance de votre message.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section id="contact" class="dark-bg">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="tag-num">Contact</span>
+        <h2 class="section-title">Nous joindre</h2>
+      </div>
+      <div class="contact-grid" id="contactGrid"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="images/visuel_labd_03.jpg" alt="Logo LABD" id="footerLogoImg">
+        <div>
+          <div class="display">LABD Org</div>
+          <p id="footerTaglineText">Logiciels Au Bout des Doigts — bureau d'étude étudiant, département de génie civil, bâtiment B-2610.</p>
+          <div class="footer-social" id="footerSocial"></div>
+        </div>
+      </div>
+      <div class="footer-links">
+        <div class="col"><h5>Groupe</h5><a href="#vision">Vision</a><a href="#histoire">Histoire</a><a href="#bureau">Bureau</a></div>
+        <div class="col"><h5>Activité</h5><a href="#cycles">Classements</a><a href="#actualites">Actualités</a><a href="#galerie">Galerie</a><a href="#projets">Projets</a></div>
+        <div class="col"><h5>Rejoindre</h5><a href="#cotisations">Cotisations</a><a href="#adhesion">Adhésion</a><a href="#avis">Avis</a></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>LABD Org © 2025 — 2026</span>
+      <span>Apprendre. Concevoir. Réaliser.</span>
+    </div>
+  </div>
+</footer>
+
+<button id="adminFab">
+  <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+  Espace admin
+</button>
+
+<!-- ==========================================================
+     CONFIG FIREBASE — à remplir avec les valeurs de TON projet
+     (Console Firebase > Paramètres du projet > Tes applications > SDK config)
+     ========================================================== -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCz7yU3IVdQYkwb59ZhILhr4gtLIKc_A9E",
+    authDomain: "labd-site.firebaseapp.com",
+    projectId: "labd-site",
+    storageBucket: "labd-site.firebasestorage.app",
+    messagingSenderId: "276556608661",
+    appId: "1:276556608661:web:7cd0b3c8f941451750579c"
+  };
+
+  window.__firebaseReady = (async () => {
+    try{
+      if(firebaseConfig.apiKey === "COLLE_ICI") return false; // config pas encore remplie
+      const app = initializeApp(firebaseConfig);
+      window.__fbDb = getFirestore(app);
+      window.__fbDoc = doc;
+      window.__fbGetDoc = getDoc;
+      window.__fbSetDoc = setDoc;
+      return true;
+    } catch(e){ console.error('Firebase init error', e); return false; }
+  })();
+</script>
+
+<script>
+/* ==========================================================
+   ICONES
+========================================================== */
+const ICONS = {
+  target: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8" fill="currentColor"/></svg>',
+  users: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6"/><circle cx="17" cy="8" r="2.4"/><path d="M17 5.2c1.5.4 2.6 1.7 2.6 3.3"/></svg>',
+  handshake: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12l4-4 5 4-2 2z"/><path d="M22 12l-4-4-6.5 5.5a1.6 1.6 0 0 0 2 2.5L18 12"/><path d="M6 8l4 4"/></svg>',
+  globe: '<svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 4 5.7 4 9s-1.5 6.4-4 9c-2.5-2.6-4-5.7-4-9s1.5-6.4 4-9z"/></svg>',
+  user: '<svg class="icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.5 3-6.2 7-6.2s7 2.7 7 6.2"/></svg>',
+  phone: '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h4l2 5-2.5 1.5a12 12 0 0 0 6 6L15 14l5 2v4c0 1-1 2-2 2C10 22 2 14 2 6c0-1 1-2 2-2z"/></svg>',
+  whatsapp: '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-6c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1-.2.2-.6.8-.8 1-.1.1-.3.2-.5.1-.2-.1-1-.4-1.9-1.2-.7-.6-1.2-1.4-1.3-1.6-.1-.2 0-.3.1-.4.1-.1.3-.3.4-.5.1-.1.2-.3.2-.4.1-.2 0-.3 0-.4-.1-.1-.5-1.3-.7-1.7-.2-.5-.4-.4-.5-.4h-.4c-.1 0-.4 0-.6.3-.2.2-.8.8-.8 1.9s.9 2.3 1 2.4c.1.2 1.7 2.6 4.1 3.6.6.2 1 .4 1.4.5.6.2 1.1.2 1.5.1.5-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1-.1-.1-.2-.2-.4-.3z"/></svg>',
+  camera: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="6" width="18" height="14" rx="1.5"/><circle cx="12" cy="13" r="3.6"/><path d="M9 6l1.5-2h3L15 6"/></svg>',
+  bullhorn: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 10v4h3l7 4V6l-7 4H3z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>',
+  info: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></svg>',
+  upload: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V6M6 11l6-6 6 6"/></svg>',
+  lock: '<svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  mute: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M23 9l-6 6M17 9l6 6"/></svg>',
+  unmute: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5.5a9 9 0 0 1 0 13"/></svg>',
+  play: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  pause: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>'
+};
+
+// Miniature vidéo par défaut : générée en local (SVG intégré), donc toujours disponible même sans réseau.
+// Une vidéo garde cette miniature tant qu'aucune miniature personnalisée n'est enregistrée pour elle.
+const DEFAULT_VIDEO_POSTER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 225"><rect width="400" height="225" fill="#0b1c33"/><circle cx="200" cy="112" r="40" fill="rgba(255,255,255,0.14)"/><path d="M188 92 L224 112 L188 132 Z" fill="#ffffff"/><text x="200" y="196" font-family="sans-serif" font-size="17" fill="rgba(255,255,255,0.55)" text-anchor="middle" letter-spacing="3">LABD</text></svg>`
+);
+
+// Tuile vidéo qui se lit automatiquement en boucle, en sourdine, dans son propre cadre (comme Telegram).
+// Barre de progression bleue, bouton pause dédié, et arrêt automatique dès qu'elle sort de l'écran.
+function videoTileHTML(src, poster, expandCall, extraStyle){
+  return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
+    <video class="tile-video" src="${src}" muted loop autoplay playsinline preload="metadata" poster="${poster || DEFAULT_VIDEO_POSTER}" style="width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; ${extraStyle||''}" onclick="${expandCall}" ontimeupdate="updateTileProgress(this)"></video>
+    <div class="tile-progress"><div class="tile-progress-fill"></div></div>
+    <button class="mute-toggle" title="Activer/couper le son" onclick="event.stopPropagation(); toggleTileMute(this)">${ICONS.mute}</button>
+    <button class="play-toggle" title="Lecture/Pause" onclick="event.stopPropagation(); toggleTilePlay(this)">${ICONS.pause}</button>
+  </div>`;
+}
+function updateTileProgress(vid){
+  const bar = vid.parentElement.querySelector('.tile-progress-fill');
+  if(bar && vid.duration) bar.style.width = (vid.currentTime / vid.duration * 100) + '%';
+}
+function toggleTileMute(btn){
+  const vid = btn.parentElement.querySelector('.tile-video');
+  if(!vid) return;
+  vid.muted = !vid.muted;
+  btn.innerHTML = vid.muted ? ICONS.mute : ICONS.unmute;
+}
+function toggleTilePlay(btn){
+  const vid = btn.parentElement.querySelector('.tile-video');
+  if(!vid) return;
+  if(vid.paused){ vid.play().catch(()=>{}); vid.dataset.userPaused='0'; btn.innerHTML = ICONS.pause; }
+  else { vid.pause(); vid.dataset.userPaused='1'; btn.innerHTML = ICONS.play; }
+}
+// Les vidéos en miniature se mettent en pause dès qu'elles sortent de l'écran (défilement),
+// et reprennent automatiquement quand elles reviennent — sauf si l'utilisateur les a mises en pause lui-même.
+const tileObserver = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const vid = entry.target;
+    if(entry.isIntersecting){
+      if(vid.dataset.userPaused !== '1') vid.play().catch(()=>{});
+    } else {
+      vid.pause();
+    }
+  });
+}, { threshold: 0.3 }) : null;
+function observeTileVideos(){
+  if(!tileObserver) return;
+  document.querySelectorAll('.tile-video').forEach(v => tileObserver.observe(v));
+}
+
+/* ==========================================================
+   CONFIG — contenu de base
+========================================================== */
+const CONFIG = {
+  // Comptes admin : mot de passe -> rôle -> catégories visibles dans le tableau de bord.
+  // "*" = accès à tout. Changez ces mots de passe librement, un par personne.
+  adminRoles: [
+    { password:"pr-labd26",  role:"Président",                          categories:["*"] },
+    { password:"vp-labd26",  role:"Vice-président",                     categories:["*"] },
+    { password:"cae-labd26", role:"Chargé des affaires extérieures",    categories:["candidatures","commentaires"] },
+    { password:"tg-labd26",  role:"Trésorier Général",                  categories:["cotisations","commentaires"] },
+    { password:"cdm-labd26", role:"Chargé des médias",                  categories:["articles","photos","vision","outils","cycles","commentaires"] },
+    { password:"og-labd26",  role:"Organisateur Général",               categories:["articles","commentaires"] },
+    { password:"sg-labd26",  role:"Secrétaire Générale",                categories:["membres","commentaires","candidatures"] },
+    { password:"labd2026",   role:"Accès général",                      categories:["*"] }
+  ],
+
+  // Emails mis en copie sur chaque candidature / avis reçu (notification).
+  // Mot de passe partagé entre tous les membres, pour voir le projet en cours (pas un vrai compte individuel).
+  memberPassword: "labdien2026",
+
+  // Adresses mail de chaque membre du bureau, utilisées pour les notifications ciblées.
+  emails: {
+    pr:  "sourougangnambakpo99@gmail.com",
+    vp:  "abbemiwanou@gmail.com",
+    sg:  "abdoulayebakelatifa@gmail.com",
+    og:  "gnassounoukenneth@gmail.com",
+    tg:  "benitezhevou44@gmail.com",
+    cae: "jeanzinsou56@gmail.com"
+  },
+
+  // "Tout le monde" pour les avis : tout le bureau reçoit une notification.
+  get notifyEmails(){ return Object.values(this.emails); },
+
+  facebookUrl: "https://www.facebook.com/photo/?fbid=122105295111375248&set=a.122105288817375248",
+
+  footerTagline: "Logiciels Au Bout des Doigts — bureau d'étude étudiant, département de génie civil, bâtiment B-2610.",
+
+  contact: {
+    email: "sourougangnambakpo99@gmail.com",
+    secretariatPhone: "+229 01 41 76 01 65",
+    secretariatLabel: "Secrétariat général"
+  },
+
+  outils: [
+    { nom:"AutoCAD", usage:"Dessin technique 2D précis : plans de fondation, coffrages, détails d'exécution." },
+    { nom:"Revit", usage:"Maquette numérique (BIM) pour coordonner architecture et structure sur un même modèle." },
+    { nom:"Archicad", usage:"Conception architecturale complète : plans, coupes, façades, vues 3D d'un bâtiment." },
+    { nom:"Robot", usage:"Calcul et vérification de la résistance des structures (poteaux, poutres, semelles)." },
+    { nom:"Excel", usage:"Métrés, quantitatifs, calculs de ferraillage et suivi budgétaire des projets." }
+  ],
+
+  vision: [
+    { titre: "<span style=\"white-space:nowrap;\">Un bureau d'étude, pas seulement un club</span>", texte: "<span style=\"white-space:nowrap;\">Devenir une structure de référence en dessin technique et en</span> ingénierie civile, reconnue au-delà du campus.", icon: "target" },
+    { titre: "Une famille avant tout", texte: "L'entraide entre anciens et nouveaux compte <span style=\"white-space:nowrap;\">autant que la technique. On progresse ensemble,</span><br>on se souvient ensemble.", icon: "users" },
+    { titre: "De la formation à la livraison", texte: "Chaque logiciel appris devient, à terme, un projet réel conçu — et vendu — pour un client.", icon: "handshake" },
+    { titre: "<span style=\"white-space:nowrap;\">Rayonner en Afrique de l'Ouest</span>", texte: "Construire, cycle après cycle, une réputation régionale auprès des acteurs du BTP.", icon: "globe" }
+  ],
+
+  bureau: [
+    { num:"LABD-001", nom:"GANGNAMBAKPO Sourou", role:"Président", abbr:"Pr", phone:"+229 01 66 94 28 67" },
+    { num:"LABD-002", nom:"MIWANOU Jérémie", role:"Vice-président", abbr:"VP", phone:"+229 01 94 74 21 27" },
+    { num:"LABD-003", nom:"ABDOULAYE Latifatou", role:"Secrétaire Générale", abbr:"SG", phone:"+229 01 41 76 01 65" },
+    { num:"LABD-004", nom:"GNANSOUNOU Kenneth", role:"Organisateur Général", abbr:"OG", phone:"+229 01 54 97 45 05" },
+    { num:"LABD-005", nom:"HEVOU Bénitez", role:"Trésorier Général", abbr:"TG", phone:"+229 01 46 30 00 66" },
+    { num:"LABD-006", nom:"ZINSOU Jean", role:"Chargé des affaires extérieures", abbr:"CAE", phone:"+229 43 85 78 96" }
+  ],
+
+  membres: [
+    { num:"LABD-011", nom:"ZOSSOU Haris", role:"Chargé des médias", abbr:"CDM", phone:"+229 01 41 90 62 00" },
+    { num:"LABD-007", nom:"OUOROU GOURA Rochdane", phone:"+229 01 59 45 73 89" },
+    { num:"LABD-008", nom:"WANKPO Hoth", phone:"+229 01 57 54 69 52" },
+    { num:"LABD-009", nom:"AGBOTON Joan", phone:"+229 01 96 03 42 50" },
+    { num:"LABD-012", nom:"ONI Prudence", phone:"+229 01 60 09 76 32" },
+    { num:"LABD-013", nom:"NAÏNOU Charbel", phone:"+229 01 90 57 00 50" },
+    { num:"LABD-014", nom:"AKOMOU Bignon Anne-Marie", phone:"+229 01 61 94 12 70" },
+    { num:"LABD-016", nom:"YAKPA Landrine", phone:"+229 01 57 64 52 58" },
+    { num:"LABD-017", nom:"ALOU Victorine", phone:"+229 01 41 87 83 91" },
+    { num:"LABD-018", nom:"BONI Farez", phone:"+229 01 55 52 62 17" },
+    { num:"LABD-019", nom:"HOUMBIE Urielle" },
+    { num:"LABD-021", nom:"HOUNOUNGBO Ariel", phone:"+229 01 63 63 84 78" }
+  ],
+
+  cycles: [
+    { label: "Cycle 1", statut: "Projet LABD 001 — Conception d'un bâtiment (vue en plan côtée, toiture, fondation, définition, électricité, plomberie) · 17.10.2025 au 13.12.2025",
+      laureats: [
+        { rang:1, nom:"GANGNAMBAKPO Sourou", mention:"99,2%" },
+        { rang:2, nom:"AGBOTON Joan", mention:"98,9%" },
+        { rang:3, nom:"ZINSOU Jean", mention:"96,4%" }
+      ] },
+    { label: "Cycle 2", statut: "Projets LABD 002 & 003 — Conception personnelle d'une maison d'habitation et publication des documents · 23.12.2025 au 04.02.2026",
+      laureats: [
+        { rang:1, nom:"GANGNAMBAKPO Sourou", mention:"99,0%" },
+        { rang:2, nom:"ZINSOU Jean", mention:"96,17%" },
+        { rang:3, nom:"HEVOU Bénitez", mention:"95,0%" }
+      ] },
+    { label: "Cycle 3", statut: "Projets LABD 004 & 005 — Coffrages (plancher bas, fondation, couverture) et conception du Siège LABD · 07.02.2026 au 06.04.2026 · palmarès remis le 25.07.2026",
+      laureats: [
+        { rang:1, nom:"ZINSOU Jean", mention:"98,57%" },
+        { rang:2, nom:"AGBOTON Joan", mention:"96,50%" },
+        { rang:3, nom:"GANGNAMBAKPO Sourou", mention:"95,76%" }
+      ] }
+  ],
+
+  reglement: [
+    { art:"00-801", texte:"Toute absence non justifiée à une réunion organisée par le groupe LABD, 2 fois de suite, sera sanctionnée par un renvoi définitif." },
+    { art:"00-802", texte:"Tout nouveau dans ce groupe doit finir son premier projet au moins à 80% après vérification par l'organe de contrôle." },
+    { art:"00-803", texte:"Toujours se munir de ses équipements de travail (son ordinateur) pour la vérification et le suivi des activités ; toute absence d'équipement sera précédée de sanction sévère." },
+    { art:"00-804", texte:"La durée prévue pour le travail ou la tâche assignée est d'une semaine." },
+    { art:"00-805", texte:"Un nouveau membre ou un membre ancien qui obtient 40% sur tout le travail sans motif important, deux fois de suite, sera aussi sanctionné d'un renvoi." },
+    { art:"00-806", texte:"Les membres qui seront retirés du groupe ne pourront réintégrer qu'après avoir payé à nouveau les frais d'adhésion." },
+    { art:"00-807", texte:"Tout exercice non fait ou non achevé sera sanctionné par une pénalité." },
+    { art:"00-806", texte:"Tout adhérent au groupe LABD doit avoir la capacité de travailler sous pression ; un grand principe du fonctionnement du génie civil." },
+    { art:"00-808", texte:"Toute pénalité non réglée dans un délai de 7 jours entraîne la suspension du membre concerné, jusqu'au paiement intégral de ce qui lui est dû." },
+    { art:"00-809", texte:"Le groupe ne recherche pas la quantité, mais s'entoure de personnes sérieuses et véritablement engagées." },
+    { art:"00-810", texte:"Les pénalités doivent être payées au plus tard 2 jours après la fixation, sinon l'intéressé paiera 100 F par jour de retard." },
+    { art:"00-811", texte:"Tout membre qui ne finit pas sa correction au deuxième contrôle paiera 300 F." },
+    { art:"00-812", texte:"Des primes d'encouragement, de 200 F à 500 F selon l'envergure du projet, seront octroyées à ceux qui auront terminé à 100% leur projet de façon consécutive sur 3 séances." },
+    { art:"00-813", texte:"Des visites ou petites fêtes seront organisées par l'OG pour vivre des moments de convivialité et de partage, après un projet d'envergure fini à 100%." }
+  ],
+
+  // Contenus d'exemple — affichés uniquement tant qu'aucun contenu réel n'a été publié par l'admin.
+  exampleArticles: [
+  ],
+  exampleProjets: [],
+
+  // Photos réelles fournies par le groupe — s'affichent dans la galerie dès le chargement.
+  seedGallery: [
+    { legende:"Sourou, Jean et Joan", src:"images/joan.jpg" },
+    { legende:"Bénitez et Sourou", src:"images/visuel_labd_11.jpg" },
+    { legende:"Victorine et Jean", src:"images/victorine.jpg" },
+    { legende:"Anani, Charbel et Urielle", src:"images/charbel.jpg" },
+    { legende:"Anani et Haris", src:"images/visuel_labd_14.jpg" },
+    { legende:"Jean et Sourou", src:"images/jean_2.jpg" },
+    { legende:"Sourou et Latifatou", src:"images/latifatou.jpg" },
+    { legende:"Sourou et Kenneth", src:"images/kenneth_2.jpg" },
+    { legende:"Sourou et Landrine", src:"images/visuel_labd_18.jpg" },
+    { legende:"Le Vice-président au travail", src:"images/visuel_labd_19.jpg" },
+    { legende:"Une LABDienne en séance", src:"images/visuel_labd_20.jpg" },
+    { legende:"Deux LABDiens sur un projet", src:"images/visuel_labd_21.jpg" }
+  ],
+
+  // Projets déjà connus, affichés dès le chargement (en plus de ceux publiés via l'admin).
+  seedProjets: []
+};
+const ARTICLE_TYPE_LABELS = { evenement:"Événement", formation:"Formation", actualite:"Actualité" };
+const PROJET_TYPE_LABELS = { realise:"Projet réalisé", exercice:"Projet en cours" };
+const PROJET_TYPE_LABELS_PLURIEL = { realise:"Projets réalisés", exercice:"Projets en cours (exercice de la semaine)" };
+
+/* ==========================================================
+   OUTILS
+========================================================== */
+const avatarColors = ["#05b3c2", "#0b1c33", "#048b98", "#13284a"];
+function initials(nom){ return nom.split(" ").filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase(); }
+function avatarHTML(nom, i, photo){
+  if(photo) return `<img class="avatar" src="${photo}" alt="${nom}">`;
+  return `<div class="avatar" style="background:${avatarColors[i % avatarColors.length]}">${initials(nom)}</div>`;
+}
+function normName(s){ return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function findLabdienByName(nom){
+  const target = normName(nom);
+  let m = getBureauList().find(b => normName(b.nom) === target);
+  if(m) return { abbr: m.abbr || null, photo: effectivePhoto(DATA.bureauPhotos, m.num, m.photo) };
+  m = getMembresList().find(b => normName(b.nom) === target);
+  if(m) return { abbr: m.abbr || null, photo: effectivePhoto(DATA.memberPhotos, m.num, m.photo) };
+  return null;
+}
+function effectivePhoto(store, num, staticPhoto){
+  return Object.prototype.hasOwnProperty.call(store, num) ? store[num] : (staticPhoto || null);
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function fmtDate(d){ return new Date(d).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}); }
+function ordinalFr(n){ return n === 1 ? '1ᵉʳ' : n + 'ᵉ'; }
+function telHref(p){ return 'tel:' + p.replace(/\s/g,''); }
+function waHref(p, presetText){
+  const digits = p.replace(/[^\d]/g,'');
+  const text = presetText ? '?text=' + encodeURIComponent(presetText) : '';
+  return `https://wa.me/${digits}${text}`;
+}
+
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Texte par défaut : le récit de la fondation de LABD, avec une mise en forme légère
+// (## pour un titre, **gras**, *italique*) que l'admin peut modifier depuis le site.
+const DEFAULT_HISTOIRE = `## La naissance d'une idée
+Tout commence avec **Kenneth GNANSOUNOU**. C'est lui qui, le premier, pense à un groupe comme LABD — et décide de le créer. Il s'entoure aussitôt de trois camarades : **Sourou GANGNAMBAKPO**, **Jean ZINSOU** et **Jérémie MIWANOU**.
+
+## La rencontre fondatrice
+Les fondateurs se donnent rendez-vous pour une première rencontre physique : c'est le jour de la fondation de LABD, le **16 octobre 2025**. C'est pendant cette rencontre que **Bénitez** les remarque, s'approche, demande de quoi il s'agit... et décide aussitôt d'y participer.
+
+## Les décisions qui ont tout lancé
+Cette première réunion pose les bases du groupe. **Jean** propose les modalités d'intégration — CV et documents à fournir. **Sourou** évoque l'idée d'un bureau organisé. **Bénitez** et **Kenneth** fixent le principe des cotisations : 200 F pour chacun des cinq premiers membres, 300 F pour la future Secrétaire Générale. **Sourou** propose aussi d'ouvrir le groupe à d'autres personnes.
+
+On parle ensuite de la manière dont le groupe va fonctionner : l'**autoformation** — celui qui prend du retard rattrape avec des vidéos YouTube et en se rapprochant des autres — et surtout la *pression positive du groupe*, décrite par Sourou (et approuvée par Bénitez) comme le véritable formateur de chacun. Sourou propose enfin de travailler directement sur des projets réels et existants, plutôt que sur de simples exercices.
+
+## L'élection du bureau
+Pour finir, les postes sont attribués par acclamation. **Kenneth** propose **Sourou** comme Président. Kenneth se désigne lui-même Organisateur Général, puis nomme **Bénitez** Trésorier Général. Il ne reste alors que **Jérémie**, qui devient naturellement Vice-président.
+
+Ainsi est né LABD — d'une idée, d'une rencontre, et de quelques décisions prises ensemble, une soirée d'octobre.`;
+
+function mdLiteToHtml(text){
+  const lines = text.split('\n');
+  let html = '';
+  let paraLines = [];
+  function flush(){
+    if(!paraLines.length) return;
+    const block = paraLines.join('\n');
+    const inner = escapeHtml(block)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br>');
+    html += `<p>${inner}</p>`;
+    paraLines = [];
+  }
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if(trimmed.startsWith('## ')){
+      flush();
+      html += `<h4>${escapeHtml(trimmed.slice(3).trim())}</h4>`;
+    } else if(trimmed === ''){
+      flush();
+    } else {
+      paraLines.push(line);
+    }
+  });
+  flush();
+  return html;
+}
+
+function openHistoireModal(){
+  openModal(`
+    <h3 style="margin-bottom:14px;">Notre histoire</h3>
+    <div class="history-modal-body">${mdLiteToHtml(DATA.histoireText || DEFAULT_HISTOIRE)}</div>
+    <div class="row" style="margin-top:16px;">
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+    </div>
+  `, true);
+}
+const DEFAULT_HISTOIRE_TEASER = { title:"D'une idée à un groupe : comment tout a commencé", sub:"Une rencontre, une soirée de discussions, et six postes attribués par acclamation. Découvrez le récit complet de la fondation de LABD." };
+function applyHistoireTeaser(){
+  const t = DATA.histoireTeaser || DEFAULT_HISTOIRE_TEASER;
+  const titleEl = document.getElementById('histoireTeaserTitle');
+  const subEl = document.getElementById('histoireTeaserSub');
+  if(titleEl) titleEl.textContent = t.title;
+  if(subEl) subEl.textContent = t.sub;
+}
+
+function resizeImage(file, maxW){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function fileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Envoie une notification mail ciblée (formsubmit.co) sans bloquer l'UI en cas d'échec réseau.
+async function notifyMail(subject, ccList, fields){
+  const list = (ccList || []).filter(Boolean);
+  if(!list.length) return;
+  const fd = new FormData();
+  fd.append('_subject', subject);
+  fd.append('_captcha', 'false');
+  fd.append('_cc', list.slice(1).join(','));
+  Object.entries(fields || {}).forEach(([k,v]) => fd.append(k, v));
+  try{
+    await fetch('https://formsubmit.co/' + encodeURIComponent(list[0]), { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
+  }catch(err){ console.error('notifyMail', err); }
+}
+
+async function pdfFirstPageThumbnail(dataUrl){
+  try{
+    if(typeof pdfjsLib === 'undefined') return null;
+    const pdf = await pdfjsLib.getDocument(dataUrl).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.3 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width; canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    return canvas.toDataURL('image/jpeg', 0.82);
+  }catch(e){ console.error('Miniature PDF impossible', e); return null; }
+}
+
+/* ---------- Cadrage (choix de la partie visible en miniature) ---------- */
+function setupFramePicker(fileInputId, wrapId){
+  const fileInput = document.getElementById(fileInputId);
+  const wrap = document.getElementById(wrapId);
+  if(!fileInput || !wrap) return;
+  fileInput.dataset.focalX = 50; fileInput.dataset.focalY = 50;
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files[0];
+    fileInput.dataset.focalX = 50; fileInput.dataset.focalY = 50;
+    if(!file || !file.type.startsWith('image/')){ wrap.classList.remove('show'); wrap.innerHTML = ''; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      wrap.innerHTML = `<img src="${e.target.result}"><div class="marker" style="left:50%;top:50%;"></div>`;
+      wrap.classList.add('show');
+      wrap.onclick = evt => {
+        const rect = wrap.getBoundingClientRect();
+        const x = Math.max(0, Math.min(100, Math.round(((evt.clientX-rect.left)/rect.width)*100)));
+        const y = Math.max(0, Math.min(100, Math.round(((evt.clientY-rect.top)/rect.height)*100)));
+        fileInput.dataset.focalX = x; fileInput.dataset.focalY = y;
+        const marker = wrap.querySelector('.marker');
+        if(marker){ marker.style.left = x+'%'; marker.style.top = y+'%'; }
+      };
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function getFocal(fileInputId){
+  const el = document.getElementById(fileInputId);
+  if(!el) return '50% 50%';
+  return (el.dataset.focalX||50)+'% '+(el.dataset.focalY||50)+'%';
+}
+
+let __firebaseReadyCache = null;
+async function __waitFirebaseReady(){
+  if(__firebaseReadyCache) return __firebaseReadyCache;
+  __firebaseReadyCache = (async () => {
+    // Le script Firebase (type="module") se charge en différé et peut ne pas
+    // avoir encore posé window.__firebaseReady quand ce script s'exécute.
+    // On patiente activement (jusqu'à 5s, une seule fois) qu'il apparaisse,
+    // puis on attend la promesse d'initialisation elle-même.
+    let tries = 0;
+    while(typeof window.__firebaseReady === 'undefined' && tries < 200){
+      await new Promise(r => setTimeout(r, 25));
+      tries++;
+    }
+    if(typeof window.__firebaseReady === 'undefined') return false;
+    try{ return await window.__firebaseReady; } catch(e){ return false; }
+  })();
+  return __firebaseReadyCache;
+}
+async function storageGet(key, fallback){
+  try{
+    const ready = await __waitFirebaseReady();
+    if(!ready) return fallback;
+    const snap = await window.__fbGetDoc(window.__fbDoc(window.__fbDb, 'labd-data', key));
+    return snap.exists() && snap.data().value !== undefined ? JSON.parse(snap.data().value) : fallback;
+  }
+  catch(e){ console.error('storage get error', e); return fallback; }
+}
+async function storageSet(key, value){
+  try{
+    const ready = await __waitFirebaseReady();
+    if(!ready) return false;
+    await window.__fbSetDoc(window.__fbDoc(window.__fbDb, 'labd-data', key), { value: JSON.stringify(value) });
+    return true;
+  }
+  catch(e){ console.error('storage set error', e); return false; }
+}
+
+/* ==========================================================
+   DONNEES DYNAMIQUES
+========================================================== */
+let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null };
+
+async function loadData(){
+  DATA.bureauPhotos  = await storageGet('bureau-photos', {});
+  DATA.memberPhotos  = await storageGet('member-photos', {});
+  DATA.laureatPhotos = await storageGet('laureat-photos', {});
+  DATA.laureatFocal  = await storageGet('laureat-focal', {});
+  DATA.visionImages  = await storageGet('vision-images', {});
+  DATA.laureats      = await storageGet('laureats', {});
+  DATA.membresExtra  = await storageGet('membres-extra', []);
+  DATA.membresRemoved = await storageGet('membres-removed', []);
+  DATA.membresOverrides = await storageGet('membres-overrides', {});
+  DATA.articles      = await storageGet('articles', []);
+  DATA.projets       = await storageGet('projets', []);
+  DATA.medias        = await storageGet('medias', []);
+  DATA.candidatures  = await storageGet('candidatures', []);
+  DATA.commentaires  = await storageGet('commentaires', []);
+  DATA.settings      = await storageGet('settings', {});
+  DATA.outils        = await storageGet('outils', CONFIG.outils.map(o => ({ ...o, id: uid() })));
+  const outilsSeedDone = await storageGet('outils-seed-v2', false);
+  if(!outilsSeedDone || !DATA.outils || !DATA.outils.length){
+    // Réinitialise une seule fois la liste (répare un ancien état corrompu par un bug de chargement).
+    DATA.outils = CONFIG.outils.map(o => ({ ...o, id: uid() }));
+    await storageSet('outils', DATA.outils);
+    await storageSet('outils-seed-v2', true);
+  }
+  DATA.groupLogo      = await storageGet('group-logo', null);
+  DATA.seedHidden     = await storageGet('seed-hidden', []);
+  DATA.cyclesExtra    = await storageGet('cycles-extra', []);
+  DATA.histoireText   = await storageGet('histoire-text', DEFAULT_HISTOIRE);
+  DATA.heroPhoto      = await storageGet('hero-photo', null);
+  DATA.heroPhotoFocal = await storageGet('hero-photo-focal', '50% 50%');
+  DATA.logoHiddenGallery = await storageGet('logo-hidden-gallery', false);
+  DATA.formationPassword = await storageGet('formation-password', null);
+  DATA.fees = await storageGet('fees', { adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null });
+  DATA.reglementText = await storageGet('reglement-text', null);
+  DATA.histoireTeaser = await storageGet('histoire-teaser', null);
+  DATA.heroText       = await storageGet('hero-text', null);
+}
+function getFacebookUrl(){ return DATA.settings.facebookUrl || CONFIG.facebookUrl; }
+function getFooterTagline(){ return DATA.settings.footerTagline || CONFIG.footerTagline; }
+function getContactEmail(){ return DATA.settings.contactEmail || CONFIG.contact.email; }
+function getContactPhone(){ return DATA.settings.secretariatPhone || CONFIG.contact.secretariatPhone; }
+
+/* ==========================================================
+   MODALES GENERIQUES
+========================================================== */
+const modalOverlay = document.getElementById('modalOverlay');
+const modalContent = document.getElementById('modalContent');
+function openModal(html, wide){
+  modalContent.className = 'modal-box' + (wide ? ' wide' : '');
+  modalContent.innerHTML = html;
+  modalOverlay.classList.add('open');
+}
+function closeModal(){
+  modalOverlay.classList.remove('open');
+  // Arrête toute vidéo lue dans la fenêtre (sinon elle continue de jouer en arrière-plan, invisible).
+  modalContent.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
+  modalContent.innerHTML = '';
+}
+modalOverlay.addEventListener('click', e => { if(e.target === modalOverlay) closeModal(); });
+
+function reglementItems(){
+  if(DATA.reglementText && DATA.reglementText.trim()){
+    return DATA.reglementText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+      const m = line.match(/^([\d-]+)\s*[—-]\s*(.+)$/);
+      return m ? { art:m[1], texte:m[2] } : { art:'', texte:line };
+    });
+  }
+  return CONFIG.reglement;
+}
+function openReglementModal(){
+  openModal(`
+    <h3>Règlement intérieur</h3>
+    <div class="reglement-text">
+      <ol>${reglementItems().map(r => `<li>${r.art?`<strong>Art. ${r.art} —</strong> `:''}${r.texte}</li>`).join("")}</ol>
+    </div>
+    <div class="row"><button class="btn-primary" onclick="closeModal(); document.getElementById('chk-reglement').disabled=false;">J'ai lu, fermer</button></div>
+  `, true);
+}
+
+/* ==========================================================
+   RENDU — SITE PUBLIC
+========================================================== */
+function renderToolsTicker(){
+  const el = document.getElementById('heroToolsTicker');
+  if(!el) return;
+  const list = (DATA.outils && DATA.outils.length) ? DATA.outils : CONFIG.outils;
+  if(!list.length){ el.innerHTML = ''; return; }
+  // On répète la liste plusieurs fois avant de la dupliquer : même sur un très
+  // grand écran, la piste reste toujours pleine et la boucle est invisible
+  // (translateX(-50%) revient exactement au même point visuellement).
+  const one = list.map(o => `<span class="tool-pill">${o.nom}</span>`).join("");
+  const half = one.repeat(4);
+  el.innerHTML = half + half;
+  requestAnimationFrame(() => {
+    const halfWidth = el.scrollWidth / 2;
+    const pxPerSecond = 45;
+    el.style.animationDuration = Math.max(20, halfWidth / pxPerSecond) + 's';
+  });
+}
+function renderVision(){
+  document.getElementById('visionGrid').innerHTML = CONFIG.vision.map((v,i) => {
+    const vi = DATA.visionImages[i];
+    return `
+    <div class="vision-card card${vi && vi.img ? ' has-thumb' : ''}">
+      ${vi && vi.img ? `<img class="v-thumb" src="${vi.img}" alt="${v.titre.replace(/<[^>]+>/g,' ')}" style="object-position:${vi.focal||'50% 50%'};">` : ''}
+      <div class="icon-badge">${ICONS[v.icon] || ICONS.target}</div>
+      <h3>${v.titre}</h3>
+      <p>${v.texte}</p>
+    </div>`;
+  }).join("");
+}
+async function saveVisionImage(i){
+  const fileInput = document.getElementById('ad-vi-img-'+i);
+  const file = fileInput.files[0];
+  if(!file){ alert("Choisissez une image."); return; }
+  const img = await resizeImage(file, 700);
+  const focal = getFocal('ad-vi-img-'+i);
+  DATA.visionImages[i] = { img, focal };
+  await storageSet('vision-images', DATA.visionImages);
+  renderVision(); renderAdminContent();
+}
+async function removeVisionImage(i){
+  delete DATA.visionImages[i];
+  await storageSet('vision-images', DATA.visionImages);
+  renderVision(); renderAdminContent();
+}
+
+function openProfileModal(encodedNom){
+  const nom = decodeURIComponent(encodedNom);
+  const target = normName(nom);
+  let m = getBureauList().find(b => normName(b.nom) === target);
+  let photo, cat = 'bureau';
+  if(m){ photo = effectivePhoto(DATA.bureauPhotos, m.num, m.photo); }
+  else {
+    m = getMembresList().find(b => normName(b.nom) === target);
+    if(m){ photo = effectivePhoto(DATA.memberPhotos, m.num, m.photo); cat = 'membre'; }
+  }
+  if(!m){
+    // Lauréat non répertorié dans le bureau/les membres : on affiche simplement son nom.
+    openModal(`<div style="text-align:center; padding:10px 0;"><div class="avatar" style="width:80px; height:80px; font-size:1.6rem; margin:0 auto 14px; background:var(--navy);">${initials(nom)}</div><div class="name" style="font-size:1.1rem;">${nom}</div></div>
+      <div class="row" style="justify-content:center; margin-top:14px;"><button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button></div>`);
+    return;
+  }
+  const roleLine = cat === 'bureau'
+    ? (m.abbr ? `${m.abbr} · ${m.role||''}` : (m.role||'Bureau'))
+    : (m.role ? (m.abbr ? `${m.abbr} · ${m.role}` : m.role) : 'Membre');
+  openModal(`
+    <div style="text-align:center; padding:10px 0;">
+      ${photo ? `<img src="${photo}" style="width:96px; height:96px; border-radius:50%; object-fit:cover; margin:0 auto 14px; display:block; cursor:pointer;" title="Cliquer pour voir en grand" onclick="openImageLightbox('${photo.replace(/'/g,"\\'")}', '${m.nom.replace(/'/g,"\\'")}')">` : `<div class="avatar" style="width:96px; height:96px; font-size:1.7rem; margin:0 auto 14px; background:var(--navy);">${initials(m.nom)}</div>`}
+      <div class="name" style="font-size:1.15rem;">${m.nom}</div>
+      <span class="role-badge" style="margin-top:8px;">${roleLine}</span>
+      ${m.note ? `<p class="form-note" style="margin-top:10px;">${m.note}</p>` : ''}
+    </div>
+    <div class="row" style="justify-content:center; margin-top:16px; gap:10px;">
+      ${m.phone ? `<a class="btn-primary" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp} Contacter</a>` : ''}
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+    </div>`);
+}
+function applyOverride(m){
+  const o = DATA.membresOverrides[m.num];
+  return o ? Object.assign({}, m, o) : m;
+}
+function getBureauList(){
+  return CONFIG.bureau.concat(DATA.membresExtra.filter(m => m.cat === 'bureau')).filter(m => !DATA.membresRemoved.includes(m.num)).map(applyOverride);
+}
+function getMembresList(){
+  return CONFIG.membres.concat(DATA.membresExtra.filter(m => m.cat === 'membre')).filter(m => !DATA.membresRemoved.includes(m.num)).map(applyOverride);
+}
+let editingMemberNum = null;
+function editMember(num){
+  editingMemberNum = num;
+  renderAdminContent();
+}
+async function saveMember(){
+  const nom = document.getElementById('ad-mb-nom').value.trim();
+  const cat = document.getElementById('ad-mb-cat').value;
+  const role = document.getElementById('ad-mb-role').value.trim();
+  const abbr = document.getElementById('ad-mb-abbr').value.trim();
+  const phone = document.getElementById('ad-mb-phone').value.trim();
+  if(!nom){ alert("Le nom est requis."); return; }
+  if(editingMemberNum){
+    const extraIdx = DATA.membresExtra.findIndex(m => m.num === editingMemberNum);
+    if(extraIdx > -1){
+      DATA.membresExtra[extraIdx] = Object.assign({}, DATA.membresExtra[extraIdx], { nom, cat, role, abbr, phone });
+      await storageSet('membres-extra', DATA.membresExtra);
+    } else {
+      DATA.membresOverrides[editingMemberNum] = { nom, role, abbr, phone };
+      await storageSet('membres-overrides', DATA.membresOverrides);
+    }
+    editingMemberNum = null;
+  } else {
+    const num = 'EXTRA-' + uid();
+    DATA.membresExtra.push({ num, nom, cat, role, abbr, phone });
+    await storageSet('membres-extra', DATA.membresExtra);
+  }
+  renderBureau(); renderCycles(); renderAdminContent();
+}
+async function removeMember(num){
+  if(!confirm("Retirer définitivement ce membre du site ?")) return;
+  if(!DATA.membresRemoved.includes(num)) DATA.membresRemoved.push(num);
+  await storageSet('membres-removed', DATA.membresRemoved);
+  if(editingMemberNum === num) editingMemberNum = null;
+  renderBureau(); renderAdminContent();
+}
+
+function renderBureau(){
+  document.getElementById('bureauGrid').innerHTML = getBureauList().map((m,i) => {
+    const photo = effectivePhoto(DATA.bureauPhotos, m.num, m.photo);
+    return `
+    <div class="bureau-card card">
+      <div class="bureau-top">
+        <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
+          ${avatarHTML(m.nom, i, photo)}
+          <label class="avatar-upload" title="Changer la photo" onclick="event.stopPropagation();">
+            ${ICONS.upload}
+            <input type="file" accept="image/*" style="display:none" onchange="handleBureauPhoto(event,'${m.num}')">
+          </label>
+          ${photo ? `<button class="avatar-remove" title="Revenir aux initiales" onclick="event.stopPropagation(); removeBureauPhoto('${m.num}')">✕</button>` : ''}
+        </div>
+        <div>
+          <span class="role-badge">${m.abbr ? `${m.abbr} · ${m.role||''}` : (m.role||'Bureau')}</span>
+          <div class="name">${m.nom}</div>
+        </div>
+      </div>
+      <a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>
+      ${m.note ? `<span class="tenure-note">${ICONS.info} ${m.note}</span>` : ''}
+    </div>`;
+  }).join("");
+
+  renderMembers();
+}
+
+let membersOpen = false;
+function renderMembers(){
+  const wrap = document.getElementById('membersWrap');
+  const list = getMembresList();
+  if(!membersOpen){
+    wrap.innerHTML = `<div class="discover-cta"><button class="btn-primary" onclick="membersOpen=true; renderMembers();">${ICONS.info} Découvrir tous les LABDiens (${list.length})</button></div>`;
+    return;
+  }
+  wrap.innerHTML = `
+    <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); margin-bottom:20px;" onclick="membersOpen=false; renderMembers();">Masquer les membres</button>
+    <div class="grid-3">${list.map((m,i) => {
+      const photo = effectivePhoto(DATA.memberPhotos, m.num, m.photo);
+      return `
+      <div class="bureau-card card">
+        <div class="bureau-top">
+          <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
+            ${avatarHTML(m.nom, i, photo)}
+            <label class="avatar-upload" title="Changer la photo" onclick="event.stopPropagation();">
+              ${ICONS.upload}
+              <input type="file" accept="image/*" style="display:none" onchange="handleMemberPhoto(event,'${m.num}')">
+            </label>
+            ${photo ? `<button class="avatar-remove" title="Revenir aux initiales" onclick="event.stopPropagation(); removeMemberPhoto('${m.num}')">✕</button>` : ''}
+          </div>
+          <div>
+            <span class="role-badge">${m.role ? (m.abbr ? `${m.abbr} · ${m.role}` : m.role) : 'Membre'}</span>
+            <div class="name">${m.nom}</div>
+          </div>
+        </div>
+        ${m.phone ? `<a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>` : ''}
+      </div>`;
+    }).join("")}</div>`;
+}
+
+async function handleBureauPhoto(evt, num){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const dataUrl = await resizeImage(file, 800);
+  DATA.bureauPhotos[num] = dataUrl;
+  await storageSet('bureau-photos', DATA.bureauPhotos);
+  renderBureau();
+}
+async function removeBureauPhoto(num){
+  DATA.bureauPhotos[num] = null;
+  await storageSet('bureau-photos', DATA.bureauPhotos);
+  renderBureau();
+}
+async function handleMemberPhoto(evt, num){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const dataUrl = await resizeImage(file, 800);
+  DATA.memberPhotos[num] = dataUrl;
+  await storageSet('member-photos', DATA.memberPhotos);
+  renderMembers();
+}
+async function removeMemberPhoto(num){
+  DATA.memberPhotos[num] = null;
+  await storageSet('member-photos', DATA.memberPhotos);
+  renderMembers();
+}
+function laureateKey(cycleIndex, nom){ return cycleIndex + '-' + normName(nom); }
+function handleLaureatePhoto(evt, key){
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    openModal(`
+      <h3>Cadrer la photo</h3>
+      <p>Cliquez sur la partie de la photo qui doit rester visible en miniature.</p>
+      <div class="frame-picker show" id="laureate-frame-picker"><img src="${e.target.result}"><div class="marker" style="left:50%;top:50%;"></div></div>
+      <div class="row"><button class="btn-primary" onclick="confirmLaureatePhoto('${key}')">Valider</button><button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Annuler</button></div>
+    `, false);
+    window.__laureatePendingFile = file;
+    const wrap = document.getElementById('laureate-frame-picker');
+    wrap.dataset.focalX = 50; wrap.dataset.focalY = 50;
+    wrap.onclick = ev => {
+      const rect = wrap.getBoundingClientRect();
+      const x = Math.max(0, Math.min(100, Math.round(((ev.clientX-rect.left)/rect.width)*100)));
+      const y = Math.max(0, Math.min(100, Math.round(((ev.clientY-rect.top)/rect.height)*100)));
+      wrap.dataset.focalX = x; wrap.dataset.focalY = y;
+      wrap.querySelector('.marker').style.left = x+'%';
+      wrap.querySelector('.marker').style.top = y+'%';
+    };
+  };
+  reader.readAsDataURL(file);
+}
+async function confirmLaureatePhoto(key){
+  const file = window.__laureatePendingFile;
+  const wrap = document.getElementById('laureate-frame-picker');
+  if(!file || !wrap) return;
+  const dataUrl = await resizeImage(file, 800);
+  DATA.laureatPhotos[key] = dataUrl;
+  DATA.laureatFocal[key] = (wrap.dataset.focalX||50)+'% '+(wrap.dataset.focalY||50)+'%';
+  await storageSet('laureat-photos', DATA.laureatPhotos);
+  await storageSet('laureat-focal', DATA.laureatFocal);
+  window.__laureatePendingFile = null;
+  closeModal();
+  renderCycles();
+}
+async function removeLaureatePhoto(key){
+  DATA.laureatPhotos[key] = null;
+  DATA.laureatFocal[key] = null;
+  await storageSet('laureat-photos', DATA.laureatPhotos);
+  await storageSet('laureat-focal', DATA.laureatFocal);
+  renderCycles();
+}
+
+function allCycles(){ return CONFIG.cycles.concat(DATA.cyclesExtra || []); }
+const CYCLES_WINDOW_SIZE = 3;
+let cyclesOffset = 0;   // 0 = les 3 onglets les plus récents ; augmente pour remonter dans l'historique
+let activeCycleIndex = null; // index (global) de l'onglet actif ; null = onglet le plus récent de la fenêtre
+function renderCycles(){
+  const cycles = allCycles();
+  const total = cycles.length;
+  const countLabel = document.getElementById('cycleCountLabel');
+  if(countLabel) countLabel.textContent = ordinalFr(total);
+  const size = Math.min(CYCLES_WINDOW_SIZE, total);
+  const maxOffset = Math.max(0, total - size);
+  if(cyclesOffset > maxOffset) cyclesOffset = maxOffset;
+  const endIdx = total - cyclesOffset;       // exclusif
+  const startIdx = Math.max(0, endIdx - size);
+  const visibleIdx = [];
+  for(let i = startIdx; i < endIdx; i++) visibleIdx.push(i);
+
+  if(activeCycleIndex === null || !visibleIdx.includes(activeCycleIndex)){
+    activeCycleIndex = visibleIdx[visibleIdx.length - 1]; // le plus récent de la fenêtre par défaut
+  }
+
+  const tabs = document.getElementById('cycleTabs');
+  const panels = document.getElementById('cyclePanels');
+  tabs.innerHTML = visibleIdx.map(i => `<button class="tab-btn${i===activeCycleIndex?' active':''}" data-i="${i}">${cycles[i].label}</button>`).join("");
+  panels.innerHTML = visibleIdx.map(i => {
+    const c = cycles[i];
+    const laureats = (DATA.laureats['cy-'+i] && DATA.laureats['cy-'+i].length) ? DATA.laureats['cy-'+i] : (c.laureats || []);
+    return `
+    <div class="tab-panel${i===activeCycleIndex?' active':''}" id="cy-${i}">
+      <p class="cycle-meta">${c.statut}</p>
+      ${laureats.length ? `<div class="podium">${laureats.map(l => {
+        const key = laureateKey(i, l.nom);
+        const person = findLabdienByName(l.nom);
+        const customPhoto = DATA.laureatPhotos[key];
+        const photo = customPhoto || l.photo || (person && person.photo) || null;
+        const photoClick = photo ? `openImageLightbox('${photo.replace(/'/g,"\\'")}', '${l.nom.replace(/'/g,"\\'")}')` : `openProfileModal('${encodeURIComponent(l.nom)}')`;
+        return `<div class="laureate-card card">
+          <div class="laureate-photo-wrap">
+            ${photo ? `<img class="laureate-photo" src="${photo}" alt="${l.nom}" style="object-position:${DATA.laureatFocal[key]||'50% 50%'}; cursor:pointer;" onclick="${photoClick}">` : `<div class="laureate-photo laureate-photo-fallback" style="cursor:pointer;" onclick="${photoClick}">${initials(l.nom)}</div>`}
+            ${photo ? miniWatermarkHTML() : ''}
+            <span class="rang">#${l.rang}</span>
+            <label class="avatar-upload" title="Changer la photo">
+              ${ICONS.upload}
+              <input type="file" accept="image/*" style="display:none" onchange="handleLaureatePhoto(event,'${key}')">
+            </label>
+            ${customPhoto ? `<button class="avatar-remove" title="Retirer la photo" onclick="removeLaureatePhoto('${key}')">✕</button>` : ''}
+          </div>
+          <div class="laureate-body">
+            <div class="nom">${l.nom}</div>
+            ${person && person.abbr ? `<span class="role-badge">${person.abbr} · LABD</span>` : ''}
+            <div class="mention">${l.mention||""}</div>
+          </div>
+        </div>`;
+      }).join("")}</div>`
+        : `<div class="empty-state">${ICONS.info} Classement à publier par le comité d'organisation.</div>`}
+    </div>`;
+  }).join("");
+
+  const pagerEl = document.getElementById('cyclePager');
+  if(pagerEl){
+    const canPrev = startIdx > 0;
+    const canNext = cyclesOffset > 0;
+    pagerEl.innerHTML = total > size ? `<div class="pager-nav">
+        <button class="pager-btn" ${canPrev?'':'disabled'} onclick="cyclesPrev()">&larr; Voir précédent</button>
+        <button class="pager-btn" ${canNext?'':'disabled'} onclick="cyclesNext()">Voir suivant &rarr;</button>
+      </div>` : '';
+  }
+  tabs.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { activeCycleIndex = parseInt(btn.dataset.i); renderCycles(); }));
+}
+function cyclesPrev(){ // remonter vers des cycles plus anciens (fait glisser la fenêtre de 3)
+  const total = allCycles().length;
+  const maxOffset = Math.max(0, total - CYCLES_WINDOW_SIZE);
+  cyclesOffset = Math.min(cyclesOffset + 1, maxOffset);
+  activeCycleIndex = null;
+  renderCycles();
+}
+function cyclesNext(){ // revenir vers les cycles plus récents
+  cyclesOffset = Math.max(0, cyclesOffset - 1);
+  activeCycleIndex = null;
+  renderCycles();
+}
+// Incruste réellement le logo dans l'image (coin haut-droit) pour qu'il soit présent
+// même après téléchargement, pas seulement affiché par-dessus à l'écran.
+function watermarkImageDataUrl(src){
+  return new Promise((resolve) => {
+    const logoSrc = DATA.groupLogo || 'images/visuel_labd_01.jpg';
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const logo = new Image();
+      logo.onload = () => {
+        // Logo rond, comme la miniature — juste plus grand (jusqu'à 120px de diamètre), en haut à droite.
+        const size = Math.min(canvas.width * 0.065, 44 * (canvas.width/900));
+        const margin = size * 0.35;
+        ctx.save();
+        ctx.globalAlpha = 0.95;
+        ctx.beginPath();
+        ctx.arc(canvas.width - margin - size/2, margin + size/2, size/2, 0, Math.PI*2);
+        ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(logo, canvas.width - margin - size, margin, size, size);
+        ctx.restore();
+        ctx.font = `600 ${Math.max(13, size*0.24)}px sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.textAlign = 'right';
+        ctx.shadowColor = 'rgba(0,0,0,0.7)';
+        ctx.shadowBlur = 4;
+        ctx.fillText('LABD Org', canvas.width - margin - size - 10, margin + size*0.58);
+        try{ resolve(canvas.toDataURL('image/jpeg', 0.92)); }
+        catch(e){ resolve(src); } // image externe non lisible par le canvas -> on garde l'original
+      };
+      logo.onerror = () => resolve(src);
+      logo.src = logoSrc;
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+// Overlay visuel du logo affiché pendant la consultation en grand : même forme ronde que la miniature, juste plus grande.
+function lightboxWatermarkHTML(){
+  return `<div class="watermark watermark-large"><img src="${DATA.groupLogo||'images/visuel_labd_01.jpg'}" alt="Logo LABD"><span class="wm-text">LABD Org</span></div>`;
+}
+// Petit badge logo affiché sur les miniatures (galerie, actualités, lauréats).
+function miniWatermarkHTML(){
+  return `<div class="watermark"><img src="${DATA.groupLogo||'images/visuel_labd_01.jpg'}" alt="Logo LABD"${DATA.groupLogo?' class="is-logo"':''}>LABD Org</div>`;
+}
+// Prépare un lien de téléchargement dont le href sera remplacé par la version incrustée dès qu'elle est prête.
+async function prepareWatermarkedDownload(linkId, src){
+  try{
+    const watermarked = await watermarkImageDataUrl(src);
+    const a = document.getElementById(linkId);
+    if(a) a.href = watermarked;
+  }catch(e){ console.error('watermark', e); }
+}
+
+function openImageLightbox(src, caption){
+  const dlId = 'wm-dl-' + uid();
+  openModal(`
+    <div style="position:relative;">
+      <img src="${src}" style="width:100%; border-radius:8px; display:block;">
+      ${lightboxWatermarkHTML()}
+    </div>
+    ${caption ? `<p style="margin-top:14px;">${caption}</p>` : ''}
+    <div class="row" style="margin-top:14px;">
+      <a id="${dlId}" class="btn-primary" href="${src}" download="photo-labd">Télécharger</a>
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+    </div>
+  `, true);
+  prepareWatermarkedDownload(dlId, src);
+}
+
+let galleryPage = 0;
+const GALLERY_PAGE_SIZE = 14;
+function renderGallery(){
+  const logoTile = (DATA.groupLogo && !DATA.logoHiddenGallery) ? `<div class="gallery-tile logo-tile" onclick="openLightbox('logo')">
+      <img src="${DATA.groupLogo}" alt="Logo LABD" style="object-fit:contain; background:transparent; padding:8px;">
+      <div class="tile-admin" onclick="event.stopPropagation();"><button class="del" title="Retirer de la galerie (le logo reste actif partout ailleurs)" onclick="hideLogoFromGallery()">&#10005;</button></div>
+      <div class="cap">Logo du groupe</div>
+    </div>` : '';
+  const dynamicItems = DATA.medias.map(m => galleryTileHTML({photo:m.photo, video:m.video, poster:m.poster, legende:m.legende, key:'media-'+m.id, id:m.id, editable:true}));
+  const seedItems = CONFIG.seedGallery.map((m,i) => (DATA.seedHidden.includes(i) ? '' : galleryTileHTML({photo:m.src, legende:m.legende, key:'seed-'+i, id:i, editable:true, seed:true}))).filter(Boolean);
+  const items = dynamicItems.concat(seedItems);
+  const totalPages = Math.max(1, Math.ceil(items.length / GALLERY_PAGE_SIZE));
+  if(galleryPage > totalPages - 1) galleryPage = totalPages - 1;
+  if(galleryPage < 0) galleryPage = 0;
+  const pageItems = items.slice(galleryPage * GALLERY_PAGE_SIZE, galleryPage * GALLERY_PAGE_SIZE + GALLERY_PAGE_SIZE).join("");
+  const addTile = `<div class="gallery-tile gallery-add" onclick="openMediaUploadModal()">${ICONS.camera}<span>Ajouter un média</span></div>`;
+  document.getElementById('galleryGrid').innerHTML = addTile + logoTile + pageItems;
+  const pagerEl = document.getElementById('galleryPager');
+  if(pagerEl){
+    pagerEl.innerHTML = totalPages > 1 ? `<div class="pager-nav">
+        <button class="pager-btn" ${galleryPage===0?'disabled':''} onclick="changeGalleryPage(-1)">&larr; Voir précédent</button>
+        <span class="form-note" style="align-self:center;">Page ${galleryPage+1} / ${totalPages}</span>
+        <button class="pager-btn" ${galleryPage>=totalPages-1?'disabled':''} onclick="changeGalleryPage(1)">Voir suivant &rarr;</button>
+      </div>` : '';
+  }
+  observeTileVideos();
+}
+function changeGalleryPage(delta){
+  galleryPage += delta;
+  renderGallery();
+  const sec = document.getElementById('galleryGrid');
+  if(sec) sec.scrollIntoView({behavior:'smooth', block:'start'});
+}
+function applyHeroText(){
+  const t = DATA.heroText || {};
+  const eyebrow = document.getElementById('heroEyebrow');
+  const headline = document.getElementById('heroHeadline');
+  const sub = document.getElementById('heroSub');
+  if(eyebrow) eyebrow.textContent = t.eyebrow || "LES LOGICIELS AU BOUT DES DOIGTS · GÉNIE CIVIL";
+  if(headline) headline.innerHTML = t.headline || "L'ingénierie s'apprend. <em>Le bureau d'étude se construit.</em>";
+  if(sub) sub.textContent = t.sub || "LABD réunit des étudiants en génie civil autour des logiciels de conception — Archicad, AutoCAD, Revit, Robot — avec un objectif clair : passer de l'apprentissage à la réalisation, jusqu'à devenir un bureau d'étude reconnu en Afrique de l'Ouest.";
+}
+async function saveHeroText(){
+  const eyebrow = document.getElementById('ad-hero-eyebrow').value.trim();
+  const headline = document.getElementById('ad-hero-headline').value.trim();
+  const sub = document.getElementById('ad-hero-sub').value.trim();
+  DATA.heroText = { eyebrow, headline, sub };
+  await storageSet('hero-text', DATA.heroText);
+  applyHeroText();
+  alert("Texte du bandeau enregistré.");
+}
+async function resetHeroText(){
+  if(!confirm("Revenir au texte d'origine ?")) return;
+  DATA.heroText = null;
+  await storageSet('hero-text', null);
+  applyHeroText();
+  renderAdminContent();
+}
+function applyHeroPhoto(){
+  const img = document.getElementById('heroPhotoImg');
+  if(!img) return;
+  img.src = DATA.heroPhoto || 'images/hero.jpg';
+  img.style.objectPosition = DATA.heroPhoto ? (DATA.heroPhotoFocal || '50% 50%') : '50% 50%';
+}
+async function saveHeroPhoto(){
+  const input = document.getElementById('ad-hero-photo');
+  if(!input || !input.files[0]) return;
+  DATA.heroPhoto = await resizeImage(input.files[0], 1400);
+  DATA.heroPhotoFocal = getFocal('ad-hero-photo');
+  await storageSet('hero-photo', DATA.heroPhoto);
+  await storageSet('hero-photo-focal', DATA.heroPhotoFocal);
+  applyHeroPhoto();
+  renderAdminContent();
+}
+async function removeHeroPhoto(){
+  DATA.heroPhoto = null;
+  DATA.heroPhotoFocal = '50% 50%';
+  await storageSet('hero-photo', null);
+  await storageSet('hero-photo-focal', '50% 50%');
+  applyHeroPhoto();
+  renderAdminContent();
+}
+function applyGroupLogo(){
+  const src = DATA.groupLogo;
+  const header = document.getElementById('headerLogoImg');
+  const footer = document.getElementById('footerLogoImg');
+  if(!src){
+    if(header){ header.src = 'images/visuel_labd_01.jpg'; header.classList.remove('is-logo'); }
+    if(footer){ footer.src = 'images/visuel_labd_03.jpg'; footer.classList.remove('is-logo'); }
+    document.querySelectorAll('.watermark img').forEach(img => { img.src = 'images/visuel_labd_01.jpg'; img.classList.remove('is-logo'); });
+    return;
+  }
+  if(header){ header.src = src; header.classList.add('is-logo'); }
+  if(footer){ footer.src = src; footer.classList.add('is-logo'); }
+  document.querySelectorAll('.watermark img').forEach(img => { img.src = src; img.classList.add('is-logo'); });
+}
+async function saveGroupLogo(){
+  const input = document.getElementById('ad-group-logo');
+  if(!input || !input.files[0]) return;
+  DATA.groupLogo = await resizeImage(input.files[0], 400);
+  DATA.logoHiddenGallery = true;
+  await storageSet('group-logo', DATA.groupLogo);
+  await storageSet('logo-hidden-gallery', true);
+  applyGroupLogo();
+  renderGallery();
+  renderAdminContent();
+}
+async function removeGroupLogo(){
+  DATA.groupLogo = null;
+  DATA.logoHiddenGallery = false;
+  await storageSet('group-logo', null);
+  await storageSet('logo-hidden-gallery', false);
+  applyGroupLogo();
+  renderGallery();
+  renderAdminContent();
+}
+// Retire uniquement la tuile de la galerie — le logo reste actif partout ailleurs (header, filigranes...).
+async function hideLogoFromGallery(){
+  DATA.logoHiddenGallery = true;
+  await storageSet('logo-hidden-gallery', true);
+  renderGallery();
+  renderAdminContent();
+}
+async function showLogoInGallery(){
+  DATA.logoHiddenGallery = false;
+  await storageSet('logo-hidden-gallery', false);
+  renderGallery();
+  renderAdminContent();
+}
+async function deleteSeedPhoto(i){
+  if(!confirm("Supprimer cette photo de la galerie ?")) return;
+  if(!DATA.seedHidden.includes(i)) DATA.seedHidden.push(i);
+  await storageSet('seed-hidden', DATA.seedHidden);
+  renderGallery();
+  renderAdminContent();
+}
+function openMediaUploadModal(){
+  openModal(`
+    <h3>Ajouter un média</h3>
+    <div class="check-step" style="margin-bottom:6px;">
+      <label>Noms des personnes sur la photo</label><input id="ad-media-legende" placeholder="Ex : Sourou, Jean et Joan">
+      <label>Photo ou vidéo</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
+      <div id="ad-media-poster-preview"></div>
+      <button class="btn-primary" onclick="publishMedia().then(ok => { if(ok) closeModal(); });">Publier</button>
+    </div>
+  `);
+  setupVideoFrameCapture('ad-media-photo', 'ad-media-poster-preview');
+}
+function galleryTileHTML({photo, video, poster, legende, key, id, editable, seed}){
+  const mediaHTML = video
+    ? videoTileHTML(video, poster, `event.stopPropagation(); openLightbox('${key}')`)
+    : `<img src="${photo}" alt="${legende||''}">`;
+  const adminBtns = editable
+    ? (seed
+        ? `<div class="tile-admin" onclick="event.stopPropagation();"><button class="del" title="Supprimer" onclick="deleteSeedPhoto(${id})">&#10005;</button></div>`
+        : `<div class="tile-admin" onclick="event.stopPropagation();">
+      <button title="Modifier" onclick="editMedia('${id}')">&#9998;</button>
+      <button class="del" title="Supprimer" onclick="deleteMedia('${id}')">&#10005;</button>
+    </div>`)
+    : '';
+  return `<div class="gallery-tile" onclick="openLightbox('${key}')">
+    ${mediaHTML}
+    ${miniWatermarkHTML()}
+    ${adminBtns}
+    <div class="cap">${legende||''}</div>
+  </div>`;
+}
+function openLightbox(key){
+  let src, video, legende;
+  if(key === 'logo'){
+    src = DATA.groupLogo; legende = 'Logo du groupe';
+  } else if(key.startsWith('seed-')){
+    const m = CONFIG.seedGallery[key.split('-')[1]]; src=m.src; legende=m.legende;
+  } else {
+    const id = key.slice('media-'.length);
+    const m = DATA.medias.find(x => x.id === id);
+    if(!m) return;
+    src = m.photo; video = m.video; legende = m.legende;
+  }
+  const isLogoView = key === 'logo';
+  const mediaHTML = video
+    ? `<video src="${video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`
+    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" src="${src}" style="width:100%; border-radius:8px; display:block;">`;
+  const dlId = 'wm-dl-' + uid();
+  openModal(`
+    <div style="text-align:center;">
+      <div style="position:relative; display:inline-block; max-width:100%;">
+        ${mediaHTML}
+        ${!isLogoView ? lightboxWatermarkHTML() : ''}
+      </div>
+    </div>
+    <p style="margin-top:14px;">${legende||''}</p>
+    <div class="row">
+      ${!video ? `<a id="${dlId}" class="btn-primary" href="${src}" download="labd-${key}">Télécharger</a>` : ''}
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+    </div>
+  `, true);
+  if(!video && !isLogoView) prepareWatermarkedDownload(dlId, src);
+}
+let editingMediaId = null;
+function editMedia(id){ editingMediaId = id; renderAdminContent(); }
+async function deleteMedia(id){
+  if(!confirm("Supprimer ce média ?")) return;
+  DATA.medias = DATA.medias.filter(m => m.id !== id);
+  if(editingMediaId === id) editingMediaId = null;
+  await storageSet('medias', DATA.medias);
+  renderGallery(); renderAdminContent();
+}
+
+function escapeHTML(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function formatDescription(str){
+  let s = escapeHTML(str || "");
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  s = s.replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+function toggleDescription(id){
+  const wrap = document.getElementById('desc-'+id);
+  const p = wrap.querySelector('p');
+  const btn = document.getElementById('toggle-'+id);
+  const isClamped = p.classList.toggle('clamped');
+  btn.textContent = isClamped ? 'Voir plus' : 'Voir moins';
+}
+function updateDescToggles(){
+  document.querySelectorAll('.desc-text').forEach(wrap => {
+    const p = wrap.querySelector('p');
+    const btn = document.getElementById(wrap.id.replace('desc-','toggle-'));
+    if(!p || !btn) return;
+    if(!p.classList.contains('clamped') || p.scrollHeight > p.clientHeight + 2){
+      btn.classList.add('show');
+    } else {
+      btn.classList.remove('show');
+    }
+  });
+}
+
+const articlesWindow = { actualite:{size:2,offset:0}, evenement:{size:2,offset:0}, formation:{size:2,offset:0} };
+
+function renderArticles(){
+  const merged = CONFIG.exampleArticles.concat(DATA.articles);
+  const emptyLabels = { actualite:'Aucune actualité pour le moment.', evenement:'Aucun événement pour le moment.', formation:'Aucune formation pour le moment.' };
+  ['actualite','evenement','formation'].forEach(type => {
+    const el = document.getElementById('grid-'+type);
+    const moreBtnExisting = document.getElementById('more-'+type);
+
+    if(type === 'formation' && DATA.formationPassword && !formationUnlocked && !currentRole){
+      const previewList = merged.filter(a => a.type === 'formation').sort((a,b) => b.date - a.date).slice(0,1);
+      const previewCards = previewList.map(a => {
+        const previewImg = a.photo || a.poster || null;
+        const mediaTag = previewImg
+          ? `<div class="thumb" style="position:relative; padding:0;"><img src="${previewImg}" alt="" style="width:100%; height:100%; object-fit:cover; object-position:${a.focal||'50% 50%'};"></div>`
+          : `<div class="thumb" style="background:var(--paper-2);"></div>`;
+        return `
+        <div class="article-card card locked-teaser-card">
+          ${mediaTag}
+          <div class="body">
+            <div class="date">${fmtDate(a.date)}</div>
+            <h4>${a.titre}</h4>
+          </div>
+        </div>`;
+      }).join("");
+      el.innerHTML = `<div class="locked-preview-wrap locked-preview-compact">
+        ${previewCards}
+        <div class="locked-overlay">
+          ${ICONS.lock}
+          <p>Formations réservées : mot de passe requis.</p>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;">
+            <input type="password" id="formationPassInline" placeholder="Mot de passe" style="padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">
+            <button class="btn-primary" onclick="tryFormationUnlock()">Voir</button>
+          </div>
+        </div>
+      </div>`;
+      if(moreBtnExisting) moreBtnExisting.innerHTML = '';
+      return;
+    }
+
+    const all = merged.filter(a => a.type === type).sort((a,b) => b.date - a.date);
+    const state = articlesWindow[type];
+    const maxOffset3 = Math.max(0, all.length - 3);
+    if(state.size === 3 && state.offset > maxOffset3) state.offset = maxOffset3;
+    if(state.size === 2) state.offset = 0;
+    const list = all.slice(state.offset, state.offset + state.size);
+    if(list.length){
+      el.innerHTML = list.map(a => {
+        const mediaTag = a.video
+          ? `<div class="thumb" style="position:relative; padding:0;">${videoTileHTML(a.video, a.poster, `openArticleLightbox('${a.id}')`)}${miniWatermarkHTML()}</div>`
+          : a.photo
+            ? `<div class="thumb" style="position:relative; padding:0;"><img src="${a.photo}" alt="${a.titre}" style="width:100%; height:100%; display:block; cursor:pointer; object-fit:cover; object-position:${a.focal||'50% 50%'};" onclick="openArticleLightbox('${a.id}')">${miniWatermarkHTML()}</div>`
+            : "";
+        return `
+        <div class="article-card card">
+          ${mediaTag}
+          <div class="body">
+            <div class="date">${fmtDate(a.date)}</div>
+            <h4>${a.titre}</h4>
+            <div class="desc-text" id="desc-${a.id}"><p class="clamped">${formatDescription(a.description)}</p></div>
+            <button class="desc-toggle" id="toggle-${a.id}" onclick="toggleDescription('${a.id}')">Voir plus</button>
+          </div>
+        </div>`;
+      }).join("");
+    } else {
+      el.innerHTML = `<p class="empty-col-note">${emptyLabels[type]}</p>`;
+    }
+    let moreBtn = document.getElementById('more-'+type);
+    if(!moreBtn){
+      moreBtn = document.createElement('div');
+      moreBtn.id = 'more-'+type;
+      moreBtn.className = 'col-more';
+      el.insertAdjacentElement('afterend', moreBtn);
+    }
+    if(all.length > 2){
+      const canPrev = state.size === 3;
+      const canNext = state.size < 3 ? all.length > state.size : state.offset < maxOffset3;
+      moreBtn.innerHTML = `<div class="pager-nav">
+        <button class="pager-btn" ${canPrev?'':'disabled'} onclick="articlesPrev('${type}')">&larr; Voir précédent</button>
+        <button class="pager-btn" ${canNext?'':'disabled'} onclick="articlesNext('${type}', ${maxOffset3})">Voir suivant &rarr;</button>
+      </div>`;
+    } else {
+      moreBtn.innerHTML = '';
+    }
+  });
+  requestAnimationFrame(updateDescToggles);
+  observeTileVideos();
+}
+let formationUnlocked = false;
+function tryFormationUnlock(){
+  const val = document.getElementById('formationPassInline').value;
+  if(val === (DATA.formationPassword || '')){ formationUnlocked = true; renderArticles(); }
+  else alert("Mot de passe incorrect.");
+}
+function articlesNext(type, maxOffset3){
+  const state = articlesWindow[type];
+  if(state.size < 3){ state.size = 3; }
+  else { state.offset = Math.min(maxOffset3, state.offset + 1); }
+  renderArticles();
+}
+function articlesPrev(type){
+  const state = articlesWindow[type];
+  if(state.size === 3 && state.offset > 0){ state.offset -= 1; }
+  else if(state.size === 3){ state.size = 2; }
+  renderArticles();
+}
+function openArticleLightbox(id){
+  const all = CONFIG.exampleArticles.concat(DATA.articles);
+  const a = all.find(x => x.id === id);
+  if(!a) return;
+  const mediaHTML = a.video
+    ? `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`
+    : a.photo ? `<img src="${a.photo}" style="width:100%; border-radius:8px; display:block;">` : '';
+  const dlId = 'wm-dl-' + uid();
+  openModal(`
+    <div style="text-align:center;">
+      <div style="position:relative; display:inline-block; max-width:100%;">
+        ${mediaHTML}
+        ${mediaHTML ? lightboxWatermarkHTML() : ''}
+      </div>
+    </div>
+    <h3 style="margin-top:16px;">${a.titre}</h3>
+    <div class="desc-text"><p>${formatDescription(a.description)}</p></div>
+    <div class="row">
+      ${a.photo && !a.video ? `<a id="${dlId}" class="btn-primary" href="${a.photo}" download="labd-${a.id}">Télécharger</a>` : ''}
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+    </div>
+  `, true);
+  if(a.photo && !a.video) prepareWatermarkedDownload(dlId, a.photo);
+}
+
+let memberUnlocked = false;
+function tryMemberUnlock(){
+  const val = document.getElementById('memberPassInline').value;
+  if(val === CONFIG.memberPassword){ memberUnlocked = true; renderProjects(); }
+  else alert("Mot de passe incorrect.");
+}
+
+const unlockedFiles = new Set();
+const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };
+
+function findProjetById(pid){
+  return (CONFIG.seedProjets||[]).concat(DATA.projets).find(x => x.id === pid);
+}
+function tryUnlockProjectFile(pid){
+  const p = findProjetById(pid);
+  const input = document.getElementById('file-pwd-'+pid);
+  const val = input ? input.value : '';
+  if(p && val === (p.motDePasse || '')){ unlockedFiles.add(pid); renderProjects(); }
+  else alert("Mot de passe incorrect.");
+}
+
+function fileNameTruncHTML(name){
+  if(!name) return '';
+  return `<span class="file-name-trunc" title="${name}">${name}</span>`;
+}
+function openProjectFilePreview(pid){
+  const p = findProjetById(pid);
+  if(!p || !p.fichier) return;
+  if(p.motDePasse && !unlockedFiles.has(pid)){
+    const pwdInput = document.getElementById('file-pwd-'+pid);
+    if(pwdInput) pwdInput.focus();
+    return;
+  }
+  const mime = p.fichier.slice(5, p.fichier.indexOf(';'));
+  let body;
+  if(mime === 'application/pdf'){
+    body = `<iframe src="${p.fichier}" style="width:100%; height:75vh; border:0; border-radius:8px;"></iframe>`;
+  } else if(mime.startsWith('image/')){
+    body = `<img src="${p.fichier}" style="width:100%; border-radius:8px; display:block;">`;
+  } else {
+    body = `<p class="form-note">Aperçu non disponible pour ce type de fichier — téléchargez-le pour l'ouvrir.</p>`;
+  }
+  openModal(`
+    <h3 style="margin-bottom:10px;">${p.titre}${p.fichierNom?` — ${fileNameTruncHTML(p.fichierNom)}`:''}</h3>
+    ${body}
+    <div class="row" style="margin-top:14px;">
+      <a class="btn-primary" href="${p.fichier}" download="${p.fichierNom||('projet-'+p.id)}">Télécharger le fichier</a>
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+    </div>
+  `, true);
+}
+
+function projectFileHTML(p){
+  if(!p.fichier) return '';
+  const needsPwd = !!p.motDePasse;
+  const locked = needsPwd && !unlockedFiles.has(p.id);
+  const nameLine = p.fichierNom ? `<div class="file-name-trunc" title="${p.fichierNom}">${p.fichierNom}</div>` : '';
+  if(locked){
+    return `<div style="margin-top:2px;">
+      ${nameLine}
+      <div style="display:flex; gap:6px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+        <input type="password" id="file-pwd-${p.id}" placeholder="Mot de passe" style="padding:7px 9px; border:1px solid var(--line); border-radius:8px; font-size:0.78rem; flex:1; min-width:100px;">
+        <button class="btn-ghost" style="font-size:0.78rem; padding:7px 12px; border-color:var(--line); color:var(--ink);" onclick="tryUnlockProjectFile('${p.id}')">${ICONS.lock} Ouvrir</button>
+      </div>
+    </div>`;
+  }
+  return `<div style="margin-top:2px;">
+    ${nameLine}
+    <div style="display:flex; gap:12px; align-items:center;">
+      ${!p.thumbnail ? `<button class="link-btn" style="color:var(--teal-dark); padding:0;" onclick="openProjectFilePreview('${p.id}')">Lire</button>` : ''}
+      <a href="${p.fichier}" download="${p.fichierNom||('projet-'+p.id)}" style="font-size:0.78rem; color:var(--teal-dark); text-decoration:underline;">Télécharger</a>
+    </div>
+  </div>`;
+}
+
+let activeProjectTab = 'realise';
+function renderProjects(){
+  const tabs = document.getElementById('projectTabs');
+  const panels = document.getElementById('projectPanels');
+  const types = ['realise','exercice'];
+  tabs.innerHTML = types.map((t,i) => `<button class="tab-btn${t===activeProjectTab?' active':''}" data-tab="pj-${t}">${PROJET_TYPE_LABELS_PLURIEL[t]}</button>`).join("");
+  panels.innerHTML = types.map((t,i) => {
+    if(t === 'exercice' && !memberUnlocked && !currentRole){
+      return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
+        <div class="empty-state" style="flex-direction:column; align-items:flex-start; gap:12px;">
+          ${ICONS.lock} Le projet en cours est réservé aux membres du groupe.
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="password" id="memberPassInline" placeholder="Mot de passe membre" style="padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">
+            <button class="btn-primary" onclick="tryMemberUnlock()">Voir</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    const all = CONFIG.seedProjets.filter(p => p.type === t).concat(DATA.projets.filter(p => p.type === t));
+    const state = projectsWindow[t];
+    const maxOffset3 = Math.max(0, all.length - 3);
+    if(state.size === 3 && state.offset > maxOffset3) state.offset = maxOffset3;
+    if(state.size === 2) state.offset = 0;
+    const items = all.slice(state.offset, state.offset + state.size);
+    const canPrev = state.size === 3;
+    const canNext = state.size < 3 ? all.length > state.size : state.offset < maxOffset3;
+    return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
+      ${items.length ? `<div class="podium">${items.map(p=>`<div class="podium-card card">
+          ${p.thumbnail ? `<img class="thumb" src="${p.thumbnail}" alt="${p.titre}" onclick="openProjectFilePreview('${p.id}')">` : ''}
+          <h4 style="font-family:'Space Grotesk',sans-serif; display:flex; align-items:center; gap:8px;">${p.locked?ICONS.lock:''}${p.titre}</h4>
+          ${t === 'exercice' && p.date ? `<span class="meta" style="font-size:0.72rem; color:var(--muted-2);">Ajouté le ${fmtDate(p.date)}</span>` : ''}
+          <div class="desc-text" id="desc-pj-${p.id}"><p class="mention clamped" style="font-size:0.85rem;">${formatDescription(p.description)}</p></div>
+          <button class="desc-toggle" id="toggle-pj-${p.id}" onclick="toggleDescription('pj-${p.id}')">Voir plus</button>
+          ${projectFileHTML(p)}
+        </div>`).join("")}</div>`
+        : `<div class="empty-state">${ICONS.info} Aucun ${PROJET_TYPE_LABELS[t].toLowerCase()} publié pour le moment.</div>`}
+      ${all.length > 2 ? `<div class="pager-nav">
+          <button class="pager-btn" ${canPrev?'':'disabled'} onclick="projectsPrev('${t}')">&larr; Voir précédent</button>
+          <button class="pager-btn" ${canNext?'':'disabled'} onclick="projectsNext('${t}', ${maxOffset3})">Voir suivant &rarr;</button>
+        </div>` : ''}
+    </div>`;
+  }).join("");
+  tabs.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => {
+    activeProjectTab = btn.dataset.tab.replace('pj-','');
+    tabs.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    panels.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  }));
+  requestAnimationFrame(updateDescToggles);
+}
+function projectsNext(t, maxOffset3){
+  const state = projectsWindow[t];
+  if(state.size < 3){ state.size = 3; }
+  else { state.offset = Math.min(maxOffset3, state.offset + 1); }
+  renderProjects();
+}
+function projectsPrev(t){
+  const state = projectsWindow[t];
+  if(state.size === 3 && state.offset > 0){ state.offset -= 1; }
+  else if(state.size === 3){ state.size = 2; }
+  renderProjects();
+}
+
+function renderContact(){
+  document.getElementById('contactGrid').innerHTML = `
+    <a class="contact-card" href="mailto:${getContactEmail()}"><span class="k">Email</span><span class="v">${getContactEmail()}</span></a>
+    <a class="contact-card" href="${waHref(getContactPhone())}" target="_blank" rel="noopener"><span class="k">${CONFIG.contact.secretariatLabel}</span><span class="v" style="display:flex; align-items:center; gap:8px;">${ICONS.whatsapp}${getContactPhone()}</span></a>`;
+  document.getElementById('footerSocial').innerHTML = `
+    <a href="${getFacebookUrl()}" aria-label="Page Facebook LABD" target="_blank" rel="noopener">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+    </a>
+    <a href="mailto:${getContactEmail()}" aria-label="Email LABD">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 6l10 7 10-7"/></svg>
+    </a>`;
+}
+
+/* ==========================================================
+   ADHESION — validation + envoi
+========================================================== */
+const chkReglement = document.getElementById('chk-reglement');
+const chkPaiement = document.getElementById('chk-paiement');
+const fileInputJ = document.getElementById('j-file');
+const nomInputJ = document.getElementById('j-nom');
+const contactInputJ = document.getElementById('j-contact');
+const submitBtn = document.getElementById('submitCandidature');
+
+function refreshSubmitState(){
+  submitBtn.disabled = !(chkReglement.checked && chkPaiement.checked && fileInputJ.files.length && nomInputJ.value.trim() && contactInputJ.value.trim());
+}
+[chkReglement, chkPaiement, fileInputJ, nomInputJ, contactInputJ].forEach(el => el.addEventListener('input', refreshSubmitState));
+[chkReglement, chkPaiement].forEach(el => el.addEventListener('change', refreshSubmitState));
+
+document.getElementById('adhesionForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Envoi en cours...";
+  const nom = nomInputJ.value.trim();
+  const contact = contactInputJ.value.trim();
+
+  // Envoi mail brut (avec pièces jointes) au TG, en copie Pr + VP — le TG doit valider le paiement.
+  const fd = new FormData();
+  fd.append('_subject', 'Nouvelle candidature — paiement à valider (LABD)');
+  fd.append('_captcha', 'false');
+  fd.append('Nom complet', nom);
+  fd.append('Contact', contact);
+  fd.append('Règlement approuvé', 'Oui');
+  fd.append('_cc', [CONFIG.emails.pr, CONFIG.emails.vp].join(','));
+  for(const f of fileInputJ.files) fd.append('Documents joints', f);
+  try{
+    await fetch('https://formsubmit.co/' + encodeURIComponent(CONFIG.emails.tg), { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
+  }catch(err){ console.error(err); }
+
+  // Fichiers conservés en base pour consultation ultérieure par le CAE, une fois le paiement validé par le TG.
+  let fichiers = [];
+  try{
+    fichiers = await Promise.all(Array.from(fileInputJ.files).map(async f => ({ name:f.name, dataUrl: await fileToDataUrl(f) })));
+  }catch(err){ console.error('lecture fichiers candidature', err); }
+
+  DATA.candidatures.unshift({ id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, sgSuivi:false });
+  await storageSet('candidatures', DATA.candidatures);
+  document.getElementById('adhesionForm').style.display = 'none';
+  document.getElementById('candidatureSuccess').style.display = 'block';
+});
+
+document.getElementById('avisForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const nom = document.getElementById('a-nom').value.trim();
+  const msg = document.getElementById('a-msg').value.trim();
+  const fd = new FormData();
+  fd.append('_subject', 'Avis ou proposition — LABD');
+  fd.append('_captcha', 'false');
+  fd.append('_cc', CONFIG.notifyEmails.join(','));
+  fd.append('Nom', nom || 'Anonyme');
+  fd.append('Message', msg);
+  try{
+    await fetch('https://formsubmit.co/sourougangnambakpo99@gmail.com', { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
+  }catch(err){ console.error(err); }
+  DATA.commentaires.unshift({ id:uid(), nom: nom || 'Anonyme', message:msg, date:Date.now() });
+  await storageSet('commentaires', DATA.commentaires);
+  document.getElementById('avisForm').style.display = 'none';
+  document.getElementById('avisSuccess').style.display = 'block';
+});
+
+/* ==========================================================
+   ADMIN — connexion + tableau de bord
+========================================================== */
+let adminUnlocked = false;
+let currentRole = null; // { role, categories }
+let adminTab = 'articles';
+const adminFab = document.getElementById('adminFab');
+
+function openAdminEntry(){
+  if(adminUnlocked){ openAdminDashboard(); return; }
+  openModal(`
+    <h3>Espace admin</h3>
+    <p>Chaque responsable a son propre mot de passe : le contenu visible s'adapte à sa fonction.</p>
+    <input type="password" id="adminPass" placeholder="Mot de passe" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;">
+    <div class="row">
+      <button class="btn-primary" onclick="tryUnlock()">Déverrouiller</button>
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Annuler</button>
+    </div>
+  `);
+}
+function tryUnlock(){
+  const val = document.getElementById('adminPass').value;
+  const match = CONFIG.adminRoles.find(r => r.password === val);
+  if(match){
+    adminUnlocked = true;
+    currentRole = match;
+    adminTab = match.categories.includes('*') ? 'articles' : match.categories[0];
+    document.body.classList.add('admin-on');
+    openAdminDashboard();
+    renderProjects();
+  } else { alert("Mot de passe incorrect."); }
+}
+adminFab.addEventListener('click', openAdminEntry);
+
+const ADMIN_CATEGORIES = [
+  {id:'articles', label:'Articles & actualités'},
+  {id:'vision', label:'Vision (images)'},
+  {id:'histoire', label:'Notre histoire'},
+  {id:'outils', label:'Logiciels (carrousel)'},
+  {id:'membres', label:'Membres du bureau'},
+  {id:'projets', label:'Projets'},
+  {id:'cycles', label:'Cycles & lauréats'},
+  {id:'photos', label:'Photos'},
+  {id:'candidatures', label:'Candidatures'},
+  {id:'cotisations', label:'Cotisations'},
+  {id:'commentaires', label:'Commentaires'},
+  {id:'parametres', label:'Paramètres'}
+];
+function visibleCategories(){
+  if(currentRole.categories.includes('*')) return ADMIN_CATEGORIES;
+  return ADMIN_CATEGORIES.filter(c => currentRole.categories.includes(c.id));
+}
+
+function openAdminDashboard(){
+  const cats = visibleCategories();
+  openModal(`
+    <div class="admin-badge">${ICONS.lock} ${currentRole.role} ${!window.__fbDb ? '— stockage indisponible (config Firebase manquante)' : ''}</div>
+    <div class="admin-layout">
+      <div class="admin-nav">${cats.map(c => `<button class="${c.id===adminTab?'active':''}" onclick="switchAdminTab('${c.id}')">${c.label}</button>`).join("")}</div>
+      <div class="admin-content" id="adminContent"></div>
+    </div>
+    <div class="row">
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="adminLogout()">Se déconnecter (voir le site comme un visiteur)</button>
+    </div>
+  `, true);
+  renderAdminContent();
+}
+function switchAdminTab(id){ adminTab = id; openAdminDashboard(); }
+function adminLogout(){
+  currentRole = null;
+  adminUnlocked = false;
+  document.body.classList.remove('admin-on');
+  closeModal();
+  renderProjects();
+  renderArticles();
+}
+
+// Partage manuel WhatsApp — pas d'envoi automatique possible sans API payante,
+// mais un clic suffit pour relayer une publication au groupe WhatsApp du bureau.
+function shareWhatsApp(text){
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+function renderAdminContent(){
+  const el = document.getElementById('adminContent');
+  if(!el) return;
+  if(adminTab === 'articles'){
+    const editing = DATA.articles.find(a => a.id === editingArticleId);
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:20px;">
+        ${editing ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editing.titre} »</p>` : ''}
+        <label>Titre</label><input id="ad-art-titre" placeholder="Ex : Formation Archicad" value="${editing?editing.titre:''}">
+        <label>Type</label>
+        <select id="ad-art-type">
+          <option value="actualite" ${editing&&editing.type==='actualite'?'selected':''}>Actualité</option>
+          <option value="formation" ${editing&&editing.type==='formation'?'selected':''}>Formation</option>
+          <option value="evenement" ${editing&&editing.type==='evenement'?'selected':''}>Événement</option>
+        </select>
+        <label>Description</label><textarea id="ad-art-desc" placeholder="Description — **gras**, *italique*, colle un lien http(s):// pour qu'il soit cliquable">${editing?editing.description:''}</textarea>
+        <label>Photo ou vidéo${editing?' (laisser vide pour garder le média actuel)':''}</label><input type="file" accept="image/*,video/*" id="ad-art-photo">
+        <div class="frame-picker" id="frame-ad-art-photo"></div>
+        <p class="frame-hint">Pour une photo : cliquez sur l'aperçu pour choisir la partie qui s'affichera en miniature.</p>
+        <div id="ad-art-poster-preview"></div>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-share" style="width:auto;"> Partager automatiquement sur WhatsApp après publication</label>
+        <div class="row">
+          <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
+          ${editing ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingArticleId=null; renderAdminContent();">Annuler</button>` : ''}
+        </div>
+      </div>
+      <div>${(DATA.articles.length?DATA.articles:[]).map(a => `<div class="admin-list-row"><span>${a.titre}</span><span class="meta">${ARTICLE_TYPE_LABELS[a.type]} · ${fmtDate(a.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editArticle('${a.id}')">Modifier</button><button class="link-btn" onclick="deleteArticle('${a.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun article publié — les exemples restent affichés sur le site public en attendant.</p>'}</div>`;
+    setupFramePicker('ad-art-photo', 'frame-ad-art-photo');
+    setupVideoFrameCapture('ad-art-photo', 'ad-art-poster-preview');
+  }
+  if(adminTab === 'vision'){
+    const ht = DATA.heroText || {};
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Texte du bandeau principal (en haut de la page)</label>
+        <label style="font-weight:400; font-size:0.8rem;">Petite ligne au-dessus du titre</label>
+        <input id="ad-hero-eyebrow" value="${ht.eyebrow || 'LES LOGICIELS AU BOUT DES DOIGTS · GÉNIE CIVIL'}">
+        <label style="font-weight:400; font-size:0.8rem;">Titre (le mot entre &lt;em&gt;...&lt;/em&gt; sera affiché en couleur)</label>
+        <input id="ad-hero-headline" value="${(ht.headline || "L'ingénierie s'apprend. <em>Le bureau d'étude se construit.</em>").replace(/"/g,'&quot;')}">
+        <label style="font-weight:400; font-size:0.8rem;">Texte sous le titre</label>
+        <textarea id="ad-hero-sub" rows="3">${ht.sub || "LABD réunit des étudiants en génie civil autour des logiciels de conception — Archicad, AutoCAD, Revit, Robot — avec un objectif clair : passer de l'apprentissage à la réalisation, jusqu'à devenir un bureau d'étude reconnu en Afrique de l'Ouest."}</textarea>
+        <div class="row">
+          <button class="btn-primary" onclick="saveHeroText()">Enregistrer le texte</button>
+          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHeroText()">Revenir au texte d'origine</button>
+        </div>
+      </div>
+      <div class="check-step" style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Photo de fond du bandeau principal (en haut de la page)</label>
+        ${DATA.heroPhoto ? `<img src="${DATA.heroPhoto}" style="width:100%; max-width:260px; aspect-ratio:16/9; object-fit:cover; object-position:${DATA.heroPhotoFocal||'50% 50%'}; border-radius:8px; margin-bottom:8px;">` : ''}
+        <input type="file" accept="image/*" id="ad-hero-photo">
+        <div class="frame-picker" id="frame-ad-hero-photo"></div>
+        <p class="frame-hint">Cliquez sur l'aperçu pour choisir la partie de l'image qui restera visible dans le bandeau.</p>
+        <div class="row">
+          <button class="btn-primary" onclick="saveHeroPhoto()">Enregistrer</button>
+          ${DATA.heroPhoto ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeHeroPhoto()">Retirer (revenir à la photo d'origine)</button>` : ''}
+        </div>
+      </div>
+      <p class="form-note" style="margin-bottom:16px;">Ajoutez une image qui illustre chaque point de la vision. Cliquez sur l'aperçu pour choisir la partie qui restera visible dans la miniature.</p>
+      ${CONFIG.vision.map((v,i) => {
+        const vi = DATA.visionImages[i];
+        return `<div class="check-step" style="margin-bottom:16px;">
+          <label>${v.titre}</label>
+          ${vi && vi.img ? `<img src="${vi.img}" style="width:100%; max-width:220px; aspect-ratio:16/9; object-fit:cover; object-position:${vi.focal||'50% 50%'}; border-radius:8px; margin-bottom:8px;">` : ''}
+          <input type="file" accept="image/*" id="ad-vi-img-${i}">
+          <div class="frame-picker" id="frame-ad-vi-img-${i}"></div>
+          <p class="frame-hint">Cliquez sur l'image ci-dessus pour cadrer la miniature.</p>
+          <div class="row">
+            <button class="btn-primary" onclick="saveVisionImage(${i})">Enregistrer</button>
+            ${vi && vi.img ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeVisionImage(${i})">Retirer l'image</button>` : ''}
+          </div>
+        </div>`;
+      }).join("")}`;
+    setupFramePicker('ad-hero-photo', 'frame-ad-hero-photo');
+    CONFIG.vision.forEach((v,i) => setupFramePicker('ad-vi-img-'+i, 'frame-ad-vi-img-'+i));
+  }
+  if(adminTab === 'histoire'){
+    const ht = DATA.histoireTeaser || DEFAULT_HISTOIRE_TEASER;
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Aperçu affiché sur la page (avant ouverture du récit complet)</label>
+        <label style="font-weight:400; font-size:0.8rem;">Titre accrocheur</label>
+        <input id="ad-histoire-teaser-title" value="${ht.title}">
+        <label style="font-weight:400; font-size:0.8rem;">Sous-titre</label>
+        <textarea id="ad-histoire-teaser-sub" rows="2">${ht.sub}</textarea>
+        <button class="btn-primary" onclick="saveHistoireTeaser()">Enregistrer l'aperçu</button>
+      </div>
+      <p class="form-note" style="margin-bottom:12px;">Modifiez librement le récit affiché dans « Notre histoire ». Sélectionnez du texte puis cliquez sur un bouton pour le mettre en forme. Une ligne commençant par <code>## </code> devient un titre. Laissez une ligne vide entre deux paragraphes.</p>
+      <div class="history-edit-toolbar">
+        <button type="button" onclick="wrapHistoireSelection('**')"><b>G</b></button>
+        <button type="button" onclick="wrapHistoireSelection('*')"><i>I</i></button>
+        <button type="button" onclick="insertHistoireHeading()">Titre</button>
+      </div>
+      <textarea id="ad-histoire-text" rows="14" style="width:100%; font-family:inherit; font-size:0.88rem; padding:12px; border:1px solid var(--line); border-radius:8px;">${DATA.histoireText || DEFAULT_HISTOIRE}</textarea>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn-primary" onclick="saveHistoire()">Enregistrer</button>
+        <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHistoire()">Revenir au texte d'origine</button>
+      </div>
+      <div class="check-step" style="margin-top:24px; padding-top:18px; border-top:1px dashed var(--line);">
+        <label>Règlement intérieur (un article par ligne, format : <code>numéro — texte</code>)</label>
+        <textarea id="ad-reglement-text" rows="10" style="width:100%; font-family:inherit; font-size:0.85rem; padding:12px; border:1px solid var(--line); border-radius:8px;">${DATA.reglementText || CONFIG.reglement.map(r => `${r.art} — ${r.texte}`).join('\n')}</textarea>
+        <div class="row" style="margin-top:10px;">
+          <button class="btn-primary" onclick="saveReglement()">Enregistrer le règlement</button>
+          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetReglement()">Revenir au règlement d'origine</button>
+        </div>
+      </div>`;
+  }
+  if(adminTab === 'cycles'){
+    const cycles = allCycles();
+    el.innerHTML = `
+      <p class="form-note" style="margin-bottom:16px;">Ajoutez un nouveau cycle de notation. Listez les lauréats un par ligne, au format : <code>rang. Nom complet — mention</code> (ex : <code>1. GANGNAMBAKPO Sourou — 99%</code>). La mention est facultative.</p>
+      <div class="check-step" style="margin-bottom:16px;">
+        <label>Nom du cycle</label><input id="ad-cycle-label" placeholder="Ex : Cycle 4">
+        <label>Statut / description</label><input id="ad-cycle-statut" placeholder="Ex : Cycle en cours — résultats attendus fin de mois">
+        <label>Lauréats (un par ligne)</label><textarea id="ad-cycle-laureats" rows="4" placeholder="1. Nom Prénom — mention"></textarea>
+        <button class="btn-primary" onclick="addCycle()">Ajouter le cycle</button>
+      </div>
+      <div>${cycles.map((c,i) => `<div class="admin-list-row"><span>${c.label}</span><span class="meta">${i>=CONFIG.cycles.length ? `<button class="link-btn" onclick="deleteCycle(${i-CONFIG.cycles.length})">Supprimer</button>` : "cycle d'origine"}</span></div>`).join("")}</div>`;
+  }
+  if(adminTab === 'outils'){
+    el.innerHTML = `
+      <p class="form-note" style="margin-bottom:16px;">Logiciels affichés dans le carrousel défilant de la page d'accueil. Ajoutez, renommez ou supprimez librement — le défilement s'ajuste automatiquement, sans jamais laisser de vide.</p>
+      <div class="check-step" style="margin-bottom:16px;">
+        <label>Nom du logiciel</label><input id="ad-outil-nom" placeholder="Ex : Revit">
+        <button class="btn-primary" onclick="addOutil()">Ajouter au carrousel</button>
+      </div>
+      <div>${DATA.outils.map(o => `<div class="admin-list-row"><input value="${o.nom}" id="ad-outil-edit-${o.id}" style="flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line); border-radius:6px; margin-right:8px;"><span class="meta"><button class="link-btn" style="color:var(--teal-dark);" onclick="renameOutil('${o.id}')">Enregistrer</button><button class="link-btn" onclick="removeOutil('${o.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun logiciel dans le carrousel.</p>'}</div>`;
+  }
+  if(adminTab === 'membres'){
+    const allBureau = getBureauList();
+    const allMembres = getMembresList();
+    let editingM = null, editingMCat = 'membre';
+    if(editingMemberNum){
+      editingM = allBureau.find(m => m.num === editingMemberNum);
+      if(editingM) editingMCat = 'bureau';
+      else { editingM = allMembres.find(m => m.num === editingMemberNum); editingMCat = 'membre'; }
+    }
+    const isExtra = editingMemberNum && editingMemberNum.startsWith('EXTRA-');
+    el.innerHTML = `
+      <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte, visible tant que l'admin est actif).</p>
+      <div class="check-step" style="margin-bottom:20px;">
+        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom} »</p>` : ''}
+        <label>Nom complet</label><input id="ad-mb-nom" placeholder="Ex : NOM Prénom" value="${editingM?editingM.nom:''}">
+        <label>Catégorie</label>
+        <select id="ad-mb-cat" ${editingM && !isExtra ? 'disabled' : ''}>
+          <option value="membre" ${editingMCat==='membre'?'selected':''}>Membre LABDien</option>
+          <option value="bureau" ${editingMCat==='bureau'?'selected':''}>Membre du bureau</option>
+        </select>
+        <label>Poste (si bureau)</label><input id="ad-mb-role" placeholder="Ex : Chargé des médias" value="${editingM?(editingM.role||''):''}">
+        <label>Abréviation (si bureau)</label><input id="ad-mb-abbr" placeholder="Ex : CDM" value="${editingM?(editingM.abbr||''):''}">
+        <label>Téléphone (optionnel)</label><input id="ad-mb-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
+        <div class="row">
+          <button class="btn-primary" onclick="saveMember()">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
+          ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingMemberNum=null; renderAdminContent();">Annuler</button>` : ''}
+        </div>
+      </div>
+      <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin-bottom:4px;">Bureau</div>
+      <div>${allBureau.map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta">${m.abbr||''} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMember('${m.num}')">Modifier</button><button class="link-btn" onclick="removeMember('${m.num}')">Retirer</button></span></div>`).join("")}</div>
+      <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:18px 0 4px;">Membres</div>
+      <div>${allMembres.map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta"><button class="link-btn" style="color:var(--teal-dark);" onclick="editMember('${m.num}')">Modifier</button><button class="link-btn" onclick="removeMember('${m.num}')">Retirer</button></span></div>`).join("")}</div>`;
+  }
+  if(adminTab === 'projets'){
+    const editingP = DATA.projets.find(p => p.id === editingProjetId);
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:20px;">
+        ${editingP ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.titre} »</p>` : ''}
+        <label>Titre du projet</label><input id="ad-pj-titre" placeholder="Titre" value="${editingP?editingP.titre:''}">
+        <label>Type</label>
+        <select id="ad-pj-type">
+          <option value="realise" ${editingP&&editingP.type==='realise'?'selected':''}>Projet réalisé</option>
+          <option value="exercice" ${editingP&&editingP.type==='exercice'?'selected':''}>Projet en cours (exercice de la semaine)</option>
+        </select>
+        <label>Description</label><textarea id="ad-pj-desc" placeholder="Description">${editingP?editingP.description:''}</textarea>
+        <label>Fichier du projet (PDF, Word, image...)${editingP&&editingP.fichierNom?` — actuel : ${editingP.fichierNom}`:''}</label>
+        <input type="file" id="ad-pj-fichier" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,image/*">
+        <p class="form-note">Un PDF génère automatiquement une miniature de sa première page. Laissez vide pour garder le fichier actuel.</p>
+        <label>Mot de passe pour ouvrir le fichier (optionnel, laisser vide si accès libre)</label><input id="ad-pj-pwd" placeholder="Mot de passe" value="${editingP?(editingP.motDePasse||''):''}">
+        <div class="row">
+          <button class="btn-primary" onclick="publishProjet()">${editingP?'Enregistrer les modifications':'Publier'}</button>
+          ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingProjetId=null; renderAdminContent();">Annuler</button>` : ''}
+        </div>
+      </div>
+      <div>${DATA.projets.map(p => `<div class="admin-list-row"><span>${p.titre}</span><span class="meta">${PROJET_TYPE_LABELS[p.type]} <button class="link-btn" style="color:var(--teal-dark);" onclick="editProjet('${p.id}')">Modifier</button><button class="link-btn" onclick="deleteProjet('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun projet publié.</p>'}</div>`;
+  }
+  if(adminTab === 'photos'){
+    const editingM = DATA.medias.find(m => m.id === editingMediaId);
+    const seedVisible = CONFIG.seedGallery.map((m,i)=>({m,i})).filter(x => !DATA.seedHidden.includes(x.i));
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:20px;">
+        <label>Logo du groupe (header, pied de page, filigranes sur les photos/vidéos)</label>
+        ${DATA.groupLogo ? `<img src="${DATA.groupLogo}" style="width:80px; height:80px; object-fit:cover; border-radius:50%; margin-bottom:8px;">` : ''}
+        <input type="file" accept="image/*" id="ad-group-logo">
+        <div class="row">
+          <button class="btn-primary" onclick="saveGroupLogo()">Enregistrer le logo</button>
+          ${DATA.groupLogo ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeGroupLogo()">Retirer le logo partout</button>` : ''}
+        </div>
+        ${DATA.groupLogo && DATA.logoHiddenGallery ? `<p class="form-note" style="margin-top:8px;">La tuile du logo est actuellement masquée dans la galerie (le logo reste actif partout ailleurs). <button class="link-btn" style="color:var(--teal-dark);" onclick="showLogoInGallery()">Le réafficher dans la galerie</button></p>` : ''}
+        ${DATA.groupLogo && !DATA.logoHiddenGallery ? `<p class="form-note" style="margin-top:8px;">Le logo apparaît aussi comme une tuile dans la galerie. La croix (✕) sur cette tuile ne fait que la masquer de la galerie — le logo reste actif partout ailleurs. Pour le supprimer complètement, utilisez « Retirer le logo partout » ci-dessus.</p>` : ''}
+      </div>
+      <div class="check-step" style="margin-bottom:20px;">
+        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.legende} »</p>` : ''}
+        <label>Noms des personnes sur la photo</label><input id="ad-media-legende" placeholder="Ex : Rencontre du bureau" value="${editingM?editingM.legende:''}">
+        <label>Photo ou vidéo${editingM?' (laisser vide pour garder le média actuel)':''}</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
+        <div id="ad-media-poster-preview"></div>
+        <div class="row">
+          <button class="btn-primary" onclick="publishMedia()">${editingM?'Enregistrer les modifications':'Publier'}</button>
+          ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingMediaId=null; renderAdminContent();">Annuler</button>` : ''}
+        </div>
+      </div>
+      <div>${DATA.medias.map(m => `<div class="admin-list-row"><span>${m.legende}${m.video?' &#127909;':''}</span><span class="meta">${fmtDate(m.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMedia('${m.id}')">Modifier</button><button class="link-btn" onclick="deleteMedia('${m.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune photo publiée.</p>'}
+      ${seedVisible.map(x => `<div class="admin-list-row"><span>${x.m.legende||'Photo du groupe'}</span><span class="meta">photo d'origine <button class="link-btn" onclick="deleteSeedPhoto(${x.i})">Supprimer</button></span></div>`).join("")}</div>`;
+    setupVideoFrameCapture('ad-media-photo', 'ad-media-poster-preview');
+  }
+  if(adminTab === 'candidatures'){
+    // Vue CAE (+ SG, Pr, VP) : dossiers accessibles uniquement une fois le paiement validé par le TG.
+    const valides = DATA.candidatures.filter(c => c.paye);
+    el.innerHTML = `<p class="form-note" style="margin-bottom:14px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Vous pouvez consulter chaque pièce jointe, puis partager le dossier dans le groupe WhatsApp du bureau pour étude.</p>
+      <div>${valides.map(c => `<div class="admin-list-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+          <div style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:6px;">
+            <strong>${c.nom}</strong><span class="meta">${c.contact} · ${fmtDate(c.date)}</span>
+          </div>
+          ${(c.fichiers||[]).length ? `<div style="display:flex; flex-wrap:wrap; gap:8px;">${c.fichiers.map((f,i) => `<a href="${f.dataUrl}" target="_blank" rel="noopener" download="${f.name}" class="link-btn" style="color:var(--teal-dark);">📎 ${f.name}</a>`).join("")}</div>` : '<span class="form-note">Aucune pièce jointe enregistrée.</span>'}
+          <div class="row" style="gap:10px; flex-wrap:wrap;">
+            <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); padding:6px 12px; font-size:.85rem;" onclick="shareWhatsApp('📋 Dossier de candidature LABD à étudier\\nNom : ${c.nom}\\nContact : ${c.contact}\\nReçu le ${fmtDate(c.date)}')">Partager sur WhatsApp (bureau)</button>
+            <label style="display:flex; align-items:center; gap:6px; font-size:.85rem;"><input type="checkbox" ${c.sgSuivi?'checked':''} onchange="toggleSgSuivi('${c.id}')"> Réponse SG envoyée à l'adhérent</label>
+          </div>
+        </div>`).join("") || '<p class="form-note">Aucun dossier validé pour le moment — les dossiers apparaissent ici une fois le paiement confirmé par le TG.</p>'}</div>`;
+  }
+  if(adminTab === 'cotisations'){
+    // Vue TG : uniquement les dossiers en attente, avec le nom pour le seul but de valider l'adhésion.
+    const pending = DATA.candidatures.filter(c => !c.paye);
+    const total = DATA.candidatures.filter(c=>c.paye).length;
+    const f = DATA.fees;
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Montants (mis à jour partout sur le site dès l'enregistrement)</label>
+        <label style="font-weight:400; font-size:0.8rem;">Frais d'adhésion (F CFA)</label>
+        <input id="ad-fee-adhesion" type="number" value="${f.adhesion}">
+        <label style="font-weight:400; font-size:0.8rem;">Ancien montant adhésion à afficher barré (optionnel)</label>
+        <input id="ad-fee-adhesion-old" type="number" placeholder="Laisser vide si pas de changement récent" value="${f.adhesionOld||''}">
+        <label style="font-weight:400; font-size:0.8rem;">Cotisation mensuelle (F CFA)</label>
+        <input id="ad-fee-mensuelle" type="number" value="${f.mensuelle}">
+        <label style="font-weight:400; font-size:0.8rem;">Ancien montant mensuel à afficher barré (optionnel)</label>
+        <input id="ad-fee-mensuelle-old" type="number" placeholder="Laisser vide si pas de changement récent" value="${f.mensuelleOld||''}">
+        <button class="btn-primary" onclick="saveFees()">Enregistrer les montants</button>
+      </div>
+      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion : ${fmtFcfa(f.adhesion)} F CFA (versement unique, aucune cotisation mensuelle). Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CAE.</p>
+      <p style="margin-bottom:14px;"><strong>${total}</strong> dossier(s) déjà validé(s) et transmis au CAE.</p>
+      <div>${pending.map(c => `<div class="admin-list-row"><span><input type="checkbox" onchange="toggleCandidaturePaye('${c.id}')"> ${c.nom}</span><span class="meta">en attente de confirmation</span></div>`).join("") || '<p class="form-note">Aucun dossier en attente de paiement.</p>'}</div>`;
+  }
+  if(adminTab === 'commentaires'){
+    el.innerHTML = `<div>${DATA.commentaires.map(c => `<div class="admin-list-row"><span>${c.nom} — ${c.message.slice(0,60)}${c.message.length>60?'…':''}</span><span class="meta">${fmtDate(c.date)}</span></div>`).join("") || '<p class="form-note">Aucun avis reçu pour le moment.</p>'}</div>`;
+  }
+  if(adminTab === 'parametres'){
+    el.innerHTML = `
+      <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Mot de passe pour la section Formations (optionnel)</label>
+        <p class="form-note" style="margin-bottom:8px;">Si un mot de passe est défini, les visiteurs doivent le saisir avant d'accéder aux formations. Laissez vide pour un accès libre.</p>
+        <input id="ad-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
+        <button class="btn-primary" onclick="saveFormationPassword()">Enregistrer</button>
+      </div>
+      <div class="check-step">
+        <label>Lien Facebook</label><input id="ad-set-fb" value="${getFacebookUrl()}">
+        <label>Email de contact</label><input id="ad-set-email" value="${getContactEmail()}">
+        <label>Téléphone du secrétariat</label><input id="ad-set-phone" value="${getContactPhone()}">
+        <label>Texte sous le logo (bas de page)</label><textarea id="ad-set-footer-tagline" rows="2" style="width:100%; font-family:inherit; font-size:0.85rem; padding:10px 12px; border:1px solid var(--line); border-radius:8px;">${getFooterTagline()}</textarea>
+        <button class="btn-primary" onclick="saveSettings()">Enregistrer</button>
+      </div>`;
+  }
+}
+async function saveFormationPassword(){
+  const val = document.getElementById('ad-formation-pass').value.trim();
+  DATA.formationPassword = val || null;
+  await storageSet('formation-password', DATA.formationPassword);
+  formationUnlocked = false;
+  renderArticles();
+  alert(DATA.formationPassword ? "Mot de passe enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
+}
+
+async function toggleCandidaturePaye(id){
+  const c = DATA.candidatures.find(x => x.id === id);
+  if(!c) return;
+  c.paye = !c.paye;
+  await storageSet('candidatures', DATA.candidatures);
+  renderAdminContent();
+  if(c.paye){
+    // Le dossier est officiellement enregistré : le CAE peut désormais y accéder, en copie Pr/VP/SG.
+    notifyMail(
+      'Dossier enregistré — accessible au CAE (LABD)',
+      [CONFIG.emails.cae, CONFIG.emails.pr, CONFIG.emails.vp, CONFIG.emails.sg],
+      { 'Nom complet': c.nom, 'Contact': c.contact, 'Statut': 'Paiement confirmé par le TG — dossier accessible au CAE' }
+    );
+  }
+}
+
+async function toggleSgSuivi(id){
+  const c = DATA.candidatures.find(x => x.id === id);
+  if(!c) return;
+  c.sgSuivi = !c.sgSuivi;
+  await storageSet('candidatures', DATA.candidatures);
+  renderAdminContent();
+}
+
+function wrapHistoireSelection(marker){
+  const ta = document.getElementById('ad-histoire-text');
+  if(!ta) return;
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.slice(start, end) || 'texte';
+  ta.value = ta.value.slice(0, start) + marker + selected + marker + ta.value.slice(end);
+  ta.focus();
+  ta.selectionStart = start + marker.length;
+  ta.selectionEnd = start + marker.length + selected.length;
+}
+function insertHistoireHeading(){
+  const ta = document.getElementById('ad-histoire-text');
+  if(!ta) return;
+  const start = ta.selectionStart;
+  const before = ta.value.slice(0, start);
+  const needsBreak = before.length && !before.endsWith('\n\n');
+  ta.value = before + (needsBreak ? '\n\n' : '') + '## Titre\n' + ta.value.slice(start);
+  ta.focus();
+}
+async function saveHistoire(){
+  const ta = document.getElementById('ad-histoire-text');
+  if(!ta) return;
+  DATA.histoireText = ta.value;
+  await storageSet('histoire-text', DATA.histoireText);
+  alert("Texte enregistré.");
+}
+async function resetHistoire(){
+  if(!confirm("Revenir au texte d'origine ? Vos modifications seront perdues.")) return;
+  DATA.histoireText = DEFAULT_HISTOIRE;
+  await storageSet('histoire-text', DATA.histoireText);
+  renderAdminContent();
+}
+async function saveHistoireTeaser(){
+  const title = document.getElementById('ad-histoire-teaser-title').value.trim();
+  const sub = document.getElementById('ad-histoire-teaser-sub').value.trim();
+  if(!title || !sub) return;
+  DATA.histoireTeaser = { title, sub };
+  await storageSet('histoire-teaser', DATA.histoireTeaser);
+  applyHistoireTeaser();
+  alert("Aperçu enregistré.");
+}
+async function saveReglement(){
+  const ta = document.getElementById('ad-reglement-text');
+  if(!ta) return;
+  DATA.reglementText = ta.value;
+  await storageSet('reglement-text', DATA.reglementText);
+  alert("Règlement enregistré.");
+}
+async function resetReglement(){
+  if(!confirm("Revenir au règlement d'origine ? Vos modifications seront perdues.")) return;
+  DATA.reglementText = null;
+  await storageSet('reglement-text', null);
+  renderAdminContent();
+}
+
+async function addCycle(){
+  const label = document.getElementById('ad-cycle-label').value.trim();
+  const statut = document.getElementById('ad-cycle-statut').value.trim();
+  const raw = document.getElementById('ad-cycle-laureats').value.trim();
+  if(!label){ alert("Le nom du cycle est requis."); return; }
+  const laureats = raw.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+    const m = line.match(/^(\d+)\.\s*([^—-]+?)\s*(?:[—-]\s*(.*))?$/);
+    if(!m) return null;
+    return { rang: parseInt(m[1]), nom: m[2].trim(), mention: (m[3]||'').trim() };
+  }).filter(Boolean);
+  DATA.cyclesExtra.push({ label, statut: statut || 'Cycle en cours.', laureats });
+  await storageSet('cycles-extra', DATA.cyclesExtra);
+  cyclesOffset = 0; activeCycleIndex = null; // afficher les 3 cycles les plus récents, dont le nouveau
+  renderCycles();
+  renderAdminContent();
+}
+async function deleteCycle(extraIndex){
+  if(!confirm("Supprimer ce cycle ?")) return;
+  DATA.cyclesExtra.splice(extraIndex, 1);
+  await storageSet('cycles-extra', DATA.cyclesExtra);
+  renderCycles();
+  renderAdminContent();
+}
+async function addOutil(){
+  const input = document.getElementById('ad-outil-nom');
+  const nom = input.value.trim();
+  if(!nom) return;
+  DATA.outils.push({ id:uid(), nom });
+  await storageSet('outils', DATA.outils);
+  input.value = '';
+  renderAdminContent();
+  renderToolsTicker();
+}
+async function removeOutil(id){
+  DATA.outils = DATA.outils.filter(o => o.id !== id);
+  await storageSet('outils', DATA.outils);
+  renderAdminContent();
+  renderToolsTicker();
+}
+async function renameOutil(id){
+  const input = document.getElementById('ad-outil-edit-'+id);
+  if(!input) return;
+  const nom = input.value.trim();
+  if(!nom) return;
+  const o = DATA.outils.find(x => x.id === id);
+  if(o) o.nom = nom;
+  await storageSet('outils', DATA.outils);
+  renderAdminContent();
+  renderToolsTicker();
+}
+
+// Permet à l'admin de choisir la miniature directement dans la vidéo jointe (pas d'upload d'image séparée).
+const videoFrameCaptures = {};
+function setupVideoFrameCapture(fileInputId, previewId){
+  const input = document.getElementById(fileInputId);
+  const preview = document.getElementById(previewId);
+  if(!input || !preview) return;
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    delete videoFrameCaptures[fileInputId];
+    if(!file || !file.type.startsWith('video/')){ preview.innerHTML=''; return; }
+    const url = URL.createObjectURL(file);
+    preview.innerHTML = `<p class="form-note" style="margin:6px 0 4px;">Choisissez l'instant de la vidéo qui servira de miniature :</p>
+      <img id="${previewId}-img" style="width:200px; aspect-ratio:16/9; object-fit:cover; border-radius:8px; background:#0b1c33; display:block; margin-bottom:6px;">
+      <input type="range" id="${previewId}-range" min="0" max="95" value="15" style="width:200px;">`;
+    const vid = document.createElement('video');
+    vid.src = url; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
+    const capture = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = vid.videoWidth || 320; canvas.height = vid.videoHeight || 180;
+      canvas.getContext('2d').drawImage(vid, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      videoFrameCaptures[fileInputId] = dataUrl;
+      const img = document.getElementById(previewId+'-img');
+      if(img) img.src = dataUrl;
+    };
+    vid.addEventListener('loadedmetadata', () => { vid.currentTime = 0.15 * (vid.duration||1); });
+    vid.addEventListener('seeked', capture);
+    preview.querySelector(`#${previewId}-range`).addEventListener('input', e => {
+      vid.currentTime = (e.target.value/100) * (vid.duration||1);
+    });
+  });
+}
+
+function fmtFcfa(n){ return n.toLocaleString('fr-FR'); }
+function feeAmountHTML(current, old, unitLabel){
+  const priceHTML = old
+    ? `<s style="opacity:0.55; font-weight:400; font-size:0.7em; margin-right:6px;">${fmtFcfa(old)} F</s>${fmtFcfa(current)}`
+    : `${fmtFcfa(current)}`;
+  return `${priceHTML} <span>${unitLabel}</span>`;
+}
+function renderFees(){
+  const f = DATA.fees;
+  const mensuelleEl = document.getElementById('feeMensuelleAmount');
+  const adhesionEl = document.getElementById('feeAdhesionAmount');
+  const chkLabel = document.getElementById('chkPaiementLabel');
+  if(mensuelleEl) mensuelleEl.innerHTML = feeAmountHTML(f.mensuelle, f.mensuelleOld, 'F CFA / mois');
+  if(adhesionEl) adhesionEl.innerHTML = feeAmountHTML(f.adhesion, f.adhesionOld, 'F CFA · unique');
+  if(chkLabel) chkLabel.textContent = `Je confirme avoir versé ${fmtFcfa(f.adhesion)} F CFA au Trésorier Général`;
+}
+async function saveFees(){
+  const adhesion = parseInt(document.getElementById('ad-fee-adhesion').value, 10);
+  const adhesionOld = document.getElementById('ad-fee-adhesion-old').value.trim();
+  const mensuelle = parseInt(document.getElementById('ad-fee-mensuelle').value, 10);
+  const mensuelleOld = document.getElementById('ad-fee-mensuelle-old').value.trim();
+  if(!adhesion || !mensuelle){ alert("Les montants doivent être des nombres valides."); return; }
+  DATA.fees = {
+    adhesion, adhesionOld: adhesionOld ? parseInt(adhesionOld,10) : null,
+    mensuelle, mensuelleOld: mensuelleOld ? parseInt(mensuelleOld,10) : null
+  };
+  await storageSet('fees', DATA.fees);
+  renderFees();
+  renderAdminContent();
+  alert("Montants mis à jour partout sur le site.");
+}
+
+let editingArticleId = null;
+async function publishArticle(){
+  const titre = document.getElementById('ad-art-titre').value.trim();
+  const type = document.getElementById('ad-art-type').value;
+  const description = document.getElementById('ad-art-desc').value.trim();
+  const fileInput = document.getElementById('ad-art-photo');
+  const shareOnWhatsapp = document.getElementById('ad-art-share').checked;
+  if(!titre || !description){ alert("Titre et description requis."); return; }
+
+  const file = fileInput.files[0];
+  let photo = null, video = null, focal = null, poster = null;
+  if(file){
+    if(file.type.startsWith('video/')){
+      video = await fileToDataUrl(file);
+      poster = videoFrameCaptures['ad-art-photo'] || null; // instant choisi dans la vidéo elle-même
+    } else {
+      photo = await resizeImage(file, 900);
+      focal = getFocal('ad-art-photo');
+    }
+  }
+
+  if(editingArticleId){
+    const article = DATA.articles.find(a => a.id === editingArticleId);
+    if(article){
+      article.titre = titre; article.type = type; article.description = description;
+      if(file){ article.photo = photo; article.video = video; if(focal) article.focal = focal; if(poster) article.poster = poster; }
+    }
+    editingArticleId = null;
+  } else {
+    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, date:Date.now()});
+  }
+  delete videoFrameCaptures['ad-art-photo'];
+  await storageSet('articles', DATA.articles);
+  renderArticles(); renderAdminContent();
+  if(shareOnWhatsapp) shareWhatsApp(`📢 LABD — ${titre}\n${description}`);
+}
+function editArticle(id){
+  editingArticleId = id;
+  renderAdminContent();
+}
+async function deleteArticle(id){
+  if(!confirm("Supprimer cette actualité ?")) return;
+  DATA.articles = DATA.articles.filter(a => a.id !== id);
+  if(editingArticleId === id) editingArticleId = null;
+  await storageSet('articles', DATA.articles);
+  renderArticles(); renderAdminContent();
+}
+let editingProjetId = null;
+function editProjet(id){
+  editingProjetId = id;
+  renderAdminContent();
+}
+async function publishProjet(){
+  const titre = document.getElementById('ad-pj-titre').value.trim();
+  const type = document.getElementById('ad-pj-type').value;
+  const description = document.getElementById('ad-pj-desc').value.trim();
+  const fileInput = document.getElementById('ad-pj-fichier');
+  const file = fileInput.files[0];
+  const motDePasse = document.getElementById('ad-pj-pwd').value.trim();
+  if(!titre || !description){ alert("Titre et description requis."); return; }
+
+  let fichier = null, fichierNom = null, thumbnail = null;
+  if(file){
+    fichier = await fileToDataUrl(file);
+    fichierNom = file.name;
+    if(file.type === 'application/pdf'){
+      thumbnail = await pdfFirstPageThumbnail(fichier);
+    } else if(file.type.startsWith('image/')){
+      thumbnail = await resizeImage(file, 600);
+    }
+  }
+
+  if(editingProjetId){
+    const p = DATA.projets.find(p => p.id === editingProjetId);
+    if(p){
+      p.titre = titre; p.type = type; p.description = description; p.motDePasse = motDePasse;
+      if(file){ p.fichier = fichier; p.fichierNom = fichierNom; p.thumbnail = thumbnail; }
+    }
+    editingProjetId = null;
+  } else {
+    DATA.projets.unshift({id:uid(), type, titre, description, fichier, fichierNom, thumbnail, motDePasse, date:Date.now()});
+  }
+  await storageSet('projets', DATA.projets);
+  renderProjects(); renderAdminContent();
+}
+async function deleteProjet(id){
+  if(!confirm("Supprimer ce projet ?")) return;
+  DATA.projets = DATA.projets.filter(p => p.id !== id);
+  if(editingProjetId === id) editingProjetId = null;
+  await storageSet('projets', DATA.projets);
+  renderProjects(); renderAdminContent();
+}
+async function publishMedia(){
+  const legende = document.getElementById('ad-media-legende').value.trim();
+  const fileInput = document.getElementById('ad-media-photo');
+  const file = fileInput.files[0];
+  if(!file && !editingMediaId){ alert("Choisissez une photo ou une vidéo."); return false; }
+  let photo = null, video = null, poster = null;
+  if(file){
+    if(file.type.startsWith('video/')){
+      video = await fileToDataUrl(file);
+      poster = videoFrameCaptures['ad-media-photo'] || null; // instant choisi dans la vidéo elle-même
+    } else {
+      photo = await resizeImage(file, 900);
+    }
+  }
+  if(editingMediaId){
+    const m = DATA.medias.find(x => x.id === editingMediaId);
+    if(m){
+      m.legende = legende || m.legende;
+      if(file){ m.photo = photo; m.video = video; if(poster) m.poster = poster; }
+    }
+    editingMediaId = null;
+  } else {
+    DATA.medias.unshift({id:uid(), legende: legende || "Média LABD", photo, video, poster, date:Date.now()});
+  }
+  delete videoFrameCaptures['ad-media-photo'];
+  await storageSet('medias', DATA.medias);
+  renderGallery(); renderAdminContent();
+  return true;
+}
+async function saveSettings(){
+  DATA.settings = {
+    facebookUrl: document.getElementById('ad-set-fb').value.trim(),
+    contactEmail: document.getElementById('ad-set-email').value.trim(),
+    secretariatPhone: document.getElementById('ad-set-phone').value.trim(),
+    footerTagline: document.getElementById('ad-set-footer-tagline').value.trim()
+  };
+  await storageSet('settings', DATA.settings);
+  renderContact();
+  applyFooterTagline();
+  alert("Paramètres enregistrés.");
+}
+function applyFooterTagline(){
+  const el = document.getElementById('footerTaglineText');
+  if(el) el.textContent = getFooterTagline();
+}
+
+/* ==========================================================
+   INIT
+========================================================== */
+async function init(){
+  await loadData();
+  applyGroupLogo();
+  applyFooterTagline();
+  applyHeroPhoto();
+  applyHeroText();
+  applyHistoireTeaser();
+  renderFees();
+  renderToolsTicker();
+  renderVision();
+  renderBureau();
+  renderCycles();
+  renderGallery();
+  renderArticles();
+  renderProjects();
+  renderContact();
+  const loader = document.getElementById('siteLoader');
+  if(loader){
+    loader.classList.add('hide');
+    setTimeout(() => loader.remove(), 500);
+  }
+}
+init();
+
+const burgerBtn = document.getElementById('burgerBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+burgerBtn.addEventListener('click', () => {
+  const isOpen = mobileMenu.classList.toggle('open');
+  burgerBtn.setAttribute('aria-expanded', isOpen);
+});
+mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+  mobileMenu.classList.remove('open');
+  burgerBtn.setAttribute('aria-expanded', 'false');
+}));
+</script>
+
+</body>
+</html>

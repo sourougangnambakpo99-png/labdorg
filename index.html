@@ -789,9 +789,10 @@
 <!-- ==========================================================
      CONFIG CLOUDINARY — à remplir avec ton "Cloud name" et le
      nom de ton "Upload preset" (mode Unsigned) créés sur
-     cloudinary.com. Tant que "COLLE_ICI" est encore présent,
-     le site continue de fonctionner comme avant (photos stockées
-     dans Firebase), juste plus lentement.
+     cloudinary.com. Utilisé pour les photos, les vidéos et les
+     fichiers de projet (PDF, Word, Excel...). Tant que "COLLE_ICI"
+     est encore présent, le site continue de fonctionner comme avant
+     (fichiers stockés dans Firebase), juste plus lentement.
      ========================================================== -->
 <script>
   window.__CLOUDINARY_CONFIG = {
@@ -1070,6 +1071,7 @@ function effectivePhoto(store, num, staticPhoto){
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function fmtDate(d){ return new Date(d).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}); }
+function fmtDateHeure(d){ return new Date(d).toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'}) + ' à ' + new Date(d).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}); }
 function ordinalFr(n){ return n === 1 ? '1ᵉʳ' : n + 'ᵉ'; }
 function telHref(p){ return 'tel:' + p.replace(/\s/g,''); }
 function waHref(p, presetText){
@@ -2027,7 +2029,7 @@ function openMediaUploadModal(){
     <h3>Ajouter un média</h3>
     <div class="check-step" style="margin-bottom:6px;">
       <label>Noms des personnes sur la photo</label><input id="ad-media-legende" placeholder="Ex : Sourou, Jean et Joan">
-      <label>Photo ou vidéo (fichier, max ~5 Mo pour une photo)</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
+      <label>Photo ou vidéo (fichier — envoyé automatiquement vers Cloudinary)</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
       <div id="ad-media-poster-preview"></div>
       <label style="margin-top:6px;">— ou lien vidéo YouTube / Vimeo —</label><input id="ad-media-video-url" placeholder="https://youtube.com/watch?v=...">
       <button class="btn-primary" onclick="publishMedia().then(ok => { if(ok) closeModal(); });">Publier</button>
@@ -2149,7 +2151,7 @@ function renderArticles(){
         <div class="article-card card locked-teaser-card">
           ${mediaTag}
           <div class="body">
-            <div class="date">${fmtDate(a.date)}</div>
+            <div class="date">${fmtDateHeure(a.date)}</div>
             <h4>${a.titre}</h4>
           </div>
         </div>`;
@@ -2186,7 +2188,7 @@ function renderArticles(){
         <div class="article-card card">
           ${mediaTag}
           <div class="body">
-            <div class="date">${fmtDate(a.date)}</div>
+            <div class="date">${fmtDateHeure(a.date)}</div>
             <h4>${a.titre}</h4>
             <div class="desc-text" id="desc-${a.id}"><p class="clamped">${formatDescription(a.description)}</p></div>
             <button class="desc-toggle" id="toggle-${a.id}" onclick="toggleDescription('${a.id}')">Voir plus</button>
@@ -2367,7 +2369,7 @@ function renderProjects(){
       ${items.length ? `<div class="podium">${items.map(p=>`<div class="podium-card card">
           ${p.thumbnail ? `<img class="thumb" src="${p.thumbnail}" alt="${p.titre}" onclick="openProjectFilePreview('${p.id}')">` : ''}
           <h4 style="font-family:'Space Grotesk',sans-serif; display:flex; align-items:center; gap:8px;">${p.locked?ICONS.lock:''}${p.titre}</h4>
-          ${t === 'exercice' && p.date ? `<span class="meta" style="font-size:0.72rem; color:var(--muted-2);">Ajouté le ${fmtDate(p.date)}</span>` : ''}
+          ${t === 'exercice' && p.date ? `<span class="meta" style="font-size:0.72rem; color:var(--muted-2);">Ajouté le ${fmtDateHeure(p.date)}</span>` : ''}
           <div class="desc-text" id="desc-pj-${p.id}"><p class="mention clamped" style="font-size:0.85rem;">${formatDescription(p.description)}</p></div>
           <button class="desc-toggle" id="toggle-pj-${p.id}" onclick="toggleDescription('pj-${p.id}')">Voir plus</button>
           ${projectFileHTML(p)}
@@ -2453,7 +2455,10 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   // Fichiers conservés en base pour consultation ultérieure par le CAE, une fois le paiement validé par le TG.
   let fichiers = [];
   try{
-    fichiers = await Promise.all(Array.from(fileInputJ.files).map(async f => ({ name:f.name, dataUrl: await fileToDataUrl(f) })));
+    fichiers = await Promise.all(Array.from(fileInputJ.files).map(async f => ({
+      name: f.name,
+      dataUrl: f.type.startsWith('image/') ? await uploadImage(f, 1800) : await uploadDocToCloudinary(f)
+    })));
   }catch(err){ console.error('lecture fichiers candidature', err); }
 
   DATA.candidatures.unshift({ id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, sgSuivi:false });
@@ -2822,12 +2827,6 @@ function renderAdminContent(){
   if(adminTab === 'parametres'){
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
-        <label>Performance des photos</label>
-        <p class="form-note" style="margin-bottom:8px;">Les photos ajoutées avant la mise en place de Cloudinary sont encore stockées à l'ancienne façon (plus lentes à charger). Ce bouton les transfère automatiquement vers Cloudinary, sans rien supprimer ni perdre.</p>
-        <button class="btn-primary" id="btn-migrate-cdn" onclick="migrateBase64ToCloudinary()">Optimiser les anciennes photos</button>
-        <p class="form-note" id="migrate-cdn-status" style="margin-top:8px;"></p>
-      </div>
-      <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
         <label>Mot de passe pour la section Formations (optionnel)</label>
         <p class="form-note" style="margin-bottom:8px;">Si un mot de passe est défini, les visiteurs doivent le saisir avant d'accéder aux formations. Laissez vide pour un accès libre.</p>
         <input id="ad-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
@@ -2867,62 +2866,43 @@ async function uploadDataUrlToCloudinary(dataUrl){
     return json && json.secure_url ? json.secure_url : null;
   }catch(e){ console.error('migration Cloudinary erreur', e); return null; }
 }
-async function migrateBase64ToCloudinary(){
+// Envoie n'importe quel fichier (Word, Excel, plans, zip...) vers Cloudinary
+// en stockage "brut" (resource_type=raw). Repli automatique sur l'ancien
+// stockage local (dans Firebase) si Cloudinary n'est pas configuré ou si
+// l'envoi échoue — le site continue de fonctionner normalement.
+async function uploadDocToCloudinary(file){
   const cfg = window.__CLOUDINARY_CONFIG;
-  const statusEl = document.getElementById('migrate-cdn-status');
-  const btn = document.getElementById('btn-migrate-cdn');
-  if(!cfg || cfg.cloudName === "COLLE_ICI" || cfg.uploadPreset === "COLLE_ICI"){
-    alert("Cloudinary n'est pas encore configuré dans le code du site.");
-    return;
+  if(!cfg || cfg.cloudName === "COLLE_ICI" || cfg.uploadPreset === "COLLE_ICI") return await fileToDataUrl(file);
+  try{
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', cfg.uploadPreset);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/raw/upload`, { method:'POST', body: fd });
+    const json = await res.json();
+    if(json && json.secure_url) return json.secure_url;
+    console.error('Réponse Cloudinary inattendue (fichier), on garde la version locale', json);
+    return await fileToDataUrl(file);
+  }catch(e){ console.error('Envoi Cloudinary impossible (fichier), on garde la version locale', e); return await fileToDataUrl(file); }
+}
+// Envoie une vidéo vers Cloudinary (resource_type=video). Si Cloudinary
+// n'est pas configuré ou si l'envoi échoue, repli sur le stockage local —
+// mais celui-ci reste limité en taille (~900 Ko), donc on renvoie null au
+// lieu de planter si le fichier est trop lourd pour ce repli.
+async function uploadVideoToCloudinary(file){
+  const cfg = window.__CLOUDINARY_CONFIG;
+  if(cfg && cfg.cloudName !== "COLLE_ICI" && cfg.uploadPreset !== "COLLE_ICI"){
+    try{
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('upload_preset', cfg.uploadPreset);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/video/upload`, { method:'POST', body: fd });
+      const json = await res.json();
+      if(json && json.secure_url) return json.secure_url;
+      console.error('Réponse Cloudinary inattendue (vidéo)', json);
+    }catch(e){ console.error('Envoi Cloudinary impossible (vidéo)', e); }
   }
-  if(btn) btn.disabled = true;
-  let count = 0, failed = 0;
-  const setStatus = txt => { if(statusEl) statusEl.textContent = txt; };
-
-  async function migrateMap(mapName, dataObj, getVal, setVal){
-    for(const key of Object.keys(dataObj || {})){
-      const current = getVal(dataObj[key]);
-      if(typeof current === 'string' && current.startsWith('data:image')){
-        setStatus(`Transfert en cours... (${count} faites)`);
-        const url = await uploadDataUrlToCloudinary(current);
-        if(url){ setVal(dataObj, key, url); await mapSetItem(mapName, key, dataObj[key]); count++; }
-        else failed++;
-      }
-    }
-  }
-  await migrateMap('bureau-photos', DATA.bureauPhotos, v => v, (o,k,u) => o[k] = u);
-  await migrateMap('member-photos', DATA.memberPhotos, v => v, (o,k,u) => o[k] = u);
-  await migrateMap('laureat-photos', DATA.laureatPhotos, v => v, (o,k,u) => o[k] = u);
-  await migrateMap('vision-images', DATA.visionImages, v => v && v.img, (o,k,u) => o[k].img = u);
-
-  if(typeof DATA.heroPhoto === 'string' && DATA.heroPhoto.startsWith('data:image')){
-    setStatus(`Transfert en cours... (${count} faites)`);
-    const url = await uploadDataUrlToCloudinary(DATA.heroPhoto);
-    if(url){ DATA.heroPhoto = url; await storageSet('hero-photo', url); count++; } else failed++;
-  }
-  if(typeof DATA.groupLogo === 'string' && DATA.groupLogo.startsWith('data:image')){
-    setStatus(`Transfert en cours... (${count} faites)`);
-    const url = await uploadDataUrlToCloudinary(DATA.groupLogo);
-    if(url){ DATA.groupLogo = url; await storageSet('group-logo', url); count++; } else failed++;
-  }
-  for(const [key, arr] of [['articles', DATA.articles], ['projets', DATA.projets], ['medias', DATA.medias]]){
-    let changed = false;
-    for(const item of (arr || [])){
-      for(const field of ['photo', 'thumbnail']){
-        if(item && typeof item[field] === 'string' && item[field].startsWith('data:image')){
-          setStatus(`Transfert en cours... (${count} faites)`);
-          const url = await uploadDataUrlToCloudinary(item[field]);
-          if(url){ item[field] = url; changed = true; count++; } else failed++;
-        }
-      }
-    }
-    if(changed) await storageSet(key, arr);
-  }
-
-  saveDataToCache();
-  renderAll();
-  if(btn) btn.disabled = false;
-  setStatus(failed ? `Terminé : ${count} photo(s) transférée(s), ${failed} échec(s) (réessayez).` : `Terminé : ${count} photo(s) transférée(s) vers Cloudinary.`);
+  if(file.size > 900*1024) return null; // trop lourd pour le repli local
+  return await fileToDataUrl(file);
 }
 
 async function toggleCandidaturePaye(id){
@@ -3187,12 +3167,19 @@ async function publishProjet(){
 
   let fichier = null, fichierNom = null, thumbnail = null;
   if(file){
-    fichier = await fileToDataUrl(file);
     fichierNom = file.name;
     if(file.type === 'application/pdf'){
-      thumbnail = await pdfFirstPageThumbnail(fichier);
+      // La miniature doit être générée AVANT l'envoi vers Cloudinary : pdf.js
+      // a besoin des octets du fichier en local, pas d'une URL distante.
+      const localDataUrl = await fileToDataUrl(file);
+      const localThumb = await pdfFirstPageThumbnail(localDataUrl);
+      thumbnail = localThumb ? (await uploadDataUrlToCloudinary(localThumb)) || localThumb : null;
+      fichier = await uploadDocToCloudinary(file);
     } else if(file.type.startsWith('image/')){
-      thumbnail = await uploadImage(file, 600);
+      fichier = await uploadImage(file, 1800);
+      thumbnail = fichier;
+    } else {
+      fichier = await uploadDocToCloudinary(file);
     }
   }
 
@@ -3227,9 +3214,10 @@ async function publishMedia(){
     video = videoUrl;
   } else if(file){
     if(file.type.startsWith('video/')){
-      if(file.size > 900*1024){ alert("Cette vidéo est trop lourde pour être hébergée directement (limite ~900 Ko). Mets-la sur YouTube ou Vimeo et colle le lien dans le champ prévu à cet effet à la place."); return false; }
-      video = await fileToDataUrl(file);
-      poster = videoFrameCaptures['ad-media-photo'] || null; // instant choisi dans la vidéo elle-même
+      const rawPoster = videoFrameCaptures['ad-media-photo'] || null; // instant choisi dans la vidéo elle-même
+      poster = rawPoster ? (await uploadDataUrlToCloudinary(rawPoster)) || rawPoster : null;
+      video = await uploadVideoToCloudinary(file);
+      if(!video){ alert("Cette vidéo est trop lourde et Cloudinary n'a pas pu la recevoir (vérifie ta connexion). Réessaie, ou mets-la sur YouTube/Vimeo et colle le lien dans le champ prévu à cet effet."); return false; }
     } else {
       photo = await uploadImage(file, 900);
     }

@@ -1234,41 +1234,79 @@ async function storageSet(key, value){
 let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null };
 
 async function loadData(){
-  DATA.bureauPhotos  = await storageGet('bureau-photos', {});
-  DATA.memberPhotos  = await storageGet('member-photos', {});
-  DATA.laureatPhotos = await storageGet('laureat-photos', {});
-  DATA.laureatFocal  = await storageGet('laureat-focal', {});
-  DATA.visionImages  = await storageGet('vision-images', {});
-  DATA.laureats      = await storageGet('laureats', {});
-  DATA.membresExtra  = await storageGet('membres-extra', []);
-  DATA.membresRemoved = await storageGet('membres-removed', []);
-  DATA.membresOverrides = await storageGet('membres-overrides', {});
-  DATA.articles      = await storageGet('articles', []);
-  DATA.projets       = await storageGet('projets', []);
-  DATA.medias        = await storageGet('medias', []);
-  DATA.candidatures  = await storageGet('candidatures', []);
-  DATA.commentaires  = await storageGet('commentaires', []);
-  DATA.settings      = await storageGet('settings', {});
-  DATA.outils        = await storageGet('outils', CONFIG.outils.map(o => ({ ...o, id: uid() })));
-  const outilsSeedDone = await storageGet('outils-seed-v2', false);
+  const [
+    bureauPhotos, memberPhotos, laureatPhotos, laureatFocal, visionImages,
+    laureats, membresExtra, membresRemoved, membresOverrides, articles,
+    projets, medias, candidatures, commentaires, settings, outils, outilsSeedDone,
+    groupLogo, seedHidden, cyclesExtra, histoireText, heroPhoto, heroPhotoFocal,
+    logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText
+  ] = await Promise.all([
+    storageGet('bureau-photos', {}),
+    storageGet('member-photos', {}),
+    storageGet('laureat-photos', {}),
+    storageGet('laureat-focal', {}),
+    storageGet('vision-images', {}),
+    storageGet('laureats', {}),
+    storageGet('membres-extra', []),
+    storageGet('membres-removed', []),
+    storageGet('membres-overrides', {}),
+    storageGet('articles', []),
+    storageGet('projets', []),
+    storageGet('medias', []),
+    storageGet('candidatures', []),
+    storageGet('commentaires', []),
+    storageGet('settings', {}),
+    storageGet('outils', CONFIG.outils.map(o => ({ ...o, id: uid() }))),
+    storageGet('outils-seed-v2', false),
+    storageGet('group-logo', null),
+    storageGet('seed-hidden', []),
+    storageGet('cycles-extra', []),
+    storageGet('histoire-text', DEFAULT_HISTOIRE),
+    storageGet('hero-photo', null),
+    storageGet('hero-photo-focal', '50% 50%'),
+    storageGet('logo-hidden-gallery', false),
+    storageGet('formation-password', null),
+    storageGet('fees', { adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }),
+    storageGet('reglement-text', null),
+    storageGet('histoire-teaser', null),
+    storageGet('hero-text', null)
+  ]);
+
+  DATA.bureauPhotos = bureauPhotos;
+  DATA.memberPhotos = memberPhotos;
+  DATA.laureatPhotos = laureatPhotos;
+  DATA.laureatFocal = laureatFocal;
+  DATA.visionImages = visionImages;
+  DATA.laureats = laureats;
+  DATA.membresExtra = membresExtra;
+  DATA.membresRemoved = membresRemoved;
+  DATA.membresOverrides = membresOverrides;
+  DATA.articles = articles;
+  DATA.projets = projets;
+  DATA.medias = medias;
+  DATA.candidatures = candidatures;
+  DATA.commentaires = commentaires;
+  DATA.settings = settings;
+  DATA.outils = outils;
+  DATA.groupLogo = groupLogo;
+  DATA.seedHidden = seedHidden;
+  DATA.cyclesExtra = cyclesExtra;
+  DATA.histoireText = histoireText;
+  DATA.heroPhoto = heroPhoto;
+  DATA.heroPhotoFocal = heroPhotoFocal;
+  DATA.logoHiddenGallery = logoHiddenGallery;
+  DATA.formationPassword = formationPassword;
+  DATA.fees = fees;
+  DATA.reglementText = reglementText;
+  DATA.histoireTeaser = histoireTeaser;
+  DATA.heroText = heroText;
+
   if(!outilsSeedDone || !DATA.outils || !DATA.outils.length){
     // Réinitialise une seule fois la liste (répare un ancien état corrompu par un bug de chargement).
     DATA.outils = CONFIG.outils.map(o => ({ ...o, id: uid() }));
     await storageSet('outils', DATA.outils);
     await storageSet('outils-seed-v2', true);
   }
-  DATA.groupLogo      = await storageGet('group-logo', null);
-  DATA.seedHidden     = await storageGet('seed-hidden', []);
-  DATA.cyclesExtra    = await storageGet('cycles-extra', []);
-  DATA.histoireText   = await storageGet('histoire-text', DEFAULT_HISTOIRE);
-  DATA.heroPhoto      = await storageGet('hero-photo', null);
-  DATA.heroPhotoFocal = await storageGet('hero-photo-focal', '50% 50%');
-  DATA.logoHiddenGallery = await storageGet('logo-hidden-gallery', false);
-  DATA.formationPassword = await storageGet('formation-password', null);
-  DATA.fees = await storageGet('fees', { adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null });
-  DATA.reglementText = await storageGet('reglement-text', null);
-  DATA.histoireTeaser = await storageGet('histoire-teaser', null);
-  DATA.heroText       = await storageGet('hero-text', null);
 }
 function getFacebookUrl(){ return DATA.settings.facebookUrl || CONFIG.facebookUrl; }
 function getFooterTagline(){ return DATA.settings.footerTagline || CONFIG.footerTagline; }

@@ -759,7 +759,7 @@
      ========================================================== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCz7yU3IVdQYkwb59ZhILhr4gtLIKc_A9E",
@@ -778,6 +778,9 @@
       window.__fbDoc = doc;
       window.__fbGetDoc = getDoc;
       window.__fbSetDoc = setDoc;
+      window.__fbCollection = collection;
+      window.__fbGetDocs = getDocs;
+      window.__fbDeleteDoc = deleteDoc;
       return true;
     } catch(e){ console.error('Firebase init error', e); return false; }
   })();
@@ -814,7 +817,33 @@ const DEFAULT_VIDEO_POSTER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
 
 // Tuile vidéo qui se lit automatiquement en boucle, en sourdine, dans son propre cadre (comme Telegram).
 // Barre de progression bleue, bouton pause dédié, et arrêt automatique dès qu'elle sort de l'écran.
+function isExternalVideoUrl(src){
+  return typeof src === 'string' && /^https?:\/\//i.test(src) && !src.startsWith('data:');
+}
+function youtubeEmbedSrc(url){
+  try{
+    const u = new URL(url);
+    let id = null;
+    if(u.hostname.includes('youtu.be')) id = u.pathname.slice(1);
+    else if(u.hostname.includes('youtube.com')){
+      if(u.searchParams.get('v')) id = u.searchParams.get('v');
+      else if(u.pathname.startsWith('/embed/')) id = u.pathname.split('/embed/')[1];
+      else if(u.pathname.startsWith('/shorts/')) id = u.pathname.split('/shorts/')[1];
+    }
+    if(id) return `https://www.youtube.com/embed/${id.split('&')[0].split('?')[0]}?rel=0`;
+    if(u.hostname.includes('vimeo.com')){
+      const vid = u.pathname.split('/').filter(Boolean)[0];
+      if(vid) return `https://player.vimeo.com/video/${vid}`;
+    }
+  }catch(e){ /* lien non reconnu, on l'utilise tel quel */ }
+  return url;
+}
 function videoTileHTML(src, poster, expandCall, extraStyle){
+  if(isExternalVideoUrl(src)){
+    return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
+      <iframe src="${youtubeEmbedSrc(src)}" style="width:100%; height:100%; border:0; display:block; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+    </div>`;
+  }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
     <video class="tile-video" src="${src}" muted loop autoplay playsinline preload="metadata" poster="${poster || DEFAULT_VIDEO_POSTER}" style="width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; ${extraStyle||''}" onclick="${expandCall}" ontimeupdate="updateTileProgress(this)"></video>
     <div class="tile-progress"><div class="tile-progress-fill"></div></div>
@@ -1228,11 +1257,64 @@ async function storageSet(key, value){
   catch(e){ console.error('storage set error', e); return false; }
 }
 
+// Stockage "par élément" : chaque entrée (ex: une photo de membre) est son
+// propre petit document Firebase, au lieu d'un seul gros document contenant
+// tout. Résultat : sauvegarder UNE photo n'envoie plus que CETTE photo,
+// beaucoup plus rapide, et on ne risque plus d'atteindre la limite de
+// taille de Firebase en accumulant trop de contenu dans un seul document.
+async function mapGetAll(mapName, fallback){
+  try{
+    const ready = await __waitFirebaseReady();
+    if(!ready) return fallback || {};
+    const snap = await window.__fbGetDocs(window.__fbCollection(window.__fbDb, 'labd-map-' + mapName));
+    const result = {};
+    snap.forEach(d => {
+      try{ result[d.id] = JSON.parse(d.data().value); } catch(e){ /* entrée corrompue ignorée */ }
+    });
+    return Object.keys(result).length ? result : (fallback || {});
+  }
+  catch(e){ console.error('mapGetAll error', mapName, e); return fallback || {}; }
+}
+async function mapSetItem(mapName, itemId, value){
+  try{
+    const ready = await __waitFirebaseReady();
+    if(!ready) return false;
+    if(value === null || value === undefined){ return mapDeleteItem(mapName, itemId); }
+    await window.__fbSetDoc(window.__fbDoc(window.__fbDb, 'labd-map-' + mapName, String(itemId)), { value: JSON.stringify(value) });
+    return true;
+  }
+  catch(e){ console.error('mapSetItem error', mapName, itemId, e); return false; }
+}
+async function mapDeleteItem(mapName, itemId){
+  try{
+    const ready = await __waitFirebaseReady();
+    if(!ready) return false;
+    await window.__fbDeleteDoc(window.__fbDoc(window.__fbDb, 'labd-map-' + mapName, String(itemId)));
+    return true;
+  }
+  catch(e){ console.error('mapDeleteItem error', mapName, itemId, e); return false; }
+}
+
 /* ==========================================================
    DONNEES DYNAMIQUES
 ========================================================== */
 let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null };
 
+async function loadPhotoMap(mapName, legacyKey){
+  const data = await mapGetAll(mapName, null);
+  if(data && Object.keys(data).length) return data;
+  // Rien trouvé dans le nouveau système : on regarde l'ancien format (une
+  // seule grosse entrée) pour ne perdre aucune photo déjà ajoutée avant
+  // cette mise à jour, puis on migre silencieusement vers le nouveau système.
+  const legacy = await storageGet(legacyKey, {});
+  if(legacy && Object.keys(legacy).length){
+    await Promise.all(Object.entries(legacy).map(([k, v]) =>
+      (v !== null && v !== undefined) ? mapSetItem(mapName, k, v) : Promise.resolve()
+    ));
+    return legacy;
+  }
+  return {};
+}
 async function loadData(){
   const [
     bureauPhotos, memberPhotos, laureatPhotos, laureatFocal, visionImages,
@@ -1241,11 +1323,11 @@ async function loadData(){
     groupLogo, seedHidden, cyclesExtra, histoireText, heroPhoto, heroPhotoFocal,
     logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText
   ] = await Promise.all([
-    storageGet('bureau-photos', {}),
-    storageGet('member-photos', {}),
-    storageGet('laureat-photos', {}),
+    loadPhotoMap('bureau-photos', 'bureau-photos'),
+    loadPhotoMap('member-photos', 'member-photos'),
+    loadPhotoMap('laureat-photos', 'laureat-photos'),
     storageGet('laureat-focal', {}),
-    storageGet('vision-images', {}),
+    loadPhotoMap('vision-images', 'vision-images'),
     storageGet('laureats', {}),
     storageGet('membres-extra', []),
     storageGet('membres-removed', []),
@@ -1389,12 +1471,12 @@ async function saveVisionImage(i){
   const img = await resizeImage(file, 700);
   const focal = getFocal('ad-vi-img-'+i);
   DATA.visionImages[i] = { img, focal };
-  await storageSet('vision-images', DATA.visionImages);
+  await mapSetItem('vision-images', i, DATA.visionImages[i]);
   renderVision(); renderAdminContent();
 }
 async function removeVisionImage(i){
   delete DATA.visionImages[i];
-  await storageSet('vision-images', DATA.visionImages);
+  await mapDeleteItem('vision-images', i);
   renderVision(); renderAdminContent();
 }
 
@@ -1541,12 +1623,12 @@ async function handleBureauPhoto(evt, num){
   if(!file) return;
   const dataUrl = await resizeImage(file, 800);
   DATA.bureauPhotos[num] = dataUrl;
-  await storageSet('bureau-photos', DATA.bureauPhotos);
+  await mapSetItem('bureau-photos', num, dataUrl);
   renderBureau();
 }
 async function removeBureauPhoto(num){
   DATA.bureauPhotos[num] = null;
-  await storageSet('bureau-photos', DATA.bureauPhotos);
+  await mapDeleteItem('bureau-photos', num);
   renderBureau();
 }
 async function handleMemberPhoto(evt, num){
@@ -1554,12 +1636,12 @@ async function handleMemberPhoto(evt, num){
   if(!file) return;
   const dataUrl = await resizeImage(file, 800);
   DATA.memberPhotos[num] = dataUrl;
-  await storageSet('member-photos', DATA.memberPhotos);
+  await mapSetItem('member-photos', num, dataUrl);
   renderMembers();
 }
 async function removeMemberPhoto(num){
   DATA.memberPhotos[num] = null;
-  await storageSet('member-photos', DATA.memberPhotos);
+  await mapDeleteItem('member-photos', num);
   renderMembers();
 }
 function laureateKey(cycleIndex, nom){ return cycleIndex + '-' + normName(nom); }
@@ -1596,7 +1678,7 @@ async function confirmLaureatePhoto(key){
   const dataUrl = await resizeImage(file, 800);
   DATA.laureatPhotos[key] = dataUrl;
   DATA.laureatFocal[key] = (wrap.dataset.focalX||50)+'% '+(wrap.dataset.focalY||50)+'%';
-  await storageSet('laureat-photos', DATA.laureatPhotos);
+  await mapSetItem('laureat-photos', key, dataUrl);
   await storageSet('laureat-focal', DATA.laureatFocal);
   window.__laureatePendingFile = null;
   closeModal();
@@ -1605,7 +1687,7 @@ async function confirmLaureatePhoto(key){
 async function removeLaureatePhoto(key){
   DATA.laureatPhotos[key] = null;
   DATA.laureatFocal[key] = null;
-  await storageSet('laureat-photos', DATA.laureatPhotos);
+  await mapDeleteItem('laureat-photos', key);
   await storageSet('laureat-focal', DATA.laureatFocal);
   renderCycles();
 }
@@ -1905,8 +1987,9 @@ function openMediaUploadModal(){
     <h3>Ajouter un média</h3>
     <div class="check-step" style="margin-bottom:6px;">
       <label>Noms des personnes sur la photo</label><input id="ad-media-legende" placeholder="Ex : Sourou, Jean et Joan">
-      <label>Photo ou vidéo</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
+      <label>Photo ou vidéo (fichier, max ~5 Mo pour une photo)</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
       <div id="ad-media-poster-preview"></div>
+      <label style="margin-top:6px;">— ou lien vidéo YouTube / Vimeo —</label><input id="ad-media-video-url" placeholder="https://youtube.com/watch?v=...">
       <button class="btn-primary" onclick="publishMedia().then(ok => { if(ok) closeModal(); });">Publier</button>
     </div>
   `);
@@ -1945,7 +2028,9 @@ function openLightbox(key){
   }
   const isLogoView = key === 'logo';
   const mediaHTML = video
-    ? `<video src="${video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`
+    ? (isExternalVideoUrl(video)
+        ? `<iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        : `<video src="${video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" src="${src}" style="width:100%; border-radius:8px; display:block;">`;
   const dlId = 'wm-dl-' + uid();
   openModal(`
@@ -2115,7 +2200,9 @@ function openArticleLightbox(id){
   const a = all.find(x => x.id === id);
   if(!a) return;
   const mediaHTML = a.video
-    ? `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`
+    ? (isExternalVideoUrl(a.video)
+        ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        : `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
     : a.photo ? `<img src="${a.photo}" style="width:100%; border-radius:8px; display:block;">` : '';
   const dlId = 'wm-dl-' + uid();
   openModal(`
@@ -2458,6 +2545,7 @@ function renderAdminContent(){
         <div class="frame-picker" id="frame-ad-art-photo"></div>
         <p class="frame-hint">Pour une photo : cliquez sur l'aperçu pour choisir la partie qui s'affichera en miniature.</p>
         <div id="ad-art-poster-preview"></div>
+        <label style="margin-top:6px;">— ou lien vidéo YouTube / Vimeo —</label><input id="ad-art-video-url" placeholder="https://youtube.com/watch?v=..." value="${editing && editing.video && isExternalVideoUrl(editing.video) ? editing.video : ''}">
         <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-share" style="width:auto;"> Partager automatiquement sur WhatsApp après publication</label>
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
@@ -2641,6 +2729,7 @@ function renderAdminContent(){
         <label>Noms des personnes sur la photo</label><input id="ad-media-legende" placeholder="Ex : Rencontre du bureau" value="${editingM?editingM.legende:''}">
         <label>Photo ou vidéo${editingM?' (laisser vide pour garder le média actuel)':''}</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
         <div id="ad-media-poster-preview"></div>
+        <label style="margin-top:6px;">— ou lien vidéo YouTube / Vimeo —</label><input id="ad-media-video-url" placeholder="https://youtube.com/watch?v=..." value="${editingM && editingM.video && isExternalVideoUrl(editingM.video) ? editingM.video : ''}">
         <div class="row">
           <button class="btn-primary" onclick="publishMedia()">${editingM?'Enregistrer les modifications':'Publier'}</button>
           ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingMediaId=null; renderAdminContent();">Annuler</button>` : ''}
@@ -2921,9 +3010,13 @@ async function publishArticle(){
   if(!titre || !description){ alert("Titre et description requis."); return; }
 
   const file = fileInput.files[0];
+  const videoUrl = (document.getElementById('ad-art-video-url')?.value || '').trim();
   let photo = null, video = null, focal = null, poster = null;
-  if(file){
+  if(videoUrl){
+    video = videoUrl;
+  } else if(file){
     if(file.type.startsWith('video/')){
+      if(file.size > 900*1024){ alert("Cette vidéo est trop lourde pour être hébergée directement (limite ~900 Ko). Mets-la sur YouTube ou Vimeo et colle le lien dans le champ prévu à cet effet à la place."); return; }
       video = await fileToDataUrl(file);
       poster = videoFrameCaptures['ad-art-photo'] || null; // instant choisi dans la vidéo elle-même
     } else {
@@ -2936,7 +3029,7 @@ async function publishArticle(){
     const article = DATA.articles.find(a => a.id === editingArticleId);
     if(article){
       article.titre = titre; article.type = type; article.description = description;
-      if(file){ article.photo = photo; article.video = video; if(focal) article.focal = focal; if(poster) article.poster = poster; }
+      if(file || videoUrl){ article.photo = photo; article.video = video; if(focal) article.focal = focal; if(poster) article.poster = poster; }
     }
     editingArticleId = null;
   } else {
@@ -3007,10 +3100,14 @@ async function publishMedia(){
   const legende = document.getElementById('ad-media-legende').value.trim();
   const fileInput = document.getElementById('ad-media-photo');
   const file = fileInput.files[0];
-  if(!file && !editingMediaId){ alert("Choisissez une photo ou une vidéo."); return false; }
+  const videoUrl = (document.getElementById('ad-media-video-url')?.value || '').trim();
+  if(!file && !videoUrl && !editingMediaId){ alert("Choisissez une photo, une vidéo, ou collez un lien YouTube/Vimeo."); return false; }
   let photo = null, video = null, poster = null;
-  if(file){
+  if(videoUrl){
+    video = videoUrl;
+  } else if(file){
     if(file.type.startsWith('video/')){
+      if(file.size > 900*1024){ alert("Cette vidéo est trop lourde pour être hébergée directement (limite ~900 Ko). Mets-la sur YouTube ou Vimeo et colle le lien dans le champ prévu à cet effet à la place."); return false; }
       video = await fileToDataUrl(file);
       poster = videoFrameCaptures['ad-media-photo'] || null; // instant choisi dans la vidéo elle-même
     } else {
@@ -3021,7 +3118,7 @@ async function publishMedia(){
     const m = DATA.medias.find(x => x.id === editingMediaId);
     if(m){
       m.legende = legende || m.legende;
-      if(file){ m.photo = photo; m.video = video; if(poster) m.poster = poster; }
+      if(file || videoUrl){ m.photo = photo; m.video = video; if(poster) m.poster = poster; }
     }
     editingMediaId = null;
   } else {

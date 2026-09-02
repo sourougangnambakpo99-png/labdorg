@@ -3149,8 +3149,7 @@ function applyFooterTagline(){
 /* ==========================================================
    INIT
 ========================================================== */
-async function init(){
-  await loadData();
+function renderAll(){
   applyGroupLogo();
   applyFooterTagline();
   applyHeroPhoto();
@@ -3165,10 +3164,46 @@ async function init(){
   renderArticles();
   renderProjects();
   renderContact();
+}
+
+// Mémorise les données déjà vues dans le navigateur du visiteur, pour un
+// affichage instantané aux visites suivantes (le site vérifie quand même
+// discrètement s'il y a du nouveau en arrière-plan après cet affichage).
+const LOCAL_CACHE_KEY = 'labd-data-cache-v1';
+function loadDataFromCache(){
+  try{
+    const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+    if(!raw) return false;
+    const cached = JSON.parse(raw);
+    if(!cached || typeof cached !== 'object') return false;
+    Object.assign(DATA, cached);
+    return true;
+  }catch(e){ return false; }
+}
+function saveDataToCache(){
+  try{ localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(DATA)); }
+  catch(e){ /* stockage plein ou indisponible (navigation privée...) : tant pis, pas bloquant */ }
+}
+
+async function init(){
   const loader = document.getElementById('siteLoader');
-  if(loader){
-    loader.classList.add('hide');
-    setTimeout(() => loader.remove(), 500);
+  const hasCache = loadDataFromCache();
+
+  if(hasCache){
+    // Affichage immédiat avec ce que le navigateur connaît déjà.
+    renderAll();
+    if(loader){ loader.classList.add('hide'); setTimeout(() => loader.remove(), 500); }
+    // Vérification silencieuse en arrière-plan : si du contenu a changé
+    // depuis la dernière visite, la page se met à jour toute seule.
+    await loadData();
+    renderAll();
+    saveDataToCache();
+  } else {
+    // Première visite sur cet appareil : pas de cache, chargement classique.
+    await loadData();
+    renderAll();
+    if(loader){ loader.classList.add('hide'); setTimeout(() => loader.remove(), 500); }
+    saveDataToCache();
   }
 }
 init();

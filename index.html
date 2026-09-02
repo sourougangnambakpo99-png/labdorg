@@ -786,6 +786,20 @@
   })();
 </script>
 
+<!-- ==========================================================
+     CONFIG CLOUDINARY — à remplir avec ton "Cloud name" et le
+     nom de ton "Upload preset" (mode Unsigned) créés sur
+     cloudinary.com. Tant que "COLLE_ICI" est encore présent,
+     le site continue de fonctionner comme avant (photos stockées
+     dans Firebase), juste plus lentement.
+     ========================================================== -->
+<script>
+  window.__CLOUDINARY_CONFIG = {
+    cloudName: "mftzucjc",
+    uploadPreset: "labdorg_unsigned"
+  };
+</script>
+
 <script>
 /* ==========================================================
    ICONES
@@ -1152,6 +1166,32 @@ function resizeImage(file, maxW){
   });
 }
 
+// Redimensionne toujours la photo en local (comme avant), puis, si un compte
+// Cloudinary a été configuré (voir la zone CONFIG CLOUDINARY plus haut dans
+// le fichier), l'héberge là-bas et ne garde qu'un lien — beaucoup plus léger
+// et rapide à charger qu'une image encodée dans la base de données. Si
+// Cloudinary n'est pas configuré, ou si l'envoi échoue (pas de réseau...),
+// le site continue de fonctionner normalement avec l'ancienne méthode.
+async function uploadImage(file, maxW){
+  const localDataUrl = await resizeImage(file, maxW);
+  const cfg = window.__CLOUDINARY_CONFIG;
+  if(!cfg || cfg.cloudName === "COLLE_ICI" || cfg.uploadPreset === "COLLE_ICI"){
+    return localDataUrl;
+  }
+  try{
+    const blob = await (await fetch(localDataUrl)).blob();
+    const fd = new FormData();
+    fd.append('file', blob);
+    fd.append('upload_preset', cfg.uploadPreset);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, { method:'POST', body: fd });
+    const json = await res.json();
+    if(json && json.secure_url) return json.secure_url;
+    console.error('Réponse Cloudinary inattendue, on garde la version locale', json);
+    return localDataUrl;
+  }
+  catch(e){ console.error('Envoi Cloudinary impossible, on garde la version locale', e); return localDataUrl; }
+}
+
 function fileToDataUrl(file){
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1468,7 +1508,7 @@ async function saveVisionImage(i){
   const fileInput = document.getElementById('ad-vi-img-'+i);
   const file = fileInput.files[0];
   if(!file){ alert("Choisissez une image."); return; }
-  const img = await resizeImage(file, 700);
+  const img = await uploadImage(file, 700);
   const focal = getFocal('ad-vi-img-'+i);
   DATA.visionImages[i] = { img, focal };
   await mapSetItem('vision-images', i, DATA.visionImages[i]);
@@ -1621,7 +1661,7 @@ function renderMembers(){
 async function handleBureauPhoto(evt, num){
   const file = evt.target.files[0];
   if(!file) return;
-  const dataUrl = await resizeImage(file, 800);
+  const dataUrl = await uploadImage(file, 800);
   DATA.bureauPhotos[num] = dataUrl;
   await mapSetItem('bureau-photos', num, dataUrl);
   renderBureau();
@@ -1634,7 +1674,7 @@ async function removeBureauPhoto(num){
 async function handleMemberPhoto(evt, num){
   const file = evt.target.files[0];
   if(!file) return;
-  const dataUrl = await resizeImage(file, 800);
+  const dataUrl = await uploadImage(file, 800);
   DATA.memberPhotos[num] = dataUrl;
   await mapSetItem('member-photos', num, dataUrl);
   renderMembers();
@@ -1675,7 +1715,7 @@ async function confirmLaureatePhoto(key){
   const file = window.__laureatePendingFile;
   const wrap = document.getElementById('laureate-frame-picker');
   if(!file || !wrap) return;
-  const dataUrl = await resizeImage(file, 800);
+  const dataUrl = await uploadImage(file, 800);
   DATA.laureatPhotos[key] = dataUrl;
   DATA.laureatFocal[key] = (wrap.dataset.focalX||50)+'% '+(wrap.dataset.focalY||50)+'%';
   await mapSetItem('laureat-photos', key, dataUrl);
@@ -1913,7 +1953,7 @@ function applyHeroPhoto(){
 async function saveHeroPhoto(){
   const input = document.getElementById('ad-hero-photo');
   if(!input || !input.files[0]) return;
-  DATA.heroPhoto = await resizeImage(input.files[0], 1400);
+  DATA.heroPhoto = await uploadImage(input.files[0], 1400);
   DATA.heroPhotoFocal = getFocal('ad-hero-photo');
   await storageSet('hero-photo', DATA.heroPhoto);
   await storageSet('hero-photo-focal', DATA.heroPhotoFocal);
@@ -1945,7 +1985,7 @@ function applyGroupLogo(){
 async function saveGroupLogo(){
   const input = document.getElementById('ad-group-logo');
   if(!input || !input.files[0]) return;
-  DATA.groupLogo = await resizeImage(input.files[0], 400);
+  DATA.groupLogo = await uploadImage(input.files[0], 400);
   DATA.logoHiddenGallery = true;
   await storageSet('group-logo', DATA.groupLogo);
   await storageSet('logo-hidden-gallery', true);
@@ -3020,7 +3060,7 @@ async function publishArticle(){
       video = await fileToDataUrl(file);
       poster = videoFrameCaptures['ad-art-photo'] || null; // instant choisi dans la vidéo elle-même
     } else {
-      photo = await resizeImage(file, 900);
+      photo = await uploadImage(file, 900);
       focal = getFocal('ad-art-photo');
     }
   }
@@ -3072,7 +3112,7 @@ async function publishProjet(){
     if(file.type === 'application/pdf'){
       thumbnail = await pdfFirstPageThumbnail(fichier);
     } else if(file.type.startsWith('image/')){
-      thumbnail = await resizeImage(file, 600);
+      thumbnail = await uploadImage(file, 600);
     }
   }
 
@@ -3111,7 +3151,7 @@ async function publishMedia(){
       video = await fileToDataUrl(file);
       poster = videoFrameCaptures['ad-media-photo'] || null; // instant choisi dans la vidéo elle-même
     } else {
-      photo = await resizeImage(file, 900);
+      photo = await uploadImage(file, 900);
     }
   }
   if(editingMediaId){

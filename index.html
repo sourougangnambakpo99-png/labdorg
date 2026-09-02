@@ -2822,6 +2822,12 @@ function renderAdminContent(){
   if(adminTab === 'parametres'){
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Performance des photos</label>
+        <p class="form-note" style="margin-bottom:8px;">Les photos ajoutées avant la mise en place de Cloudinary sont encore stockées à l'ancienne façon (plus lentes à charger). Ce bouton les transfère automatiquement vers Cloudinary, sans rien supprimer ni perdre.</p>
+        <button class="btn-primary" id="btn-migrate-cdn" onclick="migrateBase64ToCloudinary()">Optimiser les anciennes photos</button>
+        <p class="form-note" id="migrate-cdn-status" style="margin-top:8px;"></p>
+      </div>
+      <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
         <label>Mot de passe pour la section Formations (optionnel)</label>
         <p class="form-note" style="margin-bottom:8px;">Si un mot de passe est défini, les visiteurs doivent le saisir avant d'accéder aux formations. Laissez vide pour un accès libre.</p>
         <input id="ad-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
@@ -2843,6 +2849,80 @@ async function saveFormationPassword(){
   formationUnlocked = false;
   renderArticles();
   alert(DATA.formationPassword ? "Mot de passe enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
+}
+
+// Transfère toute image encore stockée à l'ancienne façon (texte encodé dans
+// Firebase, préfixe "data:image") vers Cloudinary, et ne garde qu'un lien.
+// Ne touche à rien qui est déjà sur Cloudinary ou qui est un lien externe.
+async function uploadDataUrlToCloudinary(dataUrl){
+  const cfg = window.__CLOUDINARY_CONFIG;
+  if(!cfg || cfg.cloudName === "COLLE_ICI" || cfg.uploadPreset === "COLLE_ICI") return null;
+  try{
+    const blob = await (await fetch(dataUrl)).blob();
+    const fd = new FormData();
+    fd.append('file', blob);
+    fd.append('upload_preset', cfg.uploadPreset);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`, { method:'POST', body: fd });
+    const json = await res.json();
+    return json && json.secure_url ? json.secure_url : null;
+  }catch(e){ console.error('migration Cloudinary erreur', e); return null; }
+}
+async function migrateBase64ToCloudinary(){
+  const cfg = window.__CLOUDINARY_CONFIG;
+  const statusEl = document.getElementById('migrate-cdn-status');
+  const btn = document.getElementById('btn-migrate-cdn');
+  if(!cfg || cfg.cloudName === "COLLE_ICI" || cfg.uploadPreset === "COLLE_ICI"){
+    alert("Cloudinary n'est pas encore configuré dans le code du site.");
+    return;
+  }
+  if(btn) btn.disabled = true;
+  let count = 0, failed = 0;
+  const setStatus = txt => { if(statusEl) statusEl.textContent = txt; };
+
+  async function migrateMap(mapName, dataObj, getVal, setVal){
+    for(const key of Object.keys(dataObj || {})){
+      const current = getVal(dataObj[key]);
+      if(typeof current === 'string' && current.startsWith('data:image')){
+        setStatus(`Transfert en cours... (${count} faites)`);
+        const url = await uploadDataUrlToCloudinary(current);
+        if(url){ setVal(dataObj, key, url); await mapSetItem(mapName, key, dataObj[key]); count++; }
+        else failed++;
+      }
+    }
+  }
+  await migrateMap('bureau-photos', DATA.bureauPhotos, v => v, (o,k,u) => o[k] = u);
+  await migrateMap('member-photos', DATA.memberPhotos, v => v, (o,k,u) => o[k] = u);
+  await migrateMap('laureat-photos', DATA.laureatPhotos, v => v, (o,k,u) => o[k] = u);
+  await migrateMap('vision-images', DATA.visionImages, v => v && v.img, (o,k,u) => o[k].img = u);
+
+  if(typeof DATA.heroPhoto === 'string' && DATA.heroPhoto.startsWith('data:image')){
+    setStatus(`Transfert en cours... (${count} faites)`);
+    const url = await uploadDataUrlToCloudinary(DATA.heroPhoto);
+    if(url){ DATA.heroPhoto = url; await storageSet('hero-photo', url); count++; } else failed++;
+  }
+  if(typeof DATA.groupLogo === 'string' && DATA.groupLogo.startsWith('data:image')){
+    setStatus(`Transfert en cours... (${count} faites)`);
+    const url = await uploadDataUrlToCloudinary(DATA.groupLogo);
+    if(url){ DATA.groupLogo = url; await storageSet('group-logo', url); count++; } else failed++;
+  }
+  for(const [key, arr] of [['articles', DATA.articles], ['projets', DATA.projets], ['medias', DATA.medias]]){
+    let changed = false;
+    for(const item of (arr || [])){
+      for(const field of ['photo', 'thumbnail']){
+        if(item && typeof item[field] === 'string' && item[field].startsWith('data:image')){
+          setStatus(`Transfert en cours... (${count} faites)`);
+          const url = await uploadDataUrlToCloudinary(item[field]);
+          if(url){ item[field] = url; changed = true; count++; } else failed++;
+        }
+      }
+    }
+    if(changed) await storageSet(key, arr);
+  }
+
+  saveDataToCache();
+  renderAll();
+  if(btn) btn.disabled = false;
+  setStatus(failed ? `Terminé : ${count} photo(s) transférée(s), ${failed} échec(s) (réessayez).` : `Terminé : ${count} photo(s) transférée(s) vers Cloudinary.`);
 }
 
 async function toggleCandidaturePaye(id){

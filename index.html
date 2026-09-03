@@ -2458,6 +2458,13 @@ function refreshSubmitState(){
 
 document.getElementById('adhesionForm').addEventListener('submit', async e => {
   e.preventDefault();
+  // Limite de Cloudinary (plan gratuit) : 10 Mo pour un document, 10 Mo pour une image.
+  // On vérifie avant tout envoi pour donner un message clair plutôt qu'un échec silencieux.
+  const tropLourd = Array.from(fileInputJ.files).find(f => f.size > 10*1024*1024);
+  if(tropLourd){
+    alert(`Le fichier "${tropLourd.name}" est trop lourd (${(tropLourd.size/1024/1024).toFixed(1)} Mo). La limite est de 10 Mo par fichier. Compresse-le (par ex. sur ilovepdf.com/fr/compresser_pdf pour un PDF) puis réessaie.`);
+    return;
+  }
   submitBtn.disabled = true;
   submitBtn.textContent = "Envoi en cours...";
   const nom = nomInputJ.value.trim();
@@ -3188,6 +3195,10 @@ async function publishProjet(){
   const file = fileInput.files[0];
   const motDePasse = document.getElementById('ad-pj-pwd').value.trim();
   if(!titre || !description){ alert("Titre et description requis."); return; }
+  if(file && file.size > 10*1024*1024){
+    alert(`Le fichier "${file.name}" est trop lourd (${(file.size/1024/1024).toFixed(1)} Mo). La limite est de 10 Mo (limite Cloudinary sur le plan gratuit). Compresse-le puis réessaie.`);
+    return;
+  }
 
   let fichier = null, fichierNom = null, thumbnail = null;
   if(file){

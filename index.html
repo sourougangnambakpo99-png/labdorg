@@ -760,6 +760,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCz7yU3IVdQYkwb59ZhILhr4gtLIKc_A9E",
@@ -781,10 +782,23 @@
       window.__fbCollection = collection;
       window.__fbGetDocs = getDocs;
       window.__fbDeleteDoc = deleteDoc;
+
+      // Authentification anonyme, invisible pour le visiteur : elle ne
+      // demande ni email ni mot de passe, elle sert uniquement à ce que les
+      // règles Firestore puissent distinguer "un vrai navigateur qui a
+      // chargé le site" d'un script qui tape directement sur la base de
+      // données. Nécessite que le fournisseur "Anonyme" soit activé dans
+      // Firebase Console > Authentication > Sign-in method.
+      window.__fbAuth = getAuth(app);
+      window.__firebaseAuthReady = new Promise((resolve) => {
+        onAuthStateChanged(window.__fbAuth, user => { if(user) resolve(true); });
+        signInAnonymously(window.__fbAuth).catch(e => { console.error('Auth anonyme Firebase impossible (vérifie qu\'elle est activée dans la Console)', e); resolve(false); });
+      });
       return true;
     } catch(e){ console.error('Firebase init error', e); return false; }
   })();
 </script>
+
 
 <!-- ==========================================================
      CONFIG CLOUDINARY — à remplir avec ton "Cloud name" et le
@@ -1280,6 +1294,24 @@ async function __waitFirebaseReady(){
   })();
   return __firebaseReadyCache;
 }
+let __firebaseAuthReadyCache = null;
+// Nécessaire avant toute ÉCRITURE (les règles Firestore exigent une
+// authentification anonyme). Avec un filet de sécurité de 6s pour ne pas
+// bloquer indéfiniment si l'authentification anonyme n'est pas activée
+// dans la Console Firebase.
+async function __waitFirebaseAuthReady(){
+  if(__firebaseAuthReadyCache) return __firebaseAuthReadyCache;
+  __firebaseAuthReadyCache = (async () => {
+    if(typeof window.__firebaseAuthReady === 'undefined') return false;
+    try{
+      return await Promise.race([
+        window.__firebaseAuthReady,
+        new Promise(resolve => setTimeout(() => resolve(false), 6000))
+      ]);
+    } catch(e){ return false; }
+  })();
+  return __firebaseAuthReadyCache;
+}
 async function storageGet(key, fallback){
   try{
     const ready = await __waitFirebaseReady();
@@ -1293,6 +1325,7 @@ async function storageSet(key, value){
   try{
     const ready = await __waitFirebaseReady();
     if(!ready) return false;
+    if(!(await __waitFirebaseAuthReady())){ console.error('storage set error: authentification Firebase indisponible'); return false; }
     await window.__fbSetDoc(window.__fbDoc(window.__fbDb, 'labd-data', key), { value: JSON.stringify(value) });
     return true;
   }
@@ -1322,6 +1355,7 @@ async function mapSetItem(mapName, itemId, value){
     const ready = await __waitFirebaseReady();
     if(!ready) return false;
     if(value === null || value === undefined){ return mapDeleteItem(mapName, itemId); }
+    if(!(await __waitFirebaseAuthReady())){ console.error('mapSetItem error: authentification Firebase indisponible'); return false; }
     await window.__fbSetDoc(window.__fbDoc(window.__fbDb, 'labd-map-' + mapName, String(itemId)), { value: JSON.stringify(value) });
     return true;
   }
@@ -1331,6 +1365,7 @@ async function mapDeleteItem(mapName, itemId){
   try{
     const ready = await __waitFirebaseReady();
     if(!ready) return false;
+    if(!(await __waitFirebaseAuthReady())){ console.error('mapDeleteItem error: authentification Firebase indisponible'); return false; }
     await window.__fbDeleteDoc(window.__fbDoc(window.__fbDb, 'labd-map-' + mapName, String(itemId)));
     return true;
   }

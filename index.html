@@ -2320,17 +2320,21 @@ function fileNameTruncHTML(name){
 }
 function openProjectFilePreview(pid){
   const p = findProjetById(pid);
-  if(!p || !p.fichier) return;
+  if(!p || (!p.fichier && !p.lienExterne)) return;
   if(p.motDePasse && !unlockedFiles.has(pid)){
     const pwdInput = document.getElementById('file-pwd-'+pid);
     if(pwdInput){ pwdInput.scrollIntoView({behavior:'smooth', block:'center'}); pwdInput.focus(); }
     return;
   }
-  const mime = p.fichier.slice(5, p.fichier.indexOf(';'));
+  if(!p.fichier && p.lienExterne){ window.open(p.lienExterne, '_blank', 'noopener'); return; }
+  // Détection du type via l'extension du nom de fichier (fonctionne aussi bien
+  // pour une ancienne dataURL locale que pour une URL Cloudinary — contrairement
+  // à un découpage du début de la chaîne, qui ne marche que pour les dataURL).
+  const ext = (p.fichierNom || '').toLowerCase().split('.').pop();
   let body;
-  if(mime === 'application/pdf'){
+  if(ext === 'pdf'){
     body = `<iframe src="${p.fichier}" style="width:100%; height:75vh; border:0; border-radius:8px;"></iframe>`;
-  } else if(mime.startsWith('image/')){
+  } else if(['jpg','jpeg','png','gif','webp','svg'].includes(ext)){
     body = `<img src="${p.fichier}" style="width:100%; border-radius:8px; display:block;">`;
   } else {
     body = `<p class="form-note">Aperçu non disponible pour ce type de fichier — téléchargez-le pour l'ouvrir.</p>`;
@@ -2346,7 +2350,7 @@ function openProjectFilePreview(pid){
 }
 
 function projectFileHTML(p){
-  if(!p.fichier) return '';
+  if(!p.fichier && !p.lienExterne) return '';
   const needsPwd = !!p.motDePasse;
   const locked = needsPwd && !unlockedFiles.has(p.id);
   const nameLine = p.fichierNom ? `<div class="file-name-trunc" title="${p.fichierNom}">${p.fichierNom}</div>` : '';
@@ -2357,6 +2361,12 @@ function projectFileHTML(p){
         <input type="password" id="file-pwd-${p.id}" placeholder="Mot de passe" style="padding:7px 9px; border:1px solid var(--line); border-radius:8px; font-size:0.78rem; flex:1; min-width:100px;">
         <button class="btn-ghost" style="font-size:0.78rem; padding:7px 12px; border-color:var(--line); color:var(--ink);" onclick="tryUnlockProjectFile('${p.id}')">${ICONS.lock} Ouvrir</button>
       </div>
+    </div>`;
+  }
+  if(!p.fichier && p.lienExterne){
+    return `<div style="margin-top:2px;">
+      ${nameLine}
+      <a href="${p.lienExterne}" target="_blank" rel="noopener" style="font-size:0.78rem; color:var(--teal-dark); text-decoration:underline;">Ouvrir le fichier (lien externe)</a>
     </div>`;
   }
   return `<div style="margin-top:2px;">
@@ -2774,9 +2784,12 @@ function renderAdminContent(){
           <option value="exercice" ${editingP&&editingP.type==='exercice'?'selected':''}>Projet en cours (exercice de la semaine)</option>
         </select>
         <label>Description</label><textarea id="ad-pj-desc" placeholder="Description">${editingP?editingP.description:''}</textarea>
-        <label>Fichier du projet (PDF, Word, image...)${editingP&&editingP.fichierNom?` — actuel : ${editingP.fichierNom}`:''}</label>
+        <label>Fichier du projet (PDF, Word, image... — max 10 Mo)${editingP&&editingP.fichierNom?` — actuel : ${editingP.fichierNom}`:''}</label>
         <input type="file" id="ad-pj-fichier" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,image/*">
         <p class="form-note">Un PDF génère automatiquement une miniature de sa première page. Laissez vide pour garder le fichier actuel.</p>
+        <label>Ou lien externe (Google Drive, etc.) — pour un fichier de plus de 10 Mo${editingP&&editingP.lienExterne?'':''}</label>
+        <input id="ad-pj-lien" placeholder="https://drive.google.com/..." value="${editingP?(editingP.lienExterne||''):''}">
+        <p class="form-note">Pense à régler le partage du fichier sur "Tous les utilisateurs disposant du lien" avant de coller l'adresse ici, sinon les visiteurs ne pourront pas l'ouvrir.</p>
         <label>Mot de passe pour ouvrir le fichier (optionnel, laisser vide si accès libre)</label><input id="ad-pj-pwd" placeholder="Mot de passe" value="${editingP?(editingP.motDePasse||''):''}">
         <div class="row">
           <button class="btn-primary" onclick="publishProjet()">${editingP?'Enregistrer les modifications':'Publier'}</button>
@@ -3194,6 +3207,7 @@ async function publishProjet(){
   const fileInput = document.getElementById('ad-pj-fichier');
   const file = fileInput.files[0];
   const motDePasse = document.getElementById('ad-pj-pwd').value.trim();
+  const lienExterne = document.getElementById('ad-pj-lien').value.trim();
   if(!titre || !description){ alert("Titre et description requis."); return; }
   if(file && file.size > 10*1024*1024){
     alert(`Le fichier "${file.name}" est trop lourd (${(file.size/1024/1024).toFixed(1)} Mo). La limite est de 10 Mo (limite Cloudinary sur le plan gratuit). Compresse-le puis réessaie.`);
@@ -3221,12 +3235,12 @@ async function publishProjet(){
   if(editingProjetId){
     const p = DATA.projets.find(p => p.id === editingProjetId);
     if(p){
-      p.titre = titre; p.type = type; p.description = description; p.motDePasse = motDePasse;
+      p.titre = titre; p.type = type; p.description = description; p.motDePasse = motDePasse; p.lienExterne = lienExterne;
       if(file){ p.fichier = fichier; p.fichierNom = fichierNom; p.thumbnail = thumbnail; }
     }
     editingProjetId = null;
   } else {
-    DATA.projets.unshift({id:uid(), type, titre, description, fichier, fichierNom, thumbnail, motDePasse, date:Date.now()});
+    DATA.projets.unshift({id:uid(), type, titre, description, fichier, fichierNom, thumbnail, motDePasse, lienExterne, date:Date.now()});
   }
   await storageSet('projets', DATA.projets);
   renderProjects(); renderAdminContent();

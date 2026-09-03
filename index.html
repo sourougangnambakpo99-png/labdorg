@@ -2294,7 +2294,7 @@ function openProjectFilePreview(pid){
   if(!p || !p.fichier) return;
   if(p.motDePasse && !unlockedFiles.has(pid)){
     const pwdInput = document.getElementById('file-pwd-'+pid);
-    if(pwdInput) pwdInput.focus();
+    if(pwdInput){ pwdInput.scrollIntoView({behavior:'smooth', block:'center'}); pwdInput.focus(); }
     return;
   }
   const mime = p.fichier.slice(5, p.fichier.indexOf(';'));
@@ -2367,7 +2367,13 @@ function renderProjects(){
     const canNext = state.size < 3 ? all.length > state.size : state.offset < maxOffset3;
     return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
       ${items.length ? `<div class="podium">${items.map(p=>`<div class="podium-card card">
-          ${p.thumbnail ? `<img class="thumb" src="${p.thumbnail}" alt="${p.titre}" onclick="openProjectFilePreview('${p.id}')">` : ''}
+          ${p.thumbnail ? (() => {
+            const fileLocked = !!p.motDePasse && !unlockedFiles.has(p.id);
+            return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
+              <img class="thumb" src="${p.thumbnail}" alt="${p.titre}">
+              ${fileLocked ? `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.32); border-radius:inherit; color:#fff;"><span style="transform:scale(1.8);">${ICONS.lock}</span></div>` : ''}
+            </div>`;
+          })() : ''}
           <h4 style="font-family:'Space Grotesk',sans-serif; display:flex; align-items:center; gap:8px;">${p.locked?ICONS.lock:''}${p.titre}</h4>
           ${t === 'exercice' && p.date ? `<span class="meta" style="font-size:0.72rem; color:var(--muted-2);">Ajouté le ${fmtDateHeure(p.date)}</span>` : ''}
           <div class="desc-text" id="desc-pj-${p.id}"><p class="mention clamped" style="font-size:0.85rem;">${formatDescription(p.description)}</p></div>

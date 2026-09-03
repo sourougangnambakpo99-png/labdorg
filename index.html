@@ -931,8 +931,6 @@ const CONFIG = {
   ],
 
   // Emails mis en copie sur chaque candidature / avis reçu (notification).
-  // Mot de passe partagé entre tous les membres, pour voir le projet en cours (pas un vrai compte individuel).
-  memberPassword: "labdien2026",
 
   // Adresses mail de chaque membre du bureau, utilisées pour les notifications ciblées.
   emails: {
@@ -2299,13 +2297,6 @@ function openArticleLightbox(id){
   if(a.photo && !a.video) prepareWatermarkedDownload(dlId, a.photo);
 }
 
-let memberUnlocked = false;
-function tryMemberUnlock(){
-  const val = document.getElementById('memberPassInline').value;
-  if(val === CONFIG.memberPassword){ memberUnlocked = true; renderProjects(); }
-  else alert("Mot de passe incorrect.");
-}
-
 const unlockedFiles = new Set();
 const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };
 
@@ -2381,17 +2372,6 @@ function renderProjects(){
   const types = ['realise','exercice'];
   tabs.innerHTML = types.map((t,i) => `<button class="tab-btn${t===activeProjectTab?' active':''}" data-tab="pj-${t}">${PROJET_TYPE_LABELS_PLURIEL[t]}</button>`).join("");
   panels.innerHTML = types.map((t,i) => {
-    if(t === 'exercice' && !memberUnlocked && !currentRole){
-      return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
-        <div class="empty-state" style="flex-direction:column; align-items:flex-start; gap:12px;">
-          ${ICONS.lock} Le projet en cours est réservé aux membres du groupe.
-          <div style="display:flex; gap:10px; align-items:center;">
-            <input type="password" id="memberPassInline" placeholder="Mot de passe membre" style="padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">
-            <button class="btn-primary" onclick="tryMemberUnlock()">Voir</button>
-          </div>
-        </div>
-      </div>`;
-    }
     const all = CONFIG.seedProjets.filter(p => p.type === t).concat(DATA.projets.filter(p => p.type === t));
     const state = projectsWindow[t];
     const maxOffset3 = Math.max(0, all.length - 3);

@@ -2303,6 +2303,19 @@ function openArticleLightbox(id){
 const unlockedFiles = new Set();
 const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };
 
+// Extrait l'identifiant d'un fichier Google Drive depuis un lien de partage
+// (formats /d/ID/ ou ?id=ID), pour construire une URL de miniature publique.
+function driveFileId(url){
+  if(!url) return null;
+  let m = url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  if(m) return m[1];
+  m = url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  return m ? m[1] : null;
+}
+function driveThumbUrl(url){
+  const id = driveFileId(url);
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w800` : null;
+}
 function findProjetById(pid){
   return (CONFIG.seedProjets||[]).concat(DATA.projets).find(x => x.id === pid);
 }
@@ -2395,13 +2408,30 @@ function renderProjects(){
     const canNext = state.size < 3 ? all.length > state.size : state.offset < maxOffset3;
     return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
       ${items.length ? `<div class="podium">${items.map(p=>`<div class="podium-card card">
-          ${p.thumbnail ? (() => {
+          ${(() => {
             const fileLocked = !!p.motDePasse && !unlockedFiles.has(p.id);
-            return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
-              <img class="thumb" src="${p.thumbnail}" alt="${p.titre}">
-              ${fileLocked ? `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.32); border-radius:inherit; color:#fff;"><span style="transform:scale(1.8);">${ICONS.lock}</span></div>` : ''}
-            </div>`;
-          })() : ''}
+            if(p.thumbnail){
+              return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
+                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}">
+                ${fileLocked ? `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.32); border-radius:inherit; color:#fff;"><span style="transform:scale(1.8);">${ICONS.lock}</span></div>` : ''}
+              </div>`;
+            }
+            if(!p.fichier && p.lienExterne){
+              const driveThumb = driveThumbUrl(p.lienExterne);
+              if(!driveThumb) return '';
+              // Aperçu flouté : donne une idée du contenu sans le révéler
+              // vraiment, puisque le fichier n'est pas hébergé chez nous et
+              // qu'on ne peut pas en générer une vraie miniature nette.
+              return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
+                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(7px) saturate(0.9);" onerror="this.closest('div').style.display='none';">
+                <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.18); border-radius:inherit; color:#fff; font-size:0.72rem; gap:6px; flex-direction:column; text-align:center; padding:8px;">
+                  ${fileLocked ? `<span style="transform:scale(1.6);">${ICONS.lock}</span>` : ''}
+                  <span>Aperçu — fichier hébergé en externe</span>
+                </div>
+              </div>`;
+            }
+            return '';
+          })()}
           <h4 style="font-family:'Space Grotesk',sans-serif; display:flex; align-items:center; gap:8px;">${p.locked?ICONS.lock:''}${p.titre}</h4>
           ${t === 'exercice' && p.date ? `<span class="meta" style="font-size:0.72rem; color:var(--muted-2);">Ajouté le ${fmtDateHeure(p.date)}</span>` : ''}
           <div class="desc-text" id="desc-pj-${p.id}"><p class="mention clamped" style="font-size:0.85rem;">${formatDescription(p.description)}</p></div>

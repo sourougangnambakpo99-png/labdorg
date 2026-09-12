@@ -6,6 +6,19 @@
 <title>LABD — Logiciels Au Bout des Doigts</title>
 <meta name="description" content="LABD — Logiciels Au Bout des Doigts. Apprendre. Concevoir. Réaliser.">
 <meta name="google-site-verification" content="2SkJCL1rpJ5xP-ZLriuDxESLB8hhFX0E7zJK_JpwISA" />
+<link rel="icon" type="image/jpeg" href="images/visuel_labd_01.jpg">
+<link rel="apple-touch-icon" href="images/visuel_labd_01.jpg">
+<!-- Aperçu de lien (WhatsApp, Facebook, Instagram, Twitter/X...) quand le
+     site est partagé. À mettre à jour si l'adresse change (domaine propre). -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://labdorg.pages.dev/">
+<meta property="og:title" content="LABD — Logiciels Au Bout des Doigts">
+<meta property="og:description" content="LABD réunit des étudiants en génie civil autour des logiciels de conception — Archicad, AutoCAD, Revit, Robot — avec un objectif clair : passer de l'apprentissage à la réalisation.">
+<meta property="og:image" content="https://labdorg.pages.dev/images/visuel_labd_01.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LABD — Logiciels Au Bout des Doigts">
+<meta name="twitter:description" content="LABD réunit des étudiants en génie civil autour des logiciels de conception — Archicad, AutoCAD, Revit, Robot.">
+<meta name="twitter:image" content="https://labdorg.pages.dev/images/visuel_labd_01.jpg">
 <!--
   ============================================================
   GUIDE D'ÉDITION — LABD
@@ -102,8 +115,22 @@
   nav.links a::after{content:""; position:absolute; left:0; right:0; bottom:-2px; height:2px; border-radius:2px; background:linear-gradient(90deg, var(--teal), var(--teal-dark)); transform:scaleX(0); transform-origin:left; transition:transform 0.28s cubic-bezier(.34,1.56,.64,1);}
   nav.links a:hover{opacity:1; color:var(--teal-dark);}
   nav.links a:hover::after{transform:scaleX(1);}
+  nav.links a.is-active{opacity:1; color:var(--teal-dark);}
+  nav.links a.is-active::after{transform:scaleX(1);}
   .nav-cta{background:var(--teal); color:#fff; font-weight:600; font-size:0.88rem; padding:10px 18px; border-radius:8px; border:1px solid var(--teal);}
   .nav-cta:hover{background:var(--teal-dark);}
+  /* Effet d'apparition au défilement, façon "vient de se charger" : chaque
+     section est décalée/transparente jusqu'à ce qu'elle entre dans l'écran,
+     moment où elle glisse doucement en place. Désactivé automatiquement pour
+     les personnes qui ont demandé moins d'animations dans leur système. */
+  .reveal{opacity:0; transform:translateY(46px); transition:opacity 1.35s cubic-bezier(.16,1,.3,1), transform 1.35s cubic-bezier(.16,1,.3,1);}
+  .reveal.is-visible{opacity:1; transform:translateY(0);}
+  @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
+  .stats-strip{padding:38px 0; background:var(--teal);}
+  .stats-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:26px; text-align:center;}
+  @media(min-width:760px){ .stats-grid{grid-template-columns:repeat(4,1fr);} }
+  .stat-number{display:block; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:2.5rem; line-height:1; color:#fff;}
+  .stat-label{display:block; font-size:0.8rem; color:#fff; opacity:0.85; margin-top:6px;}
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
   @media(min-width:1080px){ .burger{display:none;} }
   #mobileMenu{display:none; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 32px 20px;}
@@ -479,8 +506,18 @@
     </div>
   </section>
 
+  <!-- CHIFFRES CLÉS — calculés automatiquement à partir des vraies données -->
+  <section class="stats-strip reveal" aria-label="Chiffres clés LABD">
+    <div class="wrap stats-grid">
+      <div class="stat-item"><span class="stat-number" id="statMembres">0</span><span class="stat-label">Membres actifs</span></div>
+      <div class="stat-item"><span class="stat-number" id="statProjets">0</span><span class="stat-label">Projets réalisés</span></div>
+      <div class="stat-item"><span class="stat-number" id="statCycles">0</span><span class="stat-label">Cycles de formation</span></div>
+      <div class="stat-item"><span class="stat-number" id="statOutils">0</span><span class="stat-label">Logiciels enseignés</span></div>
+    </div>
+  </section>
+
   <!-- VISION -->
-  <section id="vision">
+  <section id="vision" class="reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Notre ambition</span>
@@ -492,7 +529,7 @@
   </section>
 
   <!-- OBJECTIF DU GROUPE -->
-  <section id="objectif">
+  <section id="objectif" class="reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Notre raison d'être</span>
@@ -520,7 +557,7 @@
   </section>
 
   <!-- HISTOIRE -->
-  <section id="histoire" class="alt-bg">
+  <section id="histoire" class="alt-bg reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Depuis le 16.10.2025</span>
@@ -539,7 +576,7 @@
   </section>
 
   <!-- BUREAU -->
-  <section id="bureau">
+  <section id="bureau" class="reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Organisation</span>
@@ -556,7 +593,7 @@
   </section>
 
   <!-- CYCLES / CLASSEMENTS -->
-  <section id="cycles" class="alt-bg">
+  <section id="cycles" class="alt-bg reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Sessions de notation</span>
@@ -570,7 +607,7 @@
   </section>
 
   <!-- GALERIE -->
-  <section id="galerie">
+  <section id="galerie" class="reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Souvenirs</span>
@@ -583,7 +620,7 @@
   </section>
 
   <!-- ACTIVITES LABDIENNES -->
-  <section id="activites" class="alt-bg">
+  <section id="activites" class="alt-bg reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Vie du groupe</span>
@@ -608,7 +645,7 @@
   </section>
 
   <!-- PROJETS -->
-  <section id="projets">
+  <section id="projets" class="reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Réalisations</span>
@@ -621,7 +658,7 @@
   </section>
 
   <!-- COTISATIONS -->
-  <section id="cotisations" class="alt-bg">
+  <section id="cotisations" class="alt-bg reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Vie du groupe</span>
@@ -645,7 +682,7 @@
   </section>
 
   <!-- ADHESION -->
-  <section id="adhesion">
+  <section id="adhesion" class="reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Adhésion</span>
@@ -690,7 +727,7 @@
   </section>
 
   <!-- AVIS -->
-  <section id="avis" class="alt-bg">
+  <section id="avis" class="alt-bg reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Votre voix</span>
@@ -715,7 +752,7 @@
   </section>
 
   <!-- CONTACT -->
-  <section id="contact" class="dark-bg">
+  <section id="contact" class="dark-bg reveal">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Contact</span>
@@ -3336,6 +3373,50 @@ function applyFooterTagline(){
 /* ==========================================================
    INIT
 ========================================================== */
+function renderStats(){
+  const membres = getMembresList().length + getBureauList().length;
+  const projetsRealises = CONFIG.seedProjets.filter(p => p.type === 'realise').length + DATA.projets.filter(p => p.type === 'realise').length;
+  const cycles = allCycles().length;
+  const outilsList = (DATA.outils && DATA.outils.length) ? DATA.outils : CONFIG.outils;
+  const targets = { statMembres: membres, statProjets: projetsRealises, statCycles: cycles, statOutils: outilsList.length };
+  Object.keys(targets).forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.dataset.target = targets[id];
+  });
+  initStatsCountUp(); // n'observe qu'une seule fois (protégé en interne)
+}
+
+// Anime les chiffres de 0 jusqu'à leur valeur réelle dès que la bande entre
+// à l'écran. On n'observe qu'une fois les cibles posées (par renderStats),
+// sinon l'animation risquerait de partir sur des "0" si les données réelles
+// n'étaient pas encore chargées.
+let statsCountUpBound = false;
+function initStatsCountUp(){
+  if(statsCountUpBound) return;
+  const strip = document.querySelector('.stats-strip');
+  if(!strip || !('IntersectionObserver' in window)) return;
+  statsCountUpBound = true;
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(!entry.isIntersecting) return;
+      entry.target.querySelectorAll('.stat-number').forEach(el => {
+        const target = parseInt(el.dataset.target || '0', 10);
+        if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){ el.textContent = target; return; }
+        const duration = 1400;
+        const startTime = performance.now();
+        (function tick(now){
+          const p = Math.min((now - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(eased * target);
+          if(p < 1) requestAnimationFrame(tick);
+        })(startTime);
+      });
+      obs.unobserve(entry.target);
+    });
+  }, { threshold: 0.4 });
+  obs.observe(strip);
+}
+
 function renderAll(){
   applyGroupLogo();
   applyFooterTagline();
@@ -3351,6 +3432,7 @@ function renderAll(){
   renderArticles();
   renderProjects();
   renderContact();
+  renderStats();
 }
 
 // Mémorise les données déjà vues dans le navigateur du visiteur, pour un
@@ -3405,6 +3487,34 @@ mobileMenu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => 
   mobileMenu.classList.remove('open');
   burgerBtn.setAttribute('aria-expanded', 'false');
 }));
+
+// Apparition des sections au défilement (effet "vient de se charger").
+// Une section reste révélée une fois apparue (on ne la refait pas
+// disparaître si on remonte), pour ne pas distraire en scrollant.
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if(entry.isIntersecting){
+      entry.target.classList.add('is-visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.05, rootMargin: '0px 0px -4% 0px' });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+// Surligne le lien du menu correspondant à la section actuellement visible
+// à l'écran (pas seulement au survol de la souris).
+const navLinks = Array.from(document.querySelectorAll('nav.links a[href^="#"]'));
+const navSections = navLinks.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean);
+if(navLinks.length && navSections.length && 'IntersectionObserver' in window){
+  const setActive = (id) => {
+    navLinks.forEach(a => a.classList.toggle('is-active', a.getAttribute('href') === '#' + id));
+  };
+  const navObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => { if(entry.isIntersecting) setActive(entry.target.id); });
+  }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
+  navSections.forEach(sec => navObserver.observe(sec));
+}
+
 </script>
 
 </body>

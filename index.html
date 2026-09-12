@@ -121,7 +121,7 @@
      section est décalée/transparente jusqu'à ce qu'elle entre dans l'écran,
      moment où elle glisse doucement en place. Désactivé automatiquement pour
      les personnes qui ont demandé moins d'animations dans leur système. */
-  .reveal{opacity:0; transform:translateY(46px); transition:opacity 1.35s cubic-bezier(.16,1,.3,1), transform 1.35s cubic-bezier(.16,1,.3,1);}
+  .reveal{opacity:0; transform:translateY(60px); transition:opacity 2.1s cubic-bezier(.19,1,.22,1), transform 2.1s cubic-bezier(.19,1,.22,1);}
   .reveal.is-visible{opacity:1; transform:translateY(0);}
   @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
@@ -3436,7 +3436,7 @@ const revealObserver = new IntersectionObserver((entries) => {
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0.05, rootMargin: '0px 0px -4% 0px' });
+}, { threshold: 0.02, rootMargin: '0px 0px 0px 0px' });
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 </script>

@@ -102,8 +102,7 @@
   .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
 
   /* ---------- NAV ---------- */
-  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); transition:transform 0.55s cubic-bezier(.22,1,.36,1);}
-  header.nav.nav-hidden{transform:translateY(-100%);}
+  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);}
   .nav-inner{max-width:1360px; margin:0 auto; padding:0 32px; height:68px; display:flex; align-items:center; justify-content:space-between;}
   @media(max-width:600px){ .nav-inner{padding:0 18px;} }
   .brand-block{display:flex; flex-direction:column; line-height:1.25;}
@@ -3444,32 +3443,6 @@ const revealObserver = new IntersectionObserver((entries) => {
   });
 }, { threshold: 0.02, rootMargin: '0px 0px 0px 0px' });
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-
-// Menu du haut : disparaît vers le haut quand on descend dans la page,
-// revient (en douceur, grâce à la transition CSS) dès qu'on remonte.
-// Reste toujours visible tout en haut de la page (avant d'avoir scrollé).
-(() => {
-  const headerNav = document.querySelector('header.nav');
-  if(!headerNav) return;
-  let lastY = window.scrollY;
-  let ticking = false;
-  window.addEventListener('scroll', () => {
-    if(ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const y = window.scrollY;
-      if(y <= 80){
-        headerNav.classList.remove('nav-hidden'); // toujours visible en haut de page
-      } else if(y > lastY){
-        headerNav.classList.add('nav-hidden'); // on descend → on cache
-      } else {
-        headerNav.classList.remove('nav-hidden'); // on remonte → on montre
-      }
-      lastY = y;
-      ticking = false;
-    });
-  }, { passive: true });
-})();
 
 </script>
 

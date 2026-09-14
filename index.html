@@ -121,7 +121,7 @@
      section est décalée/transparente jusqu'à ce qu'elle entre dans l'écran,
      moment où elle glisse doucement en place. Désactivé automatiquement pour
      les personnes qui ont demandé moins d'animations dans leur système. */
-  .reveal{opacity:0; transform:translateY(60px); transition:opacity 2.1s cubic-bezier(.19,1,.22,1), transform 2.1s cubic-bezier(.19,1,.22,1);}
+  .reveal{opacity:0; transform:translateY(60px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
   .reveal.is-visible{opacity:1; transform:translateY(0);}
   @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
@@ -133,8 +133,8 @@
   /* ---------- HERO ---------- */
   .hero{background:linear-gradient(150deg, var(--navy) 0%, var(--navy-2) 55%, var(--black) 100%); color:var(--light); padding:150px 0 0; position:relative; overflow:hidden;}
   .hero-photo{position:absolute; inset:0; z-index:0;}
-  .hero-photo img{width:100%; height:100%; object-fit:cover; object-position:60% 35%; animation:hero-kenburns 8s ease-in-out infinite alternate;}
-  @keyframes hero-kenburns{ 0%{transform:scale(1);} 100%{transform:scale(1.12);} }
+  .hero-photo img{width:100%; height:100%; object-fit:cover; object-position:60% 35%; animation:hero-kenburns 3.5s ease-in-out infinite alternate;}
+  @keyframes hero-kenburns{ 0%{transform:scale(1);} 100%{transform:scale(1.14);} }
   @media(prefers-reduced-motion:reduce){ .hero-photo img{animation:none;} }
   .hero-photo::after{content:""; position:absolute; inset:0; background:linear-gradient(100deg, var(--navy) 0%, rgba(11,28,51,0.88) 38%, rgba(11,28,51,0.55) 65%, rgba(11,28,51,0.3) 100%);}
   @media(max-width:820px){ .hero-photo::after{background:linear-gradient(180deg, rgba(11,28,51,0.75) 0%, rgba(11,28,51,0.93) 60%, var(--navy) 100%);} }

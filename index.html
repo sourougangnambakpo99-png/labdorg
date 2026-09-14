@@ -102,13 +102,15 @@
   .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
 
   /* ---------- NAV ---------- */
-  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); transition:transform 0.55s cubic-bezier(.22,1,.36,1);}
-  header.nav.nav-hidden{transform:translateY(-100%);}
-  .nav-inner{max-width:1360px; margin:0 auto; padding:0 32px; height:68px; display:flex; align-items:center; justify-content:space-between;}
+  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);}
+  .nav-inner{max-width:1360px; margin:0 auto; padding:0 32px; height:68px; display:flex; align-items:center; justify-content:space-between; transition:height 0.35s ease;}
   @media(max-width:600px){ .nav-inner{padding:0 18px;} }
+  header.nav.nav-compact .nav-inner{height:52px;}
+  header.nav.nav-compact{box-shadow:0 6px 18px rgba(11,28,51,0.08);}
   .brand-block{display:flex; flex-direction:column; line-height:1.25;}
   .brand{display:flex; align-items:center; gap:12px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
-  .brand img{width:53px; height:53px; border-radius:50%; object-fit:cover; border:1px solid var(--line);}
+  .brand img{width:53px; height:53px; border-radius:50%; object-fit:cover; border:1px solid var(--line); transition:width 0.35s ease, height 0.35s ease;}
+  header.nav.nav-compact .brand img{width:38px; height:38px;}
   .brand img.is-logo, .footer-brand img.is-logo{border-radius:50%; object-fit:cover;}
   .watermark img.is-logo{border-radius:50%; object-fit:cover; box-shadow:none;}
   .brand-name{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
@@ -136,7 +138,7 @@
   /* ---------- HERO ---------- */
   .hero{background:linear-gradient(150deg, var(--navy) 0%, var(--navy-2) 55%, var(--black) 100%); color:var(--light); padding:150px 0 0; position:relative; overflow:hidden;}
   .hero-photo{position:absolute; inset:0; z-index:0;}
-  .hero-photo img{width:100%; height:100%; object-fit:cover; object-position:60% 35%; animation:hero-kenburns 5s ease-in-out infinite alternate;}
+  .hero-photo img{width:100%; height:100%; object-fit:cover; object-position:60% 35%; animation:hero-kenburns 7.5s ease-in-out infinite alternate;}
   @keyframes hero-kenburns{ 0%{transform:scale(1);} 100%{transform:scale(1.14);} }
   @media(prefers-reduced-motion:reduce){ .hero-photo img{animation:none;} }
   .hero-photo::after{content:""; position:absolute; inset:0; background:linear-gradient(100deg, var(--navy) 0%, rgba(11,28,51,0.88) 38%, rgba(11,28,51,0.55) 65%, rgba(11,28,51,0.3) 100%);}
@@ -3445,33 +3447,18 @@ const revealObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.02, rootMargin: '0px 0px 0px 0px' });
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
-// Menu du haut : glisse hors de l'écran vers le haut quand on descend
-// franchement dans la page, revient en douceur dès qu'on remonte — et reste
-// stable une fois affiché (un seuil de mouvement minimum évite qu'un
-// tremblement de scroll, fréquent sur mobile, ne le refasse disparaître
-// aussitôt réapparu).
+// Menu du haut : reste TOUJOURS affiché, mais se resserre légèrement (moins
+// haut, logo plus petit, une ombre douce apparaît dessous) dès qu'on
+// commence à descendre dans la page, et reprend sa taille normale en haut.
 (() => {
   const headerNav = document.querySelector('header.nav');
   if(!headerNav) return;
-  let lastY = window.scrollY;
   let ticking = false;
-  const MIN_DELTA = 10;
   window.addEventListener('scroll', () => {
     if(ticking) return;
     ticking = true;
     requestAnimationFrame(() => {
-      const y = Math.max(window.scrollY, 0);
-      const delta = y - lastY;
-      if(y <= 80){
-        headerNav.classList.remove('nav-hidden');
-        lastY = y;
-      } else if(delta > MIN_DELTA){
-        headerNav.classList.add('nav-hidden'); // on descend franchement → on cache
-        lastY = y;
-      } else if(delta < -MIN_DELTA){
-        headerNav.classList.remove('nav-hidden'); // on remonte franchement → on montre, et ça reste
-        lastY = y;
-      }
+      headerNav.classList.toggle('nav-compact', window.scrollY > 60);
       ticking = false;
     });
   }, { passive: true });

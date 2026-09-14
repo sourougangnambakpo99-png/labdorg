@@ -105,14 +105,14 @@
   header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); transition:box-shadow 0.35s ease, border-color 0.35s ease, background 0.35s ease;}
   .nav-inner{max-width:1360px; margin:0 auto; padding:0 32px; height:68px; display:flex; align-items:center; justify-content:space-between; transition:height 0.35s ease;}
   @media(max-width:600px){ .nav-inner{padding:0 18px;} }
-  header.nav.nav-compact .nav-inner{height:42px;}
+  header.nav.nav-compact .nav-inner{height:88px;}
   header.nav.nav-compact{box-shadow:0 12px 30px rgba(11,28,51,0.18); border-bottom:3px solid var(--teal); background:rgba(255,255,255,0.99);}
   .brand-block{display:flex; flex-direction:column; line-height:1.25;}
   .brand{display:flex; align-items:center; gap:12px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
   .brand img{width:53px; height:53px; border-radius:50%; object-fit:cover; border:1px solid var(--line); transition:width 0.35s ease, height 0.35s ease;}
-  header.nav.nav-compact .brand img{width:28px; height:28px;}
+  header.nav.nav-compact .brand img{width:70px; height:70px;}
   .brand-name{transition:font-size 0.35s ease;}
-  header.nav.nav-compact .brand-name{font-size:0.85rem;}
+  header.nav.nav-compact .brand-name{font-size:1.3rem;}
   .brand img.is-logo, .footer-brand img.is-logo{border-radius:50%; object-fit:cover;}
   .watermark img.is-logo{border-radius:50%; object-fit:cover; box-shadow:none;}
   .brand-name{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
@@ -130,7 +130,7 @@
      section est décalée/transparente jusqu'à ce qu'elle entre dans l'écran,
      moment où elle glisse doucement en place. Désactivé automatiquement pour
      les personnes qui ont demandé moins d'animations dans leur système. */
-  .reveal{opacity:0; transform:translateY(38px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
+  .reveal{opacity:0; transform:translateY(95px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
   .reveal.is-visible{opacity:1; transform:translateY(0);}
   @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
@@ -3461,7 +3461,7 @@ function staggerChildren(container){
   items.forEach((child, i) => {
     child.style.opacity = '0';
     child.style.transform = 'translateY(24px)';
-    child.style.transition = `opacity 0.6s ease ${i*0.09}s, transform 0.6s ease ${i*0.09}s`;
+    child.style.transition = `opacity 0.45s ease ${i*0.5}s, transform 0.45s ease ${i*0.5}s`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
       child.style.opacity = '1';
       child.style.transform = 'translateY(0)';

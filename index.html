@@ -102,11 +102,11 @@
   .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
 
   /* ---------- NAV ---------- */
-  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line);}
+  header.nav{position:fixed; top:0; left:0; right:0; z-index:200; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border-bottom:1px solid var(--line); transition:box-shadow 0.35s ease, border-color 0.35s ease, background 0.35s ease;}
   .nav-inner{max-width:1360px; margin:0 auto; padding:0 32px; height:68px; display:flex; align-items:center; justify-content:space-between; transition:height 0.35s ease;}
   @media(max-width:600px){ .nav-inner{padding:0 18px;} }
   header.nav.nav-compact .nav-inner{height:42px;}
-  header.nav.nav-compact{box-shadow:0 10px 26px rgba(11,28,51,0.14);}
+  header.nav.nav-compact{box-shadow:0 12px 30px rgba(11,28,51,0.18); border-bottom:3px solid var(--teal); background:rgba(255,255,255,0.99);}
   .brand-block{display:flex; flex-direction:column; line-height:1.25;}
   .brand{display:flex; align-items:center; gap:12px; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1.05rem; color:var(--ink);}
   .brand img{width:53px; height:53px; border-radius:50%; object-fit:cover; border:1px solid var(--line); transition:width 0.35s ease, height 0.35s ease;}
@@ -119,7 +119,7 @@
   nav.links{display:none; align-items:center; gap:18px;}
   @media(min-width:1080px){ nav.links{display:flex;} }
   nav.links a{position:relative; color:var(--ink); font-size:0.85rem; opacity:0.75; white-space:nowrap; padding:6px 2px; transition:color 0.25s ease, opacity 0.25s ease, transform 0.25s ease;}
-  nav.links a::after{content:""; position:absolute; left:50%; right:50%; bottom:-3px; height:1.5px; border-radius:2px; background:var(--teal-dark); transition:left 0.45s cubic-bezier(.65,0,.35,1), right 0.45s cubic-bezier(.65,0,.35,1);}
+  nav.links a::after{content:""; position:absolute; left:50%; right:50%; bottom:-3px; height:1.5px; border-radius:2px; background:var(--teal-dark); transition:left 0.75s cubic-bezier(.16,1,.3,1), right 0.75s cubic-bezier(.16,1,.3,1);}
   nav.links a:hover{opacity:1; color:var(--teal-dark); transform:translateY(-1px);}
   nav.links a:hover::after{left:0; right:0;}
   nav.links a.is-active{opacity:1; color:var(--teal-dark);}
@@ -130,7 +130,7 @@
      section est décalée/transparente jusqu'à ce qu'elle entre dans l'écran,
      moment où elle glisse doucement en place. Désactivé automatiquement pour
      les personnes qui ont demandé moins d'animations dans leur système. */
-  .reveal{opacity:0; transform:translateY(60px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
+  .reveal{opacity:0; transform:translateY(38px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
   .reveal.is-visible{opacity:1; transform:translateY(0);}
   @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}

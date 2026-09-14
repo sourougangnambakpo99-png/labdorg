@@ -133,9 +133,6 @@
   .reveal{opacity:0; transform:translateY(95px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
   .reveal.is-visible{opacity:1; transform:translateY(0);}
   @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
-  .reveal-item{opacity:0; transform:translateY(42px); transition:opacity 0.6s cubic-bezier(.19,1,.22,1), transform 0.6s cubic-bezier(.19,1,.22,1);}
-  .reveal-item.is-visible{opacity:1; transform:translateY(0);}
-  @media(prefers-reduced-motion: reduce){ .reveal-item{opacity:1; transform:none; transition:none;} }
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
   @media(min-width:1080px){ .burger{display:none;} }
   #mobileMenu{display:none; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 32px 20px;}
@@ -3454,31 +3451,45 @@ const revealObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0, rootMargin: '0px 0px -50% 0px' });
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
-// Grilles à plusieurs colonnes (galerie, bureau, membres, projets,
-// lauréats, cotisations, contact...) : chaque carte apparaît individuellement
-// au fur et à mesure du VRAI scroll — pas de minuteur qui déroule tout seul.
-// Un MutationObserver surveille l'arrivée de nouvelles cartes (le contenu
-// est souvent re-généré depuis Firebase) et leur attribue leur propre
-// déclenchement dès qu'elles existent dans la page.
-const GRID_ITEM_SELECTOR = '.grid-2 > *, .grid-3 > *, .members-tags > *, .podium > *, .gallery-grid > *, .article-grid > *, .fee-grid > *, .contact-grid > *';
-const itemRevealObserver = new IntersectionObserver((entries) => {
+// Grilles à plusieurs colonnes (galerie, bureau, membres, projets, lauréats,
+// cotisations, contact...) : dès que la grille arrive à l'écran, ses cartes
+// apparaissent en cascade, une par une, façon dominos — jamais plusieurs en
+// même temps même si elles sont côte à côte dans la même rangée. Un
+// MutationObserver surveille les grilles re-générées (contenu Firebase qui
+// se met à jour) pour leur attribuer la cascade dès qu'elles existent.
+const GRID_SELECTOR = '.grid-2, .grid-3, .members-tags, .podium, .gallery-grid, .article-grid, .fee-grid, .contact-grid';
+const gridRevealObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if(entry.isIntersecting){
-      entry.target.classList.add('is-visible');
-      itemRevealObserver.unobserve(entry.target);
+      staggerChildren(entry.target);
+      gridRevealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
-function bindRevealItems(){
-  document.querySelectorAll(GRID_ITEM_SELECTOR).forEach(child => {
-    if(child.dataset.revealBound) return;
-    child.dataset.revealBound = '1';
-    child.classList.add('reveal-item');
-    itemRevealObserver.observe(child);
+}, { threshold: 0.05, rootMargin: '0px 0px -10% 0px' });
+function bindGridReveals(){
+  document.querySelectorAll(GRID_SELECTOR).forEach(grid => {
+    if(grid.dataset.gridBound) return;
+    grid.dataset.gridBound = '1';
+    gridRevealObserver.observe(grid);
   });
 }
-bindRevealItems();
-new MutationObserver(() => bindRevealItems()).observe(document.body, { childList: true, subtree: true });
+bindGridReveals();
+new MutationObserver(() => bindGridReveals()).observe(document.body, { childList: true, subtree: true });
+
+function staggerChildren(container){
+  const items = Array.from(container.children);
+  if(!items.length) return;
+  const step = 0.35; // chaque carte finit pile quand la suivante démarre → aucun chevauchement
+  items.forEach((child, i) => {
+    child.style.opacity = '0';
+    child.style.transform = 'translateY(30px)';
+    child.style.transition = `opacity ${step}s ease ${i*step}s, transform ${step}s ease ${i*step}s`;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      child.style.opacity = '1';
+      child.style.transform = 'translateY(0)';
+    }));
+  });
+}
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 // Surligne le lien du menu correspondant à la section actuellement au

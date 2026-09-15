@@ -747,7 +747,7 @@
   </section>
 
   <!-- CONTACT -->
-  <section id="contact" class="dark-bg reveal">
+  <section id="contact" class="dark-bg">
     <div class="wrap">
       <div class="section-head">
         <span class="tag-num">Contact</span>
@@ -3448,7 +3448,7 @@ const revealObserver = new IntersectionObserver((entries) => {
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0, rootMargin: '0px 0px -50% 0px' });
+}, { threshold: 0, rootMargin: '0px 0px -20% 0px' });
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 // Grilles à plusieurs colonnes (galerie, bureau, membres, projets, lauréats,
@@ -3457,7 +3457,7 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 // même temps même si elles sont côte à côte dans la même rangée. Un
 // MutationObserver surveille les grilles re-générées (contenu Firebase qui
 // se met à jour) pour leur attribuer la cascade dès qu'elles existent.
-const GRID_SELECTOR = '.grid-2, .grid-3, .members-tags, .podium, .gallery-grid, .article-grid, .fee-grid, .contact-grid';
+const GRID_SELECTOR = '.grid-2, .grid-3, .members-tags, .podium, .gallery-grid, .article-grid, .fee-grid';
 const gridRevealObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if(entry.isIntersecting){

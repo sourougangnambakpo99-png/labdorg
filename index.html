@@ -177,7 +177,10 @@
   h2.section-title{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:clamp(1.6rem, 3vw, 2.2rem); letter-spacing:-0.01em; color:var(--ink); position:relative; padding-bottom:14px;}
   h2.section-title::after{content:""; position:absolute; left:0; bottom:0; width:44px; height:3px; background:var(--teal); border-radius:2px;}
   .section-desc{color:var(--muted); font-size:1rem;}
-  .alt-bg{background:var(--paper-2);}
+  .alt-bg{background:var(--teal); color:#fff;}
+  .alt-bg .section-desc{color:rgba(255,255,255,0.82);}
+  .alt-bg h2.section-title{color:#fff;}
+  .alt-bg h2.section-title::after{background:#fff;}
   .dark-bg{background:var(--navy); color:var(--light);}
   .dark-bg .section-desc{color:var(--light-muted);}
   .dark-bg .tag-num{color:var(--teal);}

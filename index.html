@@ -130,7 +130,7 @@
      section est décalée/transparente jusqu'à ce qu'elle entre dans l'écran,
      moment où elle glisse doucement en place. Désactivé automatiquement pour
      les personnes qui ont demandé moins d'animations dans leur système. */
-  .reveal{opacity:0; transform:translateY(95px); transition:opacity 2.6s cubic-bezier(.19,1,.22,1), transform 2.6s cubic-bezier(.19,1,.22,1);}
+  .reveal{opacity:0; transform:translateY(95px); transition:opacity 1.1s cubic-bezier(.19,1,.22,1), transform 1.1s cubic-bezier(.19,1,.22,1);}
   .reveal.is-visible{opacity:1; transform:translateY(0);}
   @media(prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; transition:none;} }
   .burger{display:flex; background:none; border:1px solid var(--line); padding:8px 12px; color:var(--ink); font-size:0.8rem; border-radius:6px;}
@@ -171,7 +171,7 @@
   @media(prefers-reduced-motion:reduce){ .hero-tools-track{animation:none;} }
 
   /* ---------- SECTION GENERIC ---------- */
-  section{padding:88px 0;}
+  section{padding:58px 0;}
   .section-head{display:flex; flex-direction:column; gap:12px; margin-bottom:44px; max-width:640px;}
   .tag-num{font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.09em; color:var(--teal-dark); text-transform:uppercase;}
   h2.section-title{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:clamp(1.6rem, 3vw, 2.2rem); letter-spacing:-0.01em; color:var(--ink); position:relative; padding-bottom:14px;}
@@ -3448,7 +3448,7 @@ const revealObserver = new IntersectionObserver((entries) => {
       revealObserver.unobserve(entry.target);
     }
   });
-}, { threshold: 0, rootMargin: '0px 0px -20% 0px' });
+}, { threshold: 0, rootMargin: '0px' });
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 // Grilles à plusieurs colonnes (galerie, bureau, membres, projets, lauréats,

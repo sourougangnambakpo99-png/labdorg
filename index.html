@@ -3469,19 +3469,36 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 // MutationObserver surveille les grilles re-générées (contenu Firebase qui
 // se met à jour) pour leur attribuer la cascade dès qu'elles existent.
 const GRID_SELECTOR = '.grid-2, .grid-3, .members-tags, .podium, .gallery-grid, .article-grid, .fee-grid';
+const pendingGridIntersections = new Set(); // grilles arrivées à l'écran avant que leur contenu n'existe encore
 const gridRevealObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if(entry.isIntersecting){
-      staggerChildren(entry.target);
-      gridRevealObserver.unobserve(entry.target);
+      if(entry.target.children.length){
+        staggerChildren(entry.target);
+        gridRevealObserver.unobserve(entry.target);
+      } else {
+        // Pas encore de contenu (Firebase pas encore chargé) : on retient
+        // que cette grille est déjà à l'écran, et bindGridReveals() se
+        // chargera de lancer la cascade dès que le contenu apparaîtra.
+        pendingGridIntersections.add(entry.target);
+      }
     }
   });
 }, { threshold: 0.05, rootMargin: '0px 0px -10% 0px' });
 function bindGridReveals(){
   document.querySelectorAll(GRID_SELECTOR).forEach(grid => {
-    if(grid.dataset.gridBound) return;
-    grid.dataset.gridBound = '1';
-    gridRevealObserver.observe(grid);
+    if(!grid.dataset.gridBound){
+      grid.dataset.gridBound = '1';
+      gridRevealObserver.observe(grid);
+    }
+  });
+  // Grilles déjà à l'écran mais qui viennent tout juste de recevoir leur contenu.
+  pendingGridIntersections.forEach(grid => {
+    if(grid.children.length){
+      staggerChildren(grid);
+      gridRevealObserver.unobserve(grid);
+      pendingGridIntersections.delete(grid);
+    }
   });
 }
 bindGridReveals();

@@ -96,8 +96,19 @@
   .mono{font-family:'IBM Plex Mono', monospace;}
   .display{font-family:'Space Grotesk', sans-serif;}
   :focus-visible{outline:2px solid var(--teal); outline-offset:3px;}
-  .wrap{max-width:1360px; margin:0 auto; padding:0 32px;}
+  .wrap{max-width:1360px; margin:0 auto; padding:0 32px; position:relative; z-index:1;}
   @media(max-width:600px){ .wrap{padding:0 18px;} }
+  /* Taches de couleur floues en arrière-plan de certaines sections, pour
+     casser le blanc sans colorer tout le fond ni gêner la lecture. */
+  #vision, #cycles, #activites, #cotisations{position:relative; overflow:hidden;}
+  #vision::before, #cycles::before, #activites::before, #cotisations::before{
+    content:""; position:absolute; width:480px; height:480px; border-radius:50%;
+    background:var(--teal); opacity:0.10; filter:blur(70px); pointer-events:none; z-index:0;
+  }
+  #vision::before{ top:-160px; right:-140px; }
+  #cycles::before{ background:var(--navy); top:-160px; left:-140px; opacity:0.07; }
+  #activites::before{ bottom:-160px; right:-160px; }
+  #cotisations::before{ background:var(--navy); bottom:-160px; left:-160px; opacity:0.07; }
   .icon{flex-shrink:0;}
   .card{background:var(--paper); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);}
 
@@ -177,10 +188,7 @@
   h2.section-title{font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:clamp(1.6rem, 3vw, 2.2rem); letter-spacing:-0.01em; color:var(--ink); position:relative; padding-bottom:14px;}
   h2.section-title::after{content:""; position:absolute; left:0; bottom:0; width:44px; height:3px; background:var(--teal); border-radius:2px;}
   .section-desc{color:var(--muted); font-size:1rem;}
-  .alt-bg{background:var(--teal); color:#fff;}
-  .alt-bg .section-desc{color:rgba(255,255,255,0.82);}
-  .alt-bg h2.section-title{color:#fff;}
-  .alt-bg h2.section-title::after{background:#fff;}
+  .alt-bg{background:var(--paper-2);}
   .dark-bg{background:var(--navy); color:var(--light);}
   .dark-bg .section-desc{color:var(--light-muted);}
   .dark-bg .tag-num{color:var(--teal);}

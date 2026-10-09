@@ -967,8 +967,7 @@ const CONFIG = {
   // "*" = accès à tout. Changez ces mots de passe librement, un par personne.
   adminRoles: [
     { password:"pr-labd26",  role:"Président",                          categories:["*"] },
-    { password:"vp-labd26",  role:"Vice-président",                     categories:["*"] },
-    { password:"cae-labd26", role:"Chargé des affaires extérieures",    categories:["candidatures","commentaires"] },
+    { password:"cae-labd26", role:"Chargé des Relations Extérieures",   categories:["candidatures","commentaires","articles"], articlesScope:"formation" },
     { password:"tg-labd26",  role:"Trésorier Général",                  categories:["cotisations","commentaires"] },
     { password:"cdm-labd26", role:"Chargé des médias",                  categories:["articles","photos","vision","outils","cycles","commentaires"] },
     { password:"og-labd26",  role:"Organisateur Général",               categories:["articles","commentaires"] },
@@ -981,7 +980,6 @@ const CONFIG = {
   // Adresses mail de chaque membre du bureau, utilisées pour les notifications ciblées.
   emails: {
     pr:  "sourougangnambakpo99@gmail.com",
-    vp:  "abbemiwanou@gmail.com",
     sg:  "abdoulayebakelatifa@gmail.com",
     og:  "gnassounoukenneth@gmail.com",
     tg:  "benitezhevou44@gmail.com",
@@ -1018,11 +1016,10 @@ const CONFIG = {
 
   bureau: [
     { num:"LABD-001", nom:"GANGNAMBAKPO Sourou", role:"Président", abbr:"Pr", phone:"+229 01 66 94 28 67" },
-    { num:"LABD-002", nom:"MIWANOU Jérémie", role:"Vice-président", abbr:"VP", phone:"+229 01 94 74 21 27" },
     { num:"LABD-003", nom:"ABDOULAYE Latifatou", role:"Secrétaire Générale", abbr:"SG", phone:"+229 01 41 76 01 65" },
     { num:"LABD-004", nom:"GNANSOUNOU Kenneth", role:"Organisateur Général", abbr:"OG", phone:"+229 01 54 97 45 05" },
     { num:"LABD-005", nom:"HEVOU Bénitez", role:"Trésorier Général", abbr:"TG", phone:"+229 01 46 30 00 66" },
-    { num:"LABD-006", nom:"ZINSOU Jean", role:"Chargé des affaires extérieures", abbr:"CAE", phone:"+229 43 85 78 96" }
+    { num:"LABD-006", nom:"ZINSOU Jean", role:"Chargé des Relations Extérieures", abbr:"CRE", phone:"+229 43 85 78 96" }
   ],
 
   membres: [
@@ -1094,7 +1091,7 @@ const CONFIG = {
     { legende:"Sourou et Latifatou", src:"images/latifatou.jpg" },
     { legende:"Sourou et Kenneth", src:"images/kenneth_2.jpg" },
     { legende:"Sourou et Landrine", src:"images/visuel_labd_18.jpg" },
-    { legende:"Le Vice-président au travail", src:"images/visuel_labd_19.jpg" },
+    { legende:"En plein travail", src:"images/visuel_labd_19.jpg" },
     { legende:"Une LABDienne en séance", src:"images/visuel_labd_20.jpg" },
     { legende:"Deux LABDiens sur un projet", src:"images/visuel_labd_21.jpg" }
   ],
@@ -2553,20 +2550,20 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   const nom = nomInputJ.value.trim();
   const contact = contactInputJ.value.trim();
 
-  // Envoi mail brut (avec pièces jointes) au TG, en copie Pr + VP — le TG doit valider le paiement.
+  // Envoi mail brut (avec pièces jointes) au TG, en copie Pr — le TG doit valider le paiement.
   const fd = new FormData();
   fd.append('_subject', 'Nouvelle candidature — paiement à valider (LABD)');
   fd.append('_captcha', 'false');
   fd.append('Nom complet', nom);
   fd.append('Contact', contact);
   fd.append('Règlement approuvé', 'Oui');
-  fd.append('_cc', [CONFIG.emails.pr, CONFIG.emails.vp].join(','));
+  fd.append('_cc', [CONFIG.emails.pr].join(','));
   for(const f of fileInputJ.files) fd.append('Documents joints', f);
   try{
     await fetch('https://formsubmit.co/' + encodeURIComponent(CONFIG.emails.tg), { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
   }catch(err){ console.error(err); }
 
-  // Fichiers conservés en base pour consultation ultérieure par le CAE, une fois le paiement validé par le TG.
+  // Fichiers conservés en base pour consultation ultérieure par le CRE, une fois le paiement validé par le TG.
   let fichiers = [];
   try{
     fichiers = await Promise.all(Array.from(fileInputJ.files).map(async f => ({
@@ -2688,17 +2685,31 @@ function renderAdminContent(){
   const el = document.getElementById('adminContent');
   if(!el) return;
   if(adminTab === 'articles'){
-    const editing = DATA.articles.find(a => a.id === editingArticleId);
+    // Un rôle peut être cantonné à un seul type d'article (ex: CRE → "formation" uniquement).
+    // Il ne voit alors, ne crée alors et ne modifie alors que ce type ; les autres types
+    // (actualités, événements déjà en ligne) restent invisibles et intouchés pour lui.
+    const scope = currentRole && currentRole.articlesScope; // ex: "formation", ou undefined = tous types
+    const canSetFormationPassword = !!currentRole && (currentRole.categories.includes('*') || scope === 'formation');
+    let editing = DATA.articles.find(a => a.id === editingArticleId);
+    if(scope && editing && editing.type !== scope) editing = null; // garde-fou : jamais hors du périmètre autorisé
+    const effectiveType = editing ? editing.type : (scope || 'actualite');
+    const visibleArticles = scope ? DATA.articles.filter(a => a.type === scope) : DATA.articles;
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px;">
         ${editing ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editing.titre} »</p>` : ''}
         <label>Titre</label><input id="ad-art-titre" placeholder="Ex : Formation Archicad" value="${editing?editing.titre:''}">
-        <label>Type</label>
-        <select id="ad-art-type">
-          <option value="actualite" ${editing&&editing.type==='actualite'?'selected':''}>Actualité</option>
-          <option value="formation" ${editing&&editing.type==='formation'?'selected':''}>Formation</option>
-          <option value="evenement" ${editing&&editing.type==='evenement'?'selected':''}>Événement</option>
-        </select>
+        ${scope ? `
+          <label>Type</label>
+          <input value="${ARTICLE_TYPE_LABELS[scope]}" disabled style="opacity:0.7;">
+          <input type="hidden" id="ad-art-type" value="${scope}">
+        ` : `
+          <label>Type</label>
+          <select id="ad-art-type" onchange="document.getElementById('formationPassBlock').style.display = this.value==='formation' ? '' : 'none';">
+            <option value="actualite" ${effectiveType==='actualite'?'selected':''}>Actualité</option>
+            <option value="formation" ${effectiveType==='formation'?'selected':''}>Formation</option>
+            <option value="evenement" ${effectiveType==='evenement'?'selected':''}>Événement</option>
+          </select>
+        `}
         <label>Description</label><textarea id="ad-art-desc" placeholder="Description — **gras**, *italique*, colle un lien http(s):// pour qu'il soit cliquable">${editing?editing.description:''}</textarea>
         <label>Photo ou vidéo${editing?' (laisser vide pour garder le média actuel)':''}</label><input type="file" accept="image/*,video/*" id="ad-art-photo">
         <div class="frame-picker" id="frame-ad-art-photo"></div>
@@ -2711,7 +2722,14 @@ function renderAdminContent(){
           ${editing ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingArticleId=null; renderAdminContent();">Annuler</button>` : ''}
         </div>
       </div>
-      <div>${(DATA.articles.length?DATA.articles:[]).map(a => `<div class="admin-list-row"><span>${a.titre}</span><span class="meta">${ARTICLE_TYPE_LABELS[a.type]} · ${fmtDate(a.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editArticle('${a.id}')">Modifier</button><button class="link-btn" onclick="deleteArticle('${a.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun article publié — les exemples restent affichés sur le site public en attendant.</p>'}</div>`;
+      ${canSetFormationPassword ? `
+      <div class="check-step" id="formationPassBlock" style="margin-bottom:20px; ${effectiveType==='formation' ? '' : 'display:none;'}">
+        <label>Mot de passe de la section Formations (optionnel)</label>
+        <p class="form-note" style="margin-bottom:8px;">S'applique à toutes les formations du site, pas seulement à celle-ci. Si un mot de passe est défini, les visiteurs doivent le saisir avant d'accéder aux formations. Laissez vide pour un accès libre.</p>
+        <input id="ad-art-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
+        <button class="btn-primary" onclick="saveFormationPasswordFromArticle()">Enregistrer le mot de passe</button>
+      </div>` : ''}
+      <div>${(visibleArticles.length?visibleArticles:[]).map(a => `<div class="admin-list-row"><span>${a.titre}</span><span class="meta">${ARTICLE_TYPE_LABELS[a.type]} · ${fmtDate(a.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editArticle('${a.id}')">Modifier</button><button class="link-btn" onclick="deleteArticle('${a.id}')">Supprimer</button></span></div>`).join("") || `<p class="form-note">${scope ? 'Aucune formation publiée pour le moment.' : "Aucun article publié — les exemples restent affichés sur le site public en attendant."}</p>`}</div>`;
     setupFramePicker('ad-art-photo', 'frame-ad-art-photo');
     setupVideoFrameCapture('ad-art-photo', 'ad-art-poster-preview');
   }
@@ -2902,7 +2920,7 @@ function renderAdminContent(){
     setupVideoFrameCapture('ad-media-photo', 'ad-media-poster-preview');
   }
   if(adminTab === 'candidatures'){
-    // Vue CAE (+ SG, Pr, VP) : dossiers accessibles uniquement une fois le paiement validé par le TG.
+    // Vue CRE (+ SG, Pr) : dossiers accessibles uniquement une fois le paiement validé par le TG.
     const valides = DATA.candidatures.filter(c => c.paye);
     el.innerHTML = `<p class="form-note" style="margin-bottom:14px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Vous pouvez consulter chaque pièce jointe, puis partager le dossier dans le groupe WhatsApp du bureau pour étude.</p>
       <div>${valides.map(c => `<div class="admin-list-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
@@ -2913,6 +2931,7 @@ function renderAdminContent(){
           <div class="row" style="gap:10px; flex-wrap:wrap;">
             <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); padding:6px 12px; font-size:.85rem;" onclick="shareWhatsApp('📋 Dossier de candidature LABD à étudier\\nNom : ${c.nom}\\nContact : ${c.contact}\\nReçu le ${fmtDate(c.date)}')">Partager sur WhatsApp (bureau)</button>
             <label style="display:flex; align-items:center; gap:6px; font-size:.85rem;"><input type="checkbox" ${c.sgSuivi?'checked':''} onchange="toggleSgSuivi('${c.id}')"> Réponse SG envoyée à l'adhérent</label>
+            <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button>
           </div>
         </div>`).join("") || '<p class="form-note">Aucun dossier validé pour le moment — les dossiers apparaissent ici une fois le paiement confirmé par le TG.</p>'}</div>`;
   }
@@ -2934,9 +2953,9 @@ function renderAdminContent(){
         <input id="ad-fee-mensuelle-old" type="number" placeholder="Laisser vide si pas de changement récent" value="${f.mensuelleOld||''}">
         <button class="btn-primary" onclick="saveFees()">Enregistrer les montants</button>
       </div>
-      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion : ${fmtFcfa(f.adhesion)} F CFA (versement unique, aucune cotisation mensuelle). Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CAE.</p>
-      <p style="margin-bottom:14px;"><strong>${total}</strong> dossier(s) déjà validé(s) et transmis au CAE.</p>
-      <div>${pending.map(c => `<div class="admin-list-row"><span><input type="checkbox" onchange="toggleCandidaturePaye('${c.id}')"> ${c.nom}</span><span class="meta">en attente de confirmation</span></div>`).join("") || '<p class="form-note">Aucun dossier en attente de paiement.</p>'}</div>`;
+      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion : ${fmtFcfa(f.adhesion)} F CFA (versement unique, aucune cotisation mensuelle). Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE.</p>
+      <p style="margin-bottom:14px;"><strong>${total}</strong> dossier(s) déjà validé(s) et transmis au CRE.</p>
+      <div>${pending.map(c => `<div class="admin-list-row"><span><input type="checkbox" onchange="toggleCandidaturePaye('${c.id}')"> ${c.nom}</span><span class="meta">en attente de confirmation <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun dossier en attente de paiement.</p>'}</div>`;
   }
   if(adminTab === 'commentaires'){
     el.innerHTML = `<div>${DATA.commentaires.map(c => `<div class="admin-list-row"><span>${c.nom} — ${c.message.slice(0,60)}${c.message.length>60?'…':''}</span><span class="meta">${fmtDate(c.date)}</span></div>`).join("") || '<p class="form-note">Aucun avis reçu pour le moment.</p>'}</div>`;
@@ -2965,6 +2984,16 @@ async function saveFormationPassword(){
   formationUnlocked = false;
   renderArticles();
   alert(DATA.formationPassword ? "Mot de passe enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
+}
+// Même réglage que saveFormationPassword(), mais depuis le champ affiché directement
+// dans l'onglet Articles (pour le Président et le CRE, sans passer par Paramètres).
+async function saveFormationPasswordFromArticle(){
+  const val = document.getElementById('ad-art-formation-pass').value.trim();
+  DATA.formationPassword = val || null;
+  await storageSet('formation-password', DATA.formationPassword);
+  formationUnlocked = false;
+  renderArticles();
+  alert(DATA.formationPassword ? "Mot de passe des formations enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
 }
 
 // Transfère toute image encore stockée à l'ancienne façon (texte encodé dans
@@ -3029,11 +3058,11 @@ async function toggleCandidaturePaye(id){
   await storageSet('candidatures', DATA.candidatures);
   renderAdminContent();
   if(c.paye){
-    // Le dossier est officiellement enregistré : le CAE peut désormais y accéder, en copie Pr/VP/SG.
+    // Le dossier est officiellement enregistré : le CRE peut désormais y accéder, en copie Pr/SG.
     notifyMail(
-      'Dossier enregistré — accessible au CAE (LABD)',
-      [CONFIG.emails.cae, CONFIG.emails.pr, CONFIG.emails.vp, CONFIG.emails.sg],
-      { 'Nom complet': c.nom, 'Contact': c.contact, 'Statut': 'Paiement confirmé par le TG — dossier accessible au CAE' }
+      'Dossier enregistré — accessible au CRE (LABD)',
+      [CONFIG.emails.cae, CONFIG.emails.pr, CONFIG.emails.sg],
+      { 'Nom complet': c.nom, 'Contact': c.contact, 'Statut': 'Paiement confirmé par le TG — dossier accessible au CRE' }
     );
   }
 }
@@ -3042,6 +3071,14 @@ async function toggleSgSuivi(id){
   const c = DATA.candidatures.find(x => x.id === id);
   if(!c) return;
   c.sgSuivi = !c.sgSuivi;
+  await storageSet('candidatures', DATA.candidatures);
+  renderAdminContent();
+}
+// Suppression définitive d'un dossier de candidature (et des pièces jointes qu'il contient).
+// Utile pour archiver/nettoyer les dossiers déjà traités. Irréversible.
+async function deleteCandidature(id){
+  if(!confirm("Supprimer définitivement ce dossier de candidature (et ses pièces jointes) ? Cette action est irréversible.")) return;
+  DATA.candidatures = DATA.candidatures.filter(c => c.id !== id);
   await storageSet('candidatures', DATA.candidatures);
   renderAdminContent();
 }

@@ -2217,23 +2217,27 @@ function renderArticles(){
     const moreBtnExisting = document.getElementById('more-'+type);
 
     if(type === 'formation' && DATA.formationPassword && !formationUnlocked && !currentRole){
-      const previewList = merged.filter(a => a.type === 'formation').sort((a,b) => b.date - a.date).slice(0,1);
+      // Aperçu complet, en taille réelle, mais flouté — pour donner envie sans rien révéler de lisible.
+      const previewList = merged.filter(a => a.type === 'formation').sort((a,b) => b.date - a.date);
       const previewCards = previewList.map(a => {
-        const previewImg = a.photo || a.poster || null;
-        const mediaTag = previewImg
-          ? `<div class="thumb" style="position:relative; padding:0;"><img src="${previewImg}" alt="" style="width:100%; height:100%; object-fit:cover; object-position:${a.focal||'50% 50%'};" loading="lazy"></div>`
-          : `<div class="thumb" style="background:var(--paper-2);"></div>`;
+        const mediaTag = a.video
+          ? `<div class="thumb" style="position:relative; padding:0;">${videoTileHTML(a.video, a.poster, '')}</div>`
+          : a.photo
+            ? `<div class="thumb" style="position:relative; padding:0;"><img src="${a.photo}" alt="" style="width:100%; height:100%; object-fit:cover; object-position:${a.focal||'50% 50%'};" loading="lazy"></div>`
+            : "";
         return `
         <div class="article-card card locked-teaser-card">
           ${mediaTag}
           <div class="body">
             <div class="date">${fmtDateHeure(a.date)}</div>
             <h4>${a.titre}</h4>
+            <div class="desc-text"><p class="clamped">${formatDescription(a.description)}</p></div>
+            ${a.lien ? `<span class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); margin-top:10px; display:inline-flex;">Ouvrir le lien</span>` : ''}
           </div>
         </div>`;
       }).join("");
-      el.innerHTML = `<div class="locked-preview-wrap locked-preview-compact">
-        ${previewCards}
+      el.innerHTML = `<div class="locked-preview-wrap">
+        ${previewCards || `<p class="empty-col-note">${emptyLabels.formation}</p>`}
         <div class="locked-overlay">
           ${ICONS.lock}
           <p>Formations réservées : mot de passe requis.</p>
@@ -2268,6 +2272,7 @@ function renderArticles(){
             <h4>${a.titre}</h4>
             <div class="desc-text" id="desc-${a.id}"><p class="clamped">${formatDescription(a.description)}</p></div>
             <button class="desc-toggle" id="toggle-${a.id}" onclick="toggleDescription('${a.id}')">Voir plus</button>
+            ${a.lien ? `<a href="${a.lien}" target="_blank" rel="noopener" class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); margin-top:10px; display:inline-flex;">Ouvrir le lien</a>` : ''}
           </div>
         </div>`;
       }).join("");
@@ -2333,6 +2338,7 @@ function openArticleLightbox(id){
     <h3 style="margin-top:16px;">${a.titre}</h3>
     <div class="desc-text"><p>${formatDescription(a.description)}</p></div>
     <div class="row">
+      ${a.lien ? `<a class="btn-primary" href="${a.lien}" target="_blank" rel="noopener">Ouvrir le lien</a>` : ''}
       ${a.photo && !a.video ? `<a id="${dlId}" class="btn-primary" href="${a.photo}" download="labd-${a.id}">Télécharger</a>` : ''}
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
@@ -2716,6 +2722,9 @@ function renderAdminContent(){
         <p class="frame-hint">Pour une photo : cliquez sur l'aperçu pour choisir la partie qui s'affichera en miniature.</p>
         <div id="ad-art-poster-preview"></div>
         <label style="margin-top:6px;">— ou lien vidéo YouTube / Vimeo —</label><input id="ad-art-video-url" placeholder="https://youtube.com/watch?v=..." value="${editing && editing.video && isExternalVideoUrl(editing.video) ? editing.video : ''}">
+        <label style="margin-top:6px;">Lien externe (optionnel)</label>
+        <input id="ad-art-lien" placeholder="https://drive.google.com/... (Drive, document, formulaire, n'importe quel lien)" value="${editing?(editing.lien||''):''}">
+        <p class="frame-hint">S'affiche comme un bouton « Ouvrir le lien » sur la publication. Utile pour partager un dossier Google Drive, un support de cours, etc.</p>
         <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-share" style="width:auto;"> Partager automatiquement sur WhatsApp après publication</label>
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
@@ -3265,6 +3274,7 @@ async function publishArticle(){
 
   const file = fileInput.files[0];
   const videoUrl = (document.getElementById('ad-art-video-url')?.value || '').trim();
+  const lien = (document.getElementById('ad-art-lien')?.value || '').trim();
   let photo = null, video = null, focal = null, poster = null;
   if(videoUrl){
     video = videoUrl;
@@ -3282,12 +3292,12 @@ async function publishArticle(){
   if(editingArticleId){
     const article = DATA.articles.find(a => a.id === editingArticleId);
     if(article){
-      article.titre = titre; article.type = type; article.description = description;
+      article.titre = titre; article.type = type; article.description = description; article.lien = lien || null;
       if(file || videoUrl){ article.photo = photo; article.video = video; if(focal) article.focal = focal; if(poster) article.poster = poster; }
     }
     editingArticleId = null;
   } else {
-    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, date:Date.now()});
+    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, lien: lien || null, date:Date.now()});
   }
   delete videoFrameCaptures['ad-art-photo'];
   await storageSet('articles', DATA.articles);

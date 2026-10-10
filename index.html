@@ -234,17 +234,20 @@
   /* ---------- VISION ---------- */
   .grid-2{display:grid; grid-template-columns:1fr; gap:20px;}
   @media(min-width:700px){ .grid-2{grid-template-columns:repeat(2,1fr);} }
-  .vision-card{padding:28px; position:relative; transition:transform 0.25s ease, box-shadow 0.25s ease;}
-  .vision-card.has-thumb{padding-right:190px;}
-  @media(max-width:520px){ .vision-card.has-thumb{padding-right:28px; padding-top:170px;} .vision-card.has-thumb .v-thumb{top:14px; right:14px; left:14px; width:auto;} }
+  /* Chaque carte Vision a désormais le même grand visuel en haut, que la
+     photo ait été mise ou non (icône sur fond dégradé en attendant) — pour
+     que les 4 cartes gardent toujours exactement la même taille. */
+  .vision-card{padding:0; overflow:hidden; display:flex; flex-direction:column; transition:transform 0.25s ease, box-shadow 0.25s ease;}
   .vision-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
-  .vision-card .v-thumb{position:absolute; top:14px; right:14px; width:161px; height:140px; border-radius:10px; object-fit:cover; border:1px solid var(--line); box-shadow:0 3px 10px rgba(11,28,51,0.14);}
+  .v-media{width:100%; aspect-ratio:16/10; position:relative; overflow:hidden; background:linear-gradient(135deg, var(--teal-soft), var(--paper-2));}
+  .v-media img.v-thumb{width:100%; height:100%; object-fit:cover; display:block;}
+  .v-media .v-media-icon{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--teal-dark); transition:transform 0.35s cubic-bezier(.34,1.56,.64,1);}
+  .v-media .v-media-icon svg{width:44px; height:44px;}
+  .vision-card:hover .v-media-icon{transform:translateY(-4px) rotate(-6deg) scale(1.08);}
   .icon-badge{width:42px; height:42px; border-radius:10px; background:var(--teal-soft); color:var(--teal-dark); display:flex; align-items:center; justify-content:center; margin-bottom:16px; transition:transform 0.35s cubic-bezier(.34,1.56,.64,1);}
-  .vision-card:hover .icon-badge{transform:translateY(-4px) rotate(-6deg) scale(1.08);}
-  .vision-card h3{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; margin-bottom:8px; max-width:calc(100% - 78px);}
+  .v-body{padding:22px 24px 26px;}
+  .vision-card h3{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; margin-bottom:8px;}
   .vision-card p{color:var(--muted); font-size:0.93rem;}
-  .vision-card.has-thumb h3{font-size:0.98rem; max-width:100%;}
-  .vision-card.has-thumb p{font-size:0.86rem;}
   .objectif-card{padding:28px; transition:transform 0.25s ease, box-shadow 0.25s ease;}
   .objectif-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
   .objectif-card:hover .icon-badge{transform:translateY(-4px) rotate(-6deg) scale(1.08);}
@@ -1621,11 +1624,16 @@ function renderVision(){
   document.getElementById('visionGrid').innerHTML = CONFIG.vision.map((v,i) => {
     const vi = DATA.visionImages[i];
     return `
-    <div class="vision-card card${vi && vi.img ? ' has-thumb' : ''}">
-      ${vi && vi.img ? `<img class="v-thumb" src="${vi.img}" alt="${v.titre.replace(/<[^>]+>/g,' ')}" style="object-position:${vi.focal||'50% 50%'};" loading="lazy">` : ''}
-      <div class="icon-badge">${ICONS[v.icon] || ICONS.target}</div>
-      <h3>${v.titre}</h3>
-      <p>${v.texte}</p>
+    <div class="vision-card card">
+      <div class="v-media">
+        ${vi && vi.img
+          ? `<img class="v-thumb" src="${vi.img}" alt="${v.titre.replace(/<[^>]+>/g,' ')}" style="object-position:${vi.focal||'50% 50%'};" loading="lazy">`
+          : `<div class="v-media-icon">${ICONS[v.icon] || ICONS.target}</div>`}
+      </div>
+      <div class="v-body">
+        <h3>${v.titre}</h3>
+        <p>${v.texte}</p>
+      </div>
     </div>`;
   }).join("");
 }
@@ -2776,18 +2784,17 @@ function renderAdminContent(){
         <input id="ad-art-lien" placeholder="https://drive.google.com/... (Drive, document, formulaire, n'importe quel lien)" value="${editing?(editing.lien||''):''}">
         <p class="frame-hint">S'affiche comme un bouton « Ouvrir le lien » sur la publication. Utile pour partager un dossier Google Drive, un support de cours, etc.</p>
         <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-share" style="width:auto;"> Partager automatiquement sur WhatsApp après publication</label>
+        ${canSetFormationPassword ? `
+        <div id="formationPassBlock" style="${effectiveType==='formation' ? '' : 'display:none;'}">
+          <label style="margin-top:6px;">Mot de passe de la section Formations (optionnel)</label>
+          <p class="frame-hint">S'applique à toutes les formations du site, pas seulement à celle-ci. Enregistré en même temps que cette publication. Laissez vide pour un accès libre.</p>
+          <input id="ad-art-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
+        </div>` : ''}
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
           ${editing ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingArticleId=null; renderAdminContent();">Annuler</button>` : ''}
         </div>
       </div>
-      ${canSetFormationPassword ? `
-      <div class="check-step" id="formationPassBlock" style="margin-bottom:20px; ${effectiveType==='formation' ? '' : 'display:none;'}">
-        <label>Mot de passe de la section Formations (optionnel)</label>
-        <p class="form-note" style="margin-bottom:8px;">S'applique à toutes les formations du site, pas seulement à celle-ci. Si un mot de passe est défini, les visiteurs doivent le saisir avant d'accéder aux formations. Laissez vide pour un accès libre.</p>
-        <input id="ad-art-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
-        <button class="btn-primary" onclick="saveFormationPasswordFromArticle()">Enregistrer le mot de passe</button>
-      </div>` : ''}
       <div>${(visibleArticles.length?visibleArticles:[]).map(a => `<div class="admin-list-row"><span>${a.titre}</span><span class="meta">${ARTICLE_TYPE_LABELS[a.type]} · ${fmtDate(a.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editArticle('${a.id}')">Modifier</button><button class="link-btn" onclick="deleteArticle('${a.id}')">Supprimer</button></span></div>`).join("") || `<p class="form-note">${scope ? 'Aucune formation publiée pour le moment.' : "Aucun article publié — les exemples restent affichés sur le site public en attendant."}</p>`}</div>`;
     setupFramePicker('ad-art-photo', 'frame-ad-art-photo');
     setupVideoFrameCapture('ad-art-photo', 'ad-art-poster-preview');
@@ -3044,17 +3051,6 @@ async function saveFormationPassword(){
   renderArticles();
   alert(DATA.formationPassword ? "Mot de passe enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
 }
-// Même réglage que saveFormationPassword(), mais depuis le champ affiché directement
-// dans l'onglet Articles (pour le Président et le CRE, sans passer par Paramètres).
-async function saveFormationPasswordFromArticle(){
-  const val = document.getElementById('ad-art-formation-pass').value.trim();
-  DATA.formationPassword = val || null;
-  await storageSet('formation-password', DATA.formationPassword);
-  formationUnlocked = false;
-  renderArticles();
-  alert(DATA.formationPassword ? "Mot de passe des formations enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
-}
-
 // Transfère toute image encore stockée à l'ancienne façon (texte encodé dans
 // Firebase, préfixe "data:image") vers Cloudinary, et ne garde qu'un lien.
 // Ne touche à rien qui est déjà sur Cloudinary ou qui est un lien externe.
@@ -3351,6 +3347,19 @@ async function publishArticle(){
   }
   delete videoFrameCaptures['ad-art-photo'];
   await storageSet('articles', DATA.articles);
+
+  // Le mot de passe des formations (champ affiché seulement pour les rôles
+  // autorisés) s'enregistre avec cette même publication, en un seul geste.
+  const passField = document.getElementById('ad-art-formation-pass');
+  if(passField){
+    const passVal = passField.value.trim();
+    if(passVal !== (DATA.formationPassword || '')){
+      DATA.formationPassword = passVal || null;
+      await storageSet('formation-password', DATA.formationPassword);
+      formationUnlocked = false;
+    }
+  }
+
   renderArticles(); renderAdminContent();
   if(shareOnWhatsapp) shareWhatsApp(`📢 LABD — ${titre}\n${description}`);
 }

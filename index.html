@@ -237,17 +237,33 @@
   /* Chaque carte Vision a désormais le même grand visuel en haut, que la
      photo ait été mise ou non (icône sur fond dégradé en attendant) — pour
      que les 4 cartes gardent toujours exactement la même taille. */
-  .vision-card{padding:0; overflow:hidden; display:flex; flex-direction:column; transition:transform 0.25s ease, box-shadow 0.25s ease;}
-  .vision-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
+  .vision-card{padding:0; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow 0.25s ease;}
   .v-media{width:100%; aspect-ratio:16/10; position:relative; overflow:hidden; background:linear-gradient(135deg, var(--teal-soft), var(--paper-2));}
   .v-media img.v-thumb{width:100%; height:100%; object-fit:cover; display:block;}
   .v-media .v-media-icon{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--teal-dark); transition:transform 0.35s cubic-bezier(.34,1.56,.64,1);}
   .v-media .v-media-icon svg{width:44px; height:44px;}
-  .vision-card:hover .v-media-icon{transform:translateY(-4px) rotate(-6deg) scale(1.08);}
   .icon-badge{width:42px; height:42px; border-radius:10px; background:var(--teal-soft); color:var(--teal-dark); display:flex; align-items:center; justify-content:center; margin-bottom:16px; transition:transform 0.35s cubic-bezier(.34,1.56,.64,1);}
   .v-body{padding:22px 24px 26px;}
   .vision-card h3{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; margin-bottom:8px;}
   .vision-card p{color:var(--muted); font-size:0.93rem;}
+
+  /* Sur un appareil qui a une vraie souris : les 4 "feuillets" Vision se
+     comportent comme des volets ancrés à leur base. Au repos ils sont fermés
+     (l'image couvre tout) ; au survol, le volet se soulève depuis ses pieds
+     pour découvrir le texte en dessous, puis retombe et se recolle à sa base
+     dès qu'on s'éloigne. Sur tactile (pas de vrai survol), la mise en page
+     reste simple et statique : image au-dessus, texte toujours visible
+     en-dessous (réglée plus haut, non modifiée ici). */
+  @media (hover:hover) and (pointer:fine){
+    .vision-card{position:relative; min-height:272px;}
+    .v-media{position:absolute; inset:0; aspect-ratio:auto; z-index:2; transform-origin:bottom; transition:transform 0.55s cubic-bezier(.65,0,.35,1), box-shadow 0.45s ease; background:linear-gradient(135deg, #e4f5f6, var(--paper-2));}
+    .v-body{position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; justify-content:center; background:var(--paper);}
+    .vision-card:hover .v-media{transform:translateY(-86%); box-shadow:0 20px 36px rgba(11,28,51,0.25);}
+    .vision-card:hover .v-media-icon{transform:translateY(-3px) scale(1.06);}
+  }
+  @media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
+    .v-media{transition:none;}
+  }
   .objectif-card{padding:28px; transition:transform 0.25s ease, box-shadow 0.25s ease;}
   .objectif-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
   .objectif-card:hover .icon-badge{transform:translateY(-4px) rotate(-6deg) scale(1.08);}

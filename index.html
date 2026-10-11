@@ -260,19 +260,14 @@
      en-dessous (réglée plus haut, non modifiée ici). */
   @media (hover:hover) and (pointer:fine){
     .vision-card{position:relative; min-height:272px;}
-    .v-media{position:absolute; inset:0; aspect-ratio:auto; z-index:2; transform-origin:bottom; transition:transform 0.55s cubic-bezier(.65,0,.35,1), box-shadow 0.45s ease; background:linear-gradient(135deg, #e4f5f6, var(--paper-2)); display:flex; align-items:center; justify-content:center;}
+    .v-media{position:absolute; inset:0; aspect-ratio:auto; z-index:2; transform-origin:bottom; transition:transform 0.55s cubic-bezier(.65,0,.35,1), box-shadow 0.45s ease; background:linear-gradient(135deg, #e4f5f6, var(--paper-2));}
     .v-body{position:absolute; inset:0; z-index:1; display:flex; flex-direction:column; justify-content:center; background:var(--paper);}
     .vision-card:hover .v-media{transform:translateY(-86%); box-shadow:0 20px 36px rgba(11,28,51,0.25);}
     .vision-card:hover .v-media-icon{transform:translateY(-3px) scale(1.06);}
-    /* Le volet couvre maintenant toute la carte (dont les proportions ne sont
-       pas forcément 16/10), donc la photo telle quelle serait rognée bien plus
-       fort qu'avant. On garde le MÊME cadrage qu'ailleurs sur le site (photo en
-       16/10, centrée sur le point de recadrage choisi) — la photo est posée,
-       entière dans ce cadrage, sur un fond flouté agrandi de la même image qui
-       remplit joliment l'espace qui reste autour. Rien n'est perdu du cadrage
-       choisi, l'espace en trop est habillé plutôt que rogné en plus. */
-    .v-media .v-media-backdrop{display:block; position:absolute; inset:0; background-image:var(--v-bg, none); background-size:cover; background-position:center; filter:blur(24px) brightness(0.6) saturate(1.15); transform:scale(1.2); z-index:0;}
-    .v-media img.v-thumb{position:relative; z-index:1; width:auto; height:auto; max-width:100%; max-height:100%; aspect-ratio:16/10; object-fit:cover; display:block; border-radius:3px; box-shadow:0 10px 24px rgba(0,0,0,0.28);}
+    /* La photo remplit tout le volet, bord à bord, sans cadre ni flou autour —
+       object-fit:cover recadre simplement sur le point de recadrage choisi. */
+    .v-media .v-media-backdrop{display:none;}
+    .v-media img.v-thumb{position:relative; z-index:1; width:100%; height:100%; object-fit:cover; display:block;}
   }
   @media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:reduce){
     .v-media{transition:none;}

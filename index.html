@@ -237,7 +237,10 @@
   /* Chaque carte Vision a désormais le même grand visuel en haut, que la
      photo ait été mise ou non (icône sur fond dégradé en attendant) — pour
      que les 4 cartes gardent toujours exactement la même taille. */
-  .vision-card{padding:0; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow 0.25s ease;}
+  .vision-card{position:relative; padding:0; overflow:hidden; display:flex; flex-direction:column; transition:box-shadow 0.25s ease;}
+  /* Petite plaque de repère façon plan technique ("P-01"...) — toujours visible,
+     fixée au coin de la carte (ne bouge pas quand le volet se soulève au survol). */
+  .v-tag{position:absolute; top:10px; left:10px; z-index:3; padding:2px 7px; border-radius:4px; background:rgba(5,22,41,0.5); font-family:'Space Grotesk', sans-serif; font-size:0.64rem; font-weight:700; letter-spacing:0.09em; color:#fff; pointer-events:none;}
   .v-media{width:100%; aspect-ratio:16/10; position:relative; overflow:hidden; background:linear-gradient(135deg, var(--teal-soft), var(--paper-2));}
   .v-media img.v-thumb{width:100%; height:100%; object-fit:cover; display:block; position:relative; z-index:1;}
   .v-media .v-media-backdrop{display:none;}
@@ -275,30 +278,37 @@
     .v-media{transition:none;}
   }
 
-  /* ---------- LIAISON ENTRE LES 4 CARTES VISION ---------- */
-  /* Un fil discret relie les quatre cartes entre elles pour montrer que ces
-     quatre idées forment UNE seule vision, pas quatre blocs isolés. Le tracé
-     passe par le centre de chaque carte : il est donc caché sous les cartes
-     (opaques) et ne devient visible que dans les interstices, comme un fil
-     cousu qui ressort entre elles. Il se dessine au scroll puis un petit point
-     lumineux y circule lentement en boucle — un clin d'œil vivant, pas gênant. */
+  /* ---------- LIAISON ENTRE LES 4 CARTES VISION : "PLAN DE STRUCTURE" ---------- */
+  /* Idée : LABD, ce sont de futurs ingénieurs en génie civil — alors plutôt qu'un
+     simple fil décoratif, les 4 cartes Vision sont présentées comme les 4 piliers
+     d'un même plan de structure (repères "P-01" à "P-04" sur chaque carte, comme
+     sur un plan d'exécution). Elles sont reliées par de vraies lignes de cotation
+     d'architecte — traits fins, amorces perpendiculaires aux extrémités, un
+     "boulon" à la jonction centrale — posées exactement dans les interstices de
+     la grille (donc cachées sous les cartes, opaques, visibles seulement entre
+     elles). Les lignes se tracent au premier rendu comme un plan qu'on dessine,
+     puis un petit point lumineux circule en continu le long des axes, comme une
+     charge qui se répartit dans la structure : les 4 idées ne sont pas quatre
+     blocs isolés, elles tiennent ensemble comme une seule ossature. */
   .vision-link-wrap{position:relative;}
   #visionGrid{position:relative; z-index:1;}
   .vision-link{position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:0;}
-  .vision-link path{fill:none; stroke:var(--teal); stroke-width:2; stroke-linecap:round; opacity:0.45;}
-  .vision-link .vl-node{fill:var(--paper); stroke:var(--teal); stroke-width:2; opacity:0.75;}
-  .vision-link .vl-pulse{fill:var(--teal-dark); filter:drop-shadow(0 0 5px var(--teal));}
+  .vision-link .vl-line{fill:none; stroke:var(--teal); stroke-width:1.5; opacity:0.55;}
+  .vision-link .vl-tick{fill:none; stroke:var(--teal); stroke-width:1.5; opacity:0.55;}
+  .vision-link .vl-rivet{fill:var(--paper); stroke:var(--teal); stroke-width:1.6; opacity:0.85;}
+  .vision-link .vl-pulse{fill:var(--teal-dark); filter:drop-shadow(0 0 4px var(--teal));}
   @media (hover:hover) and (pointer:fine){
-    .vision-link path{transition:stroke-dashoffset 1.7s cubic-bezier(.65,0,.35,1);}
+    .vision-link .vl-line{transition:stroke-dashoffset 1.6s cubic-bezier(.65,0,.35,1);}
   }
   @media not (hover:hover){
-    .vision-link path{transition:stroke-dashoffset 1.1s ease-out;}
+    .vision-link .vl-line{transition:stroke-dashoffset 1.1s ease-out;}
   }
   @keyframes vlTravel{ from{ offset-distance:0%; } to{ offset-distance:100%; } }
-  .vision-link .vl-pulse{animation:vlTravel 7s linear infinite;}
+  .vision-link .vl-pulse{animation:vlTravel 6.5s linear infinite;}
+  .vision-link #vlPulseH{animation-duration:8.5s;}
   @media (prefers-reduced-motion:reduce){
     .vision-link .vl-pulse{display:none;}
-    .vision-link path{transition:none;}
+    .vision-link .vl-line{transition:none;}
   }
   .objectif-card{padding:28px; transition:transform 0.25s ease, box-shadow 0.25s ease;}
   .objectif-card:hover{transform:translateY(-3px); box-shadow:0 10px 26px rgba(11,28,51,0.10);}
@@ -634,12 +644,12 @@
       </div>
       <div class="vision-link-wrap">
         <svg class="vision-link" id="visionLink" aria-hidden="true" focusable="false">
-          <path id="visionLinkPath"></path>
-          <circle class="vl-node" id="vlNode0" r="3"></circle>
-          <circle class="vl-node" id="vlNode1" r="3"></circle>
-          <circle class="vl-node" id="vlNode2" r="3"></circle>
-          <circle class="vl-node" id="vlNode3" r="3"></circle>
-          <circle class="vl-pulse" r="3.5"></circle>
+          <path id="vlVert" class="vl-line"></path>
+          <path id="vlHoriz" class="vl-line"></path>
+          <path id="vlTicks" class="vl-tick"></path>
+          <circle class="vl-rivet" id="vlRivet" r="4"></circle>
+          <circle class="vl-pulse" id="vlPulseV" r="3"></circle>
+          <circle class="vl-pulse" id="vlPulseH" r="3"></circle>
         </svg>
         <div class="grid-2" id="visionGrid"></div>
       </div>
@@ -1690,6 +1700,7 @@ function renderVision(){
     const bgVar = hasImg ? ` style="--v-bg:url('${vi.img.replace(/'/g,"%27")}')"` : '';
     return `
     <div class="vision-card card">
+      <span class="v-tag">P-0${i+1}</span>
       <div class="v-media"${bgVar}>
         ${hasImg
           ? `<div class="v-media-backdrop"></div><img class="v-thumb" src="${vi.img}" alt="${v.titre.replace(/<[^>]+>/g,' ')}" style="object-position:${vi.focal||'50% 50%'};" loading="lazy">`
@@ -1704,68 +1715,86 @@ function renderVision(){
   scheduleVisionLinkTracking();
 }
 
-/* ---------- Liaison entre les 4 cartes Vision ----------
-   Calcule un tracé SVG qui relie le centre des quatre cartes (caché sous
-   elles, visible seulement dans les interstices), avec un petit nœud à
-   chaque "bulle" extérieure. Recalculé après le rendu (plusieurs fois
-   pendant ~1.6s, le temps que l'animation d'apparition en cascade des
-   cartes se stabilise) et à chaque redimensionnement de fenêtre. */
+/* ---------- Liaison entre les 4 cartes Vision : "plan de structure" ----------
+   Calcule deux lignes de cotation (une verticale, une horizontale) posées
+   exactement dans les interstices de la grille 2x2, avec de petites amorces
+   perpendiculaires à chaque extrémité et un "boulon" à la jonction centrale —
+   le tout caché sous les cartes (opaques), visible seulement entre elles.
+   Recalculé après le rendu (plusieurs fois pendant ~1.6s, le temps que
+   l'apparition en cascade des cartes se stabilise) et à chaque redimensionnement. */
 function positionVisionLink(){
   const wrap = document.querySelector('.vision-link-wrap');
   const grid = document.getElementById('visionGrid');
   const svg = document.getElementById('visionLink');
-  const path = document.getElementById('visionLinkPath');
-  if(!wrap || !grid || !svg || !path) return;
+  const vVert = document.getElementById('vlVert');
+  const vHoriz = document.getElementById('vlHoriz');
+  const vTicks = document.getElementById('vlTicks');
+  const rivet = document.getElementById('vlRivet');
+  const pulseV = document.getElementById('vlPulseV');
+  const pulseH = document.getElementById('vlPulseH');
+  if(!wrap || !grid || !svg || !vVert) return;
   const cards = grid.querySelectorAll('.vision-card');
   if(cards.length < 4) return;
   const wrapRect = wrap.getBoundingClientRect();
   if(!wrapRect.width || !wrapRect.height) return;
 
-  const centers = Array.from(cards).map(c => {
+  const rects = Array.from(cards).map(c => {
     const r = c.getBoundingClientRect();
-    return { x: r.left - wrapRect.left + r.width/2, y: r.top - wrapRect.top + r.height/2 };
+    return { left:r.left-wrapRect.left, right:r.right-wrapRect.left, top:r.top-wrapRect.top, bottom:r.bottom-wrapRect.top };
   });
   svg.setAttribute('viewBox', `0 0 ${wrapRect.width} ${wrapRect.height}`);
 
-  const singleColumn = Math.abs(centers[0].x - centers[1].x) < 2;
-  let d, nodePts;
+  const TICK = 7;
+  const singleColumn = Math.abs(rects[0].left - rects[1].left) < 2;
+  let dV, dH = '', dTicks, rivetPt;
   if(singleColumn){
-    // Empilées (mobile) : un simple fil vertical reliant les 4, avec un
-    // nœud dans chaque interstice entre deux cartes consécutives.
-    d = centers.map((c,i) => `${i===0?'M':'L'}${c.x},${c.y}`).join(' ');
-    nodePts = [0,1,2].map(i => ({ x:(centers[i].x+centers[i+1].x)/2, y:(centers[i].y+centers[i+1].y)/2 }));
+    // Empilées (mobile) : un seul axe vertical qui relie les 4, avec une
+    // amorce et un boulon dans chaque interstice entre deux cartes.
+    const x = (rects[0].left + rects[0].right) / 2;
+    dV = `M${x},${rects[0].top} L${x},${rects[3].bottom}`;
+    const gaps = [0,1,2].map(i => (rects[i].bottom + rects[i+1].top) / 2);
+    dTicks = gaps.map(y => `M${x-TICK},${y} L${x+TICK},${y}`).join(' ');
+    rivetPt = { x, y: gaps[1] };
   } else {
-    // Grille 2x2 (desktop) : une boucle arrondie qui passe par les 4 cartes
-    // (ordre DOM : haut-gauche, haut-droite, bas-gauche, bas-droite) et
-    // bombe légèrement vers l'extérieur entre chacune, comme un collier.
-    const [a,b,c2,d2] = centers;
-    const mAB = { x:(a.x+b.x)/2,  y:(a.y+b.y)/2 - 28 };
-    const mBD = { x:(b.x+d2.x)/2 + 28, y:(b.y+d2.y)/2 };
-    const mDC = { x:(d2.x+c2.x)/2, y:(d2.y+c2.y)/2 + 28 };
-    const mCA = { x:(c2.x+a.x)/2 - 28, y:(c2.y+a.y)/2 };
-    d = `M${a.x},${a.y} Q${mAB.x},${mAB.y} ${b.x},${b.y} Q${mBD.x},${mBD.y} ${d2.x},${d2.y} Q${mDC.x},${mDC.y} ${c2.x},${c2.y} Q${mCA.x},${mCA.y} ${a.x},${a.y}`;
-    nodePts = [mAB, mBD, mDC, mCA];
+    // Grille 2x2 (desktop) : un axe vertical + un axe horizontal, posés sur
+    // les interstices réels de la grille (ordre DOM : haut-G, haut-D, bas-G,
+    // bas-D), avec un boulon à leur croisement, comme un plan de structure.
+    const gutterX = (rects[0].right + rects[1].left) / 2;
+    const gutterY = (rects[0].bottom + rects[2].top) / 2;
+    const xLeft = rects[0].left, xRight = rects[1].right;
+    const yTop = rects[0].top, yBottom = rects[2].bottom;
+    dV = `M${gutterX},${yTop} L${gutterX},${yBottom}`;
+    dH = `M${xLeft},${gutterY} L${xRight},${gutterY}`;
+    dTicks = [
+      `M${gutterX-TICK},${yTop} L${gutterX+TICK},${yTop}`,
+      `M${gutterX-TICK},${yBottom} L${gutterX+TICK},${yBottom}`,
+      `M${xLeft},${gutterY-TICK} L${xLeft},${gutterY+TICK}`,
+      `M${xRight},${gutterY-TICK} L${xRight},${gutterY+TICK}`
+    ].join(' ');
+    rivetPt = { x: gutterX, y: gutterY };
   }
-  path.setAttribute('d', d);
+  vVert.setAttribute('d', dV);
+  vHoriz.setAttribute('d', dH);
+  vTicks.setAttribute('d', dTicks);
+  if(rivet){ rivet.setAttribute('cx', rivetPt.x); rivet.setAttribute('cy', rivetPt.y); }
+  if(pulseV){ try{ pulseV.style.offsetPath = `path('${dV}')`; }catch(e){} }
+  if(pulseH){
+    if(dH){ try{ pulseH.style.offsetPath = `path('${dH}')`; }catch(e){} pulseH.style.display = ''; }
+    else { pulseH.style.display = 'none'; }
+  }
 
-  for(let i=0; i<4; i++){
-    const n = document.getElementById('vlNode'+i);
-    if(!n) continue;
-    if(nodePts[i]){ n.setAttribute('cx', nodePts[i].x); n.setAttribute('cy', nodePts[i].y); n.style.display = ''; }
-    else { n.style.display = 'none'; }
-  }
-  const pulse = document.querySelector('.vl-pulse');
-  if(pulse){ try{ pulse.style.offsetPath = `path('${d}')`; }catch(e){} }
-
-  const len = path.getTotalLength();
-  path.style.strokeDasharray = len;
-  if(!path.dataset.drawn){
-    path.style.strokeDashoffset = len;
-    path.dataset.drawn = '1';
-    requestAnimationFrame(() => requestAnimationFrame(() => { path.style.strokeDashoffset = '0'; }));
-  } else {
-    path.style.strokeDashoffset = '0';
-  }
+  [vVert, vHoriz].forEach(p => {
+    if(!p.getAttribute('d')) return;
+    const len = p.getTotalLength();
+    p.style.strokeDasharray = len;
+    if(!p.dataset.drawn){
+      p.style.strokeDashoffset = len;
+      p.dataset.drawn = '1';
+      requestAnimationFrame(() => requestAnimationFrame(() => { p.style.strokeDashoffset = '0'; }));
+    } else {
+      p.style.strokeDashoffset = '0';
+    }
+  });
 }
 let vlTrackUntil = 0;
 function trackVisionLink(){

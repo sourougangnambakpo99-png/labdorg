@@ -288,10 +288,12 @@
   .vision-link-wrap{position:relative;}
   #visionGrid{position:relative; z-index:1;}
   .vision-link{position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:0;}
-  .vision-link .vl-line{fill:none; stroke:var(--teal); stroke-width:1.5; opacity:0.55;}
-  .vision-link .vl-tick{fill:none; stroke:var(--teal); stroke-width:1.5; opacity:0.55;}
-  .vision-link .vl-rivet{fill:var(--paper); stroke:var(--teal); stroke-width:1.6; opacity:0.85;}
-  .vision-link .vl-pulse{fill:var(--teal-dark); filter:drop-shadow(0 0 4px var(--teal));}
+  /* Très discret par défaut — un détail qu'on remarque en y prêtant attention,
+     pas quelque chose qui saute aux yeux dès l'arrivée sur la section. */
+  .vision-link .vl-line{fill:none; stroke:var(--teal); stroke-width:1; opacity:0.18;}
+  .vision-link .vl-tick{fill:none; stroke:var(--teal); stroke-width:1; opacity:0.18;}
+  .vision-link .vl-rivet{fill:var(--paper); stroke:var(--teal); stroke-width:1; opacity:0.35;}
+  .vision-link .vl-pulse{fill:var(--teal); opacity:0.55;}
   @media (hover:hover) and (pointer:fine){
     .vision-link .vl-line{transition:stroke-dashoffset 1.6s cubic-bezier(.65,0,.35,1);}
   }
@@ -299,8 +301,15 @@
     .vision-link .vl-line{transition:stroke-dashoffset 1.1s ease-out;}
   }
   @keyframes vlTravel{ from{ offset-distance:0%; } to{ offset-distance:100%; } }
-  .vision-link .vl-pulse{animation:vlTravel 6.5s linear infinite;}
-  .vision-link #vlPulseH{animation-duration:8.5s;}
+  .vision-link .vl-pulse{animation:vlTravel 9s linear infinite;}
+  .vision-link #vlPulseH{animation-duration:11.5s;}
+  /* Sur téléphone, encore plus discret : on garde juste la trace du plan,
+     sans le point animé qui attire trop l'œil sur un petit écran. */
+  @media not (hover:hover){
+    .vision-link .vl-line, .vision-link .vl-tick{opacity:0.12;}
+    .vision-link .vl-rivet{opacity:0.22;}
+    .vision-link .vl-pulse{display:none;}
+  }
   @media (prefers-reduced-motion:reduce){
     .vision-link .vl-pulse{display:none;}
     .vision-link .vl-line{transition:none;}
@@ -642,9 +651,9 @@
           <path id="vlVert" class="vl-line"></path>
           <path id="vlHoriz" class="vl-line"></path>
           <path id="vlTicks" class="vl-tick"></path>
-          <circle class="vl-rivet" id="vlRivet" r="4"></circle>
-          <circle class="vl-pulse" id="vlPulseV" r="3"></circle>
-          <circle class="vl-pulse" id="vlPulseH" r="3"></circle>
+          <circle class="vl-rivet" id="vlRivet" r="2.5"></circle>
+          <circle class="vl-pulse" id="vlPulseV" r="2"></circle>
+          <circle class="vl-pulse" id="vlPulseH" r="2"></circle>
         </svg>
         <div class="grid-2" id="visionGrid"></div>
       </div>

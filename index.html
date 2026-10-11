@@ -764,12 +764,13 @@
 
       <div class="form-panel card" id="adhesionPanel">
         <h3>Dossier de candidature</h3>
-        <p class="lead">Remplissez le formulaire et joignez votre CV et votre lettre de motivation manuscrite (scannée ou photographiée). Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
+        <p class="lead">Remplissez le formulaire et joignez votre CV ainsi que votre lettre de motivation manuscrite (scannée ou photographiée), dans deux champs séparés. Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
 
         <form id="adhesionForm">
           <div class="field"><label for="j-nom">Nom complet</label><input id="j-nom" type="text" placeholder="Votre nom et prénom" required></div>
           <div class="field"><label for="j-contact">Email ou téléphone</label><input id="j-contact" type="text" placeholder="Comment vous joindre" required></div>
-          <div class="field field-file"><label for="j-file">CV + lettre de motivation manuscrite (scan ou photo)</label><input id="j-file" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple required></div>
+          <div class="field field-file"><label for="j-file">CV (PDF ou image)</label><input id="j-file" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple required></div>
+          <div class="field field-file"><label for="j-lettre">Lettre de motivation manuscrite (scan ou photo)</label><input id="j-lettre" type="file" accept=".pdf,.jpg,.jpeg,.png" required></div>
 
           <div class="check-step">
             <div class="check-step-head">
@@ -2606,21 +2607,23 @@ function renderContact(){
 const chkReglement = document.getElementById('chk-reglement');
 const chkPaiement = document.getElementById('chk-paiement');
 const fileInputJ = document.getElementById('j-file');
+const lettreInputJ = document.getElementById('j-lettre');
 const nomInputJ = document.getElementById('j-nom');
 const contactInputJ = document.getElementById('j-contact');
 const submitBtn = document.getElementById('submitCandidature');
 
 function refreshSubmitState(){
-  submitBtn.disabled = !(chkReglement.checked && chkPaiement.checked && fileInputJ.files.length && nomInputJ.value.trim() && contactInputJ.value.trim());
+  submitBtn.disabled = !(chkReglement.checked && chkPaiement.checked && fileInputJ.files.length && lettreInputJ.files.length && nomInputJ.value.trim() && contactInputJ.value.trim());
 }
-[chkReglement, chkPaiement, fileInputJ, nomInputJ, contactInputJ].forEach(el => el.addEventListener('input', refreshSubmitState));
+[chkReglement, chkPaiement, fileInputJ, lettreInputJ, nomInputJ, contactInputJ].forEach(el => el.addEventListener('input', refreshSubmitState));
 [chkReglement, chkPaiement].forEach(el => el.addEventListener('change', refreshSubmitState));
 
 document.getElementById('adhesionForm').addEventListener('submit', async e => {
   e.preventDefault();
   // Limite de Cloudinary (plan gratuit) : 10 Mo pour un document, 10 Mo pour une image.
   // On vérifie avant tout envoi pour donner un message clair plutôt qu'un échec silencieux.
-  const tropLourd = Array.from(fileInputJ.files).find(f => f.size > 10*1024*1024);
+  const tousFichiers = [...Array.from(fileInputJ.files), ...Array.from(lettreInputJ.files)];
+  const tropLourd = tousFichiers.find(f => f.size > 10*1024*1024);
   if(tropLourd){
     alert(`Le fichier "${tropLourd.name}" est trop lourd (${(tropLourd.size/1024/1024).toFixed(1)} Mo). La limite est de 10 Mo par fichier. Compresse-le (par ex. sur ilovepdf.com/fr/compresser_pdf pour un PDF) puis réessaie.`);
     return;
@@ -2630,7 +2633,9 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   const nom = nomInputJ.value.trim();
   const contact = contactInputJ.value.trim();
 
-  // Envoi mail brut (avec pièces jointes) au TG, en copie Pr — le TG doit valider le paiement.
+  // Envoi mail (texte seul, sans pièce jointe) au TG, en copie Pr — juste une notification.
+  // Les pièces jointes ne sont volontairement PAS envoyées par mail : elles restent
+  // uniquement sur le site et ne deviennent visibles (au CRE) qu'après validation du paiement par le TG.
   const fd = new FormData();
   fd.append('_subject', 'Nouvelle candidature — paiement à valider (LABD)');
   fd.append('_captcha', 'false');
@@ -2638,22 +2643,43 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   fd.append('Contact', contact);
   fd.append('Règlement approuvé', 'Oui');
   fd.append('_cc', [CONFIG.emails.pr].join(','));
-  for(const f of fileInputJ.files) fd.append('Documents joints', f);
   try{
     await fetch('https://formsubmit.co/' + encodeURIComponent(CONFIG.emails.tg), { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
   }catch(err){ console.error(err); }
 
   // Fichiers conservés en base pour consultation ultérieure par le CRE, une fois le paiement validé par le TG.
+  // Le CV (fichiers) et la lettre manuscrite (lettre) restent dans deux champs distincts.
   let fichiers = [];
+  let lettre = null;
   try{
     fichiers = await Promise.all(Array.from(fileInputJ.files).map(async f => ({
       name: f.name,
       dataUrl: f.type.startsWith('image/') ? await uploadImage(f, 1800) : await uploadDocToCloudinary(f)
     })));
+    const lf = lettreInputJ.files[0];
+    if(lf){
+      lettre = { name: lf.name, dataUrl: lf.type.startsWith('image/') ? await uploadImage(lf, 1800) : await uploadDocToCloudinary(lf) };
+    }
   }catch(err){ console.error('lecture fichiers candidature', err); }
 
-  DATA.candidatures.unshift({ id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, sgSuivi:false });
-  await storageSet('candidatures', DATA.candidatures);
+  const entry = { id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, lettre, sgSuivi:false };
+  DATA.candidatures.unshift(entry);
+  // On vérifie que l'enregistrement a bien réussi : le mail de notification part toujours,
+  // même si ce dossier n'est pas sauvegardé — sans ce contrôle, un candidat pouvait voir
+  // "dossier bien reçu" alors que rien n'était réellement enregistré côté site (le TG ne
+  // voyait donc jamais rien à valider). On retente une fois en cas de souci de connexion passager.
+  let saved = await storageSet('candidatures', DATA.candidatures);
+  if(!saved){
+    await new Promise(r => setTimeout(r, 1500));
+    saved = await storageSet('candidatures', DATA.candidatures);
+  }
+  if(!saved){
+    DATA.candidatures = DATA.candidatures.filter(c => c.id !== entry.id);
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Enregistrer mon dossier";
+    alert("Le dossier n'a pas pu être enregistré sur le site (problème de connexion). Le mail de notification a bien été envoyé, mais merci de réessayer dans un instant : sans cet enregistrement, le Trésorier Général ne peut pas voir votre dossier pour valider le paiement.");
+    return;
+  }
   document.getElementById('adhesionForm').style.display = 'none';
   document.getElementById('candidatureSuccess').style.display = 'block';
 });
@@ -2759,6 +2785,43 @@ function adminLogout(){
 // mais un clic suffit pour relayer une publication au groupe WhatsApp du bureau.
 function shareWhatsApp(text){
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+// Partage d'un dossier de candidature précis : nom/prénom tel qu'écrit par l'intéressé,
+// contact, ET les fichiers eux-mêmes (CV + lettre manuscrite) en pièces jointes réelles —
+// pas de simples liens — via le partage natif du téléphone (celui-ci laisse choisir
+// WhatsApp et y dépose les fichiers directement, comme une pièce jointe classique).
+async function shareCandidatureWhatsApp(id){
+  const c = DATA.candidatures.find(x => x.id === id);
+  if(!c) return;
+  const text = `📋 Dossier de candidature LABD à étudier\nNom : ${c.nom}\nContact : ${c.contact}\nReçu le ${fmtDate(c.date)}`;
+  const docs = [...(c.fichiers||[]), ...(c.lettre ? [c.lettre] : [])].filter(d => d && d.dataUrl);
+
+  if(docs.length && navigator.share && navigator.canShare){
+    try{
+      const files = (await Promise.all(docs.map(async d => {
+        try{
+          const res = await fetch(d.dataUrl);
+          const blob = await res.blob();
+          return new File([blob], d.name, { type: blob.type || 'application/octet-stream' });
+        }catch(e){ console.error('téléchargement fichier pour partage', d.name, e); return null; }
+      }))).filter(Boolean);
+      if(files.length && navigator.canShare({ files })){
+        await navigator.share({ text, files });
+        return;
+      }
+    }catch(err){
+      // L'utilisateur a simplement annulé le partage : on ne fait rien de plus.
+      if(err && err.name === 'AbortError') return;
+      console.error('partage natif', err);
+    }
+  }
+
+  // Repli (ordinateur, ou navigateur sans partage de fichiers natif) : on ouvre WhatsApp
+  // Web avec le texte et des liens vers les documents, faute de pouvoir joindre un vrai fichier.
+  let fallbackText = text;
+  if(docs.length) fallbackText += `\n\n` + docs.map(d => d.dataUrl).join('\n');
+  shareWhatsApp(fallbackText);
 }
 
 function renderAdminContent(){
@@ -3009,9 +3072,18 @@ function renderAdminContent(){
           <div style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:6px;">
             <strong>${c.nom}</strong><span class="meta">${c.contact} · ${fmtDate(c.date)}</span>
           </div>
-          ${(c.fichiers||[]).length ? `<div style="display:flex; flex-wrap:wrap; gap:8px;">${c.fichiers.map((f,i) => `<a href="${f.dataUrl}" target="_blank" rel="noopener" download="${f.name}" class="link-btn" style="color:var(--teal-dark);">📎 ${f.name}</a>`).join("")}</div>` : '<span class="form-note">Aucune pièce jointe enregistrée.</span>'}
+          <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+            <div>
+              <span class="form-note" style="display:block; margin-bottom:4px;">CV :</span>
+              ${(c.fichiers||[]).length ? `<div style="display:flex; flex-wrap:wrap; gap:8px;">${c.fichiers.map((f,i) => `<a href="${f.dataUrl}" target="_blank" rel="noopener" download="${f.name}" class="link-btn" style="color:var(--teal-dark);">📎 ${f.name}</a>`).join("")}</div>` : '<span class="form-note">Aucun CV enregistré.</span>'}
+            </div>
+            <div>
+              <span class="form-note" style="display:block; margin-bottom:4px;">Lettre de motivation manuscrite :</span>
+              ${c.lettre ? `<a href="${c.lettre.dataUrl}" target="_blank" rel="noopener" download="${c.lettre.name}" class="link-btn" style="color:var(--teal-dark);">✍️ ${c.lettre.name}</a>` : '<span class="form-note">Aucune lettre manuscrite enregistrée.</span>'}
+            </div>
+          </div>
           <div class="row" style="gap:10px; flex-wrap:wrap;">
-            <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); padding:6px 12px; font-size:.85rem;" onclick="shareWhatsApp('📋 Dossier de candidature LABD à étudier\\nNom : ${c.nom}\\nContact : ${c.contact}\\nReçu le ${fmtDate(c.date)}')">Partager sur WhatsApp (bureau)</button>
+            <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); padding:6px 12px; font-size:.85rem;" onclick="shareCandidatureWhatsApp('${c.id}')">Partager sur WhatsApp (bureau)</button>
             <label style="display:flex; align-items:center; gap:6px; font-size:.85rem;"><input type="checkbox" ${c.sgSuivi?'checked':''} onchange="toggleSgSuivi('${c.id}')"> Réponse SG envoyée à l'adhérent</label>
             <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button>
           </div>

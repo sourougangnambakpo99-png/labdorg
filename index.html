@@ -367,6 +367,10 @@
   .history-edit-toolbar button:hover{border-color:var(--teal);}
 
   /* ---------- BUREAU ---------- */
+  .promotion-switch{display:flex; align-items:center; gap:10px; margin-bottom:22px;}
+  .promotion-switch label{font-size:0.78rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-2);}
+  .promotion-switch select{appearance:none; -webkit-appearance:none; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.92rem; color:var(--ink); background:var(--paper) url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23048b98' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/14px 14px; border:1px solid var(--line); border-radius:8px; padding:8px 32px 8px 12px; cursor:pointer; transition:border-color 0.2s ease;}
+  .promotion-switch select:hover, .promotion-switch select:focus{border-color:var(--teal); outline:none;}
   .grid-3{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:18px;}
   .bureau-card{padding:22px; display:flex; flex-direction:column; gap:12px; position:relative;}
   .bureau-top{display:flex; align-items:center; gap:14px;}
@@ -610,10 +614,22 @@
       <a href="#avis">Avis</a>
       <a href="#contact">Contact</a>
     </nav>
+    <!-- Sélecteur de promotion global : masqué tant qu'une seule promotion
+         existe (rien ne change pour les visiteurs). Dès qu'une deuxième
+         promotion est créée, ce menu apparaît et pilote l'affichage du
+         Bureau, des Actualités, des Cycles/Lauréats et de l'Adhésion pour
+         toute la page — on reste par défaut sur la promotion fondatrice. -->
+    <div class="promo-switch-global" style="display:none;">
+      <select class="promo-switch-select" onchange="switchPromotion(this.value)" aria-label="Choisir une promotion"></select>
+    </div>
     <a href="#adhesion" class="nav-cta">Rejoindre</a>
     <button class="burger" id="burgerBtn" aria-expanded="false" aria-controls="mobileMenu">MENU</button>
   </div>
   <div id="mobileMenu">
+    <div class="promo-switch-global promo-switch-mobile" style="display:none;">
+      <label style="font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); display:block; margin-bottom:6px;">Promotion</label>
+      <select class="promo-switch-select" onchange="switchPromotion(this.value)" style="width:100%;" aria-label="Choisir une promotion"></select>
+    </div>
     <a href="#vision">Vision</a>
     <a href="#objectif">Objectif</a>
     <a href="#histoire">Histoire</a>
@@ -771,7 +787,7 @@
       <div class="section-head">
         <span class="tag-num">Organisation</span>
         <h2 class="section-title">Le bureau administratif</h2>
-        <p class="section-desc">Élu lors de la séance fondatrice du 16 octobre 2025.</p>
+        <p class="section-desc" id="bureauSubtitle">Élu lors de la séance fondatrice du 16 octobre 2025.</p>
       </div>
       <div class="grid-3" id="bureauGrid"></div>
       <div class="members-list">
@@ -1156,7 +1172,7 @@ const CONFIG = {
     { password:"tg-labd26",  role:"Trésorier Général",                  categories:["cotisations","commentaires"] },
     { password:"cdm-labd26", role:"Chargé des médias",                  categories:["articles","photos","vision","outils","cycles","commentaires"] },
     { password:"og-labd26",  role:"Organisateur Général",               categories:["articles","commentaires"] },
-    { password:"sg-labd26",  role:"Secrétaire Générale",                categories:["membres","commentaires","candidatures"] },
+    { password:"sg-labd26",  role:"Secrétaire Générale",                categories:["membres","promotions","commentaires","candidatures"] },
     { password:"labd2026",   role:"Accès général",                      categories:["*"] }
   ],
 
@@ -1601,7 +1617,7 @@ async function mapDeleteItem(mapName, itemId){
 /* ==========================================================
    DONNEES DYNAMIQUES
 ========================================================== */
-let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null };
+let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null, promotions:{} };
 
 async function loadPhotoMap(mapName, legacyKey){
   const data = await mapGetAll(mapName, null);
@@ -1624,7 +1640,8 @@ async function loadData(){
     laureats, membresExtra, membresRemoved, membresOverrides, articles,
     projets, medias, candidatures, commentaires, settings, outils, outilsSeedDone,
     groupLogo, seedHidden, cyclesExtra, histoireText, heroPhoto, heroPhotoFocal,
-    logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText
+    logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText,
+    promotions
   ] = await Promise.all([
     loadPhotoMap('bureau-photos', 'bureau-photos'),
     loadPhotoMap('member-photos', 'member-photos'),
@@ -1654,7 +1671,8 @@ async function loadData(){
     storageGet('fees', { adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }),
     storageGet('reglement-text', null),
     storageGet('histoire-teaser', null),
-    storageGet('hero-text', null)
+    storageGet('hero-text', null),
+    storageGet('promotions', {})
   ]);
 
   DATA.bureauPhotos = bureauPhotos;
@@ -1685,6 +1703,7 @@ async function loadData(){
   DATA.reglementText = reglementText;
   DATA.histoireTeaser = histoireTeaser;
   DATA.heroText = heroText;
+  DATA.promotions = promotions || {};
 
   if(!outilsSeedDone || !DATA.outils || !DATA.outils.length){
     // Réinitialise une seule fois la liste (répare un ancien état corrompu par un bug de chargement).
@@ -1962,19 +1981,34 @@ async function removeMember(num){
   renderBureau(); renderAdminContent();
 }
 
-function renderBureau(){
-  document.getElementById('bureauGrid').innerHTML = getBureauList().map((m,i) => {
-    const photo = effectivePhoto(DATA.bureauPhotos, m.num, m.photo);
-    return `
+/* ---------- Promotions ----------
+   Le bureau "fondateur" (GC4) reste exactement comme avant — aucune donnée
+   déplacée, rien ne change pour vous (id spécial "__main__"). Chaque
+   promotion suivante (GC3, puis GC5...) est un objet simple à part dans
+   DATA.promotions, affiché par EXACTEMENT la même fonction de carte
+   (bureauCardHTML) : un seul code à maintenir, jamais dupliqué — une
+   correction ou un style modifié s'applique donc automatiquement à toutes
+   les promotions, présentes et futures. */
+let activePromotionId = '__main__';
+function promotionsSorted(){
+  return Object.values(DATA.promotions || {}).sort((a,b) => (a.ordre||0) - (b.ordre||0));
+}
+function activePromotion(){
+  if(activePromotionId === '__main__') return null;
+  return (DATA.promotions || {})[activePromotionId] || null;
+}
+function bureauCardHTML(m, i, photoKey){
+  const photo = effectivePhoto(DATA.bureauPhotos, photoKey, m.photo);
+  return `
     <div class="bureau-card card">
       <div class="bureau-top">
         <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
           ${avatarHTML(m.nom, i, photo)}
           <label class="avatar-upload" title="Changer la photo" onclick="event.stopPropagation();">
             ${ICONS.upload}
-            <input type="file" accept="image/*" style="display:none" onchange="handleBureauPhoto(event,'${m.num}')">
+            <input type="file" accept="image/*" style="display:none" onchange="handleBureauPhoto(event,'${photoKey}')">
           </label>
-          ${photo ? `<button class="avatar-remove" title="Revenir aux initiales" onclick="event.stopPropagation(); removeBureauPhoto('${m.num}')">✕</button>` : ''}
+          ${photo ? `<button class="avatar-remove" title="Revenir aux initiales" onclick="event.stopPropagation(); removeBureauPhoto('${photoKey}')">✕</button>` : ''}
         </div>
         <div>
           <span class="role-badge">${m.abbr ? `${m.abbr} · ${m.role||''}` : (m.role||'Bureau')}</span>
@@ -1984,10 +2018,147 @@ function renderBureau(){
       <a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>
       ${m.note ? `<span class="tenure-note">${ICONS.info} ${m.note}</span>` : ''}
     </div>`;
-  }).join("");
+}
+function switchPromotion(id){
+  activePromotionId = id;
+  renderBureau();
+}
+function renderBureau(){
+  const promos = promotionsSorted();
+  const switchWrap = document.getElementById('promotionSwitchWrap');
+  const sel = document.getElementById('promotionSwitch');
+  if(switchWrap && sel){
+    if(promos.length){
+      switchWrap.style.display = '';
+      sel.innerHTML = [`<option value="__main__">Promotion fondatrice</option>`]
+        .concat(promos.map(p => `<option value="${p.id}">${p.nom}${p.annee ? ' — '+p.annee : ''}</option>`)).join("");
+      sel.value = (activePromotionId === '__main__' || promos.some(p => p.id === activePromotionId)) ? activePromotionId : '__main__';
+    } else {
+      switchWrap.style.display = 'none';
+      activePromotionId = '__main__';
+    }
+  }
+
+  const promo = activePromotion();
+  const grid = document.getElementById('bureauGrid');
+  const subtitle = document.getElementById('bureauSubtitle');
+  if(promo){
+    grid.innerHTML = (promo.bureau||[]).map((m,i) => bureauCardHTML(m, i, promo.id+'_'+m.num)).join("")
+      || '<p class="form-note">Aucun membre de bureau enregistré pour cette promotion pour le moment.</p>';
+    if(subtitle) subtitle.textContent = promo.texte || `Bureau de la promotion ${promo.nom}${promo.annee ? ' ('+promo.annee+')' : ''}.`;
+  } else {
+    grid.innerHTML = getBureauList().map((m,i) => bureauCardHTML(m, i, m.num)).join("");
+    if(subtitle) subtitle.textContent = "Élu lors de la séance fondatrice du 16 octobre 2025.";
+  }
 
   renderMembers();
   renderStats();
+}
+
+/* ---------- Admin — gestion des promotions ----------
+   La promotion fondatrice continue de se gérer depuis l'onglet "Membres du
+   bureau" existant, inchangé. Cet onglet ne gère QUE les promotions
+   suivantes (GC3, puis les prochaines années) — chacune avec son propre
+   petit bureau, affiché via la même fonction bureauCardHTML que la
+   promotion fondatrice : un seul gabarit pour toutes. */
+let managingPromotionId = null;
+let editingPromotionId = null;
+let editingPromotionMemberNum = null;
+
+function renderPromotionsAdmin(promos){
+  const managing = managingPromotionId ? (DATA.promotions[managingPromotionId] || null) : null;
+
+  if(managing){
+    const editingM = editingPromotionMemberNum ? (managing.bureau||[]).find(m => m.num === editingPromotionMemberNum) : null;
+    return `
+      <p style="margin-bottom:14px;"><button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId=null; editingPromotionMemberNum=null; renderAdminContent();">← Retour aux promotions</button></p>
+      <h4 style="font-family:'Space Grotesk', sans-serif; margin-bottom:4px;">Bureau — ${managing.nom}${managing.annee?' ('+managing.annee+')':''}</h4>
+      <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte), une fois cette promotion sélectionnée dans le menu déroulant public.</p>
+      <div class="check-step" style="margin-bottom:20px;">
+        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom} »</p>` : ''}
+        <label>Nom complet</label><input id="ad-pm-nom" placeholder="Ex : NOM Prénom" value="${editingM?editingM.nom:''}">
+        <label>Poste</label><input id="ad-pm-role" placeholder="Ex : Président" value="${editingM?(editingM.role||''):''}">
+        <label>Abréviation</label><input id="ad-pm-abbr" placeholder="Ex : PR" value="${editingM?(editingM.abbr||''):''}">
+        <label>Téléphone (optionnel)</label><input id="ad-pm-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
+        <div class="row">
+          <button class="btn-primary" onclick="savePromotionMember('${managing.id}')">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
+          ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionMemberNum=null; renderAdminContent();">Annuler</button>` : ''}
+        </div>
+      </div>
+      <div>${(managing.bureau||[]).map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta">${m.abbr||''} <button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionMemberNum='${m.num}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="removePromotionMember('${managing.id}','${m.num}')">Retirer</button></span></div>`).join("") || '<p class="form-note">Aucun membre pour le moment.</p>'}</div>`;
+  }
+
+  const editingP = editingPromotionId ? promos.find(p => p.id === editingPromotionId) : null;
+  return `
+    <p class="form-note" style="margin-bottom:14px;">La promotion fondatrice (gérée depuis « Membres du bureau ») n'apparaît pas ici — créez ici UNIQUEMENT les promotions suivantes (GC3, puis les prochaines années). Dès qu'une promotion existe, un menu de sélection apparaît au-dessus du Bureau sur le site public ; tant qu'aucune n'existe, rien ne change pour les visiteurs.</p>
+    <div class="check-step" style="margin-bottom:20px;">
+      ${editingP ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} »</p>` : ''}
+      <label>Nom de la promotion</label><input id="ad-promo-nom" placeholder="Ex : Génie Civil 3" value="${editingP?editingP.nom:''}">
+      <label>Année (optionnel)</label><input id="ad-promo-annee" placeholder="Ex : 2026" value="${editingP?(editingP.annee||''):''}">
+      <label>Mot de la promotion (optionnel)</label><textarea id="ad-promo-texte" rows="2" placeholder="Remplace la phrase sous « Le bureau administratif » quand cette promotion est sélectionnée">${editingP?(editingP.texte||''):''}</textarea>
+      <div class="row">
+        <button class="btn-primary" onclick="savePromotion('${editingP?editingP.id:''}')">${editingP?'Enregistrer les modifications':'Créer la promotion'}</button>
+        ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>` : ''}
+      </div>
+    </div>
+    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer le bureau</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion créée pour le moment — la promotion fondatrice reste affichée par défaut sur le site.</p>'}</div>`;
+}
+
+async function savePromotion(id){
+  const nom = document.getElementById('ad-promo-nom').value.trim();
+  const annee = document.getElementById('ad-promo-annee').value.trim();
+  const texte = document.getElementById('ad-promo-texte').value.trim();
+  if(!nom){ alert("Le nom de la promotion est requis."); return; }
+  if(id){
+    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte });
+  } else {
+    const newId = 'promo_' + uid();
+    const ordre = promotionsSorted().length;
+    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, bureau:[] };
+  }
+  await storageSet('promotions', DATA.promotions);
+  editingPromotionId = null;
+  renderBureau();
+  renderAdminContent();
+}
+async function deletePromotion(id){
+  if(!confirm("Supprimer définitivement cette promotion et tout son bureau ? Cette action est irréversible.")) return;
+  delete DATA.promotions[id];
+  await storageSet('promotions', DATA.promotions);
+  if(managingPromotionId === id) managingPromotionId = null;
+  if(activePromotionId === id) activePromotionId = '__main__';
+  renderBureau();
+  renderAdminContent();
+}
+async function savePromotionMember(promoId){
+  const promo = DATA.promotions[promoId];
+  if(!promo) return;
+  const nom = document.getElementById('ad-pm-nom').value.trim();
+  const role = document.getElementById('ad-pm-role').value.trim();
+  const abbr = document.getElementById('ad-pm-abbr').value.trim();
+  const phone = document.getElementById('ad-pm-phone').value.trim();
+  if(!nom){ alert("Le nom est requis."); return; }
+  if(!promo.bureau) promo.bureau = [];
+  if(editingPromotionMemberNum){
+    const idx = promo.bureau.findIndex(m => m.num === editingPromotionMemberNum);
+    if(idx > -1) promo.bureau[idx] = Object.assign({}, promo.bureau[idx], { nom, role, abbr, phone });
+    editingPromotionMemberNum = null;
+  } else {
+    promo.bureau.push({ num:'PM-'+uid(), nom, role, abbr, phone });
+  }
+  await storageSet('promotions', DATA.promotions);
+  renderBureau();
+  renderAdminContent();
+}
+async function removePromotionMember(promoId, num){
+  const promo = DATA.promotions[promoId];
+  if(!promo) return;
+  if(!confirm("Retirer ce membre du bureau de cette promotion ?")) return;
+  promo.bureau = (promo.bureau||[]).filter(m => m.num !== num);
+  await storageSet('promotions', DATA.promotions);
+  await mapDeleteItem('bureau-photos', promoId+'_'+num);
+  renderBureau();
+  renderAdminContent();
 }
 
 let membersOpen = false;
@@ -2957,6 +3128,7 @@ const ADMIN_CATEGORIES = [
   {id:'histoire', label:'Notre histoire'},
   {id:'outils', label:'Logiciels (carrousel)'},
   {id:'membres', label:'Membres du bureau'},
+  {id:'promotions', label:'Promotions'},
   {id:'projets', label:'Projets'},
   {id:'cycles', label:'Cycles & lauréats'},
   {id:'photos', label:'Photos'},
@@ -3221,6 +3393,10 @@ function renderAdminContent(){
       <div>${allBureau.map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta">${m.abbr||''} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMember('${m.num}')">Modifier</button><button class="link-btn" onclick="removeMember('${m.num}')">Retirer</button></span></div>`).join("")}</div>
       <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:18px 0 4px;">Membres</div>
       <div>${allMembres.map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta"><button class="link-btn" style="color:var(--teal-dark);" onclick="editMember('${m.num}')">Modifier</button><button class="link-btn" onclick="removeMember('${m.num}')">Retirer</button></span></div>`).join("")}</div>`;
+  }
+  if(adminTab === 'promotions'){
+    const promos = promotionsSorted();
+    el.innerHTML = renderPromotionsAdmin(promos);
   }
   if(adminTab === 'projets'){
     const editingP = DATA.projets.find(p => p.id === editingProjetId);

@@ -371,6 +371,20 @@
   .promotion-switch label{font-size:0.78rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-2);}
   .promotion-switch select{appearance:none; -webkit-appearance:none; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.92rem; color:var(--ink); background:var(--paper) url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23048b98' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/14px 14px; border:1px solid var(--line); border-radius:8px; padding:8px 32px 8px 12px; cursor:pointer; transition:border-color 0.2s ease;}
   .promotion-switch select:hover, .promotion-switch select:focus{border-color:var(--teal); outline:none;}
+
+  /* ---------- SELECTEUR DE PROMOTION (global, dans la nav) ----------
+     Deux instances dans le DOM (nav bureau + menu mobile), une seule visible
+     à la fois selon la largeur d'écran, pilotées par la même classe
+     .is-visible (posée en JS uniquement quand au moins une promotion
+     existe) pour ne jamais entrer en conflit avec les media queries. */
+  .promo-switch-global{display:none;}
+  .promo-switch-global.is-visible.promo-switch-mobile{display:flex; align-items:center;}
+  @media(min-width:1080px){ .promo-switch-global.is-visible:not(.promo-switch-mobile){display:flex; align-items:center;} }
+  .promo-switch-global .promo-switch-select{appearance:none; -webkit-appearance:none; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.78rem; color:var(--teal-dark); background:var(--teal-soft) url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23048b98' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center/12px 12px; border:1px solid rgba(5,179,194,0.35); border-radius:7px; padding:7px 26px 7px 11px; cursor:pointer; transition:border-color 0.2s ease; max-width:180px; text-overflow:ellipsis;}
+  .promo-switch-global .promo-switch-select:hover, .promo-switch-global .promo-switch-select:focus{border-color:var(--teal); outline:none;}
+  .promo-switch-global .promo-switch-select:disabled{opacity:0.6; cursor:not-allowed;}
+  #mobileMenu .promo-switch-mobile{margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  #mobileMenu .promo-switch-mobile .promo-switch-select{max-width:none; width:100%; font-size:0.88rem; padding:10px 32px 10px 12px;}
   .grid-3{display:grid; grid-template-columns:repeat(auto-fill, minmax(230px,1fr)); gap:18px;}
   .bureau-card{padding:22px; display:flex; flex-direction:column; gap:12px; position:relative;}
   .bureau-top{display:flex; align-items:center; gap:14px;}
@@ -619,14 +633,14 @@
          promotion est créée, ce menu apparaît et pilote l'affichage du
          Bureau, des Actualités, des Cycles/Lauréats et de l'Adhésion pour
          toute la page — on reste par défaut sur la promotion fondatrice. -->
-    <div class="promo-switch-global" style="display:none;">
+    <div class="promo-switch-global">
       <select class="promo-switch-select" onchange="switchPromotion(this.value)" aria-label="Choisir une promotion"></select>
     </div>
     <a href="#adhesion" class="nav-cta">Rejoindre</a>
     <button class="burger" id="burgerBtn" aria-expanded="false" aria-controls="mobileMenu">MENU</button>
   </div>
   <div id="mobileMenu">
-    <div class="promo-switch-global promo-switch-mobile" style="display:none;">
+    <div class="promo-switch-global promo-switch-mobile">
       <label style="font-size:0.72rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); display:block; margin-bottom:6px;">Promotion</label>
       <select class="promo-switch-select" onchange="switchPromotion(this.value)" style="width:100%;" aria-label="Choisir une promotion"></select>
     </div>
@@ -898,6 +912,7 @@
 
       <div class="form-panel card" id="adhesionPanel">
         <h3>Dossier de candidature</h3>
+        <p class="form-note" id="adhesionPromoNote" style="display:none; margin-bottom:10px;"></p>
         <p class="lead">Remplissez le formulaire et joignez votre CV ainsi que votre lettre de motivation manuscrite (scannée ou photographiée), dans deux champs séparés. Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
 
         <form id="adhesionForm">
@@ -2019,26 +2034,43 @@ function bureauCardHTML(m, i, photoKey){
       ${m.note ? `<span class="tenure-note">${ICONS.info} ${m.note}</span>` : ''}
     </div>`;
 }
+// Le sélecteur de promotion vit dans la nav (version bureau + version menu
+// mobile) et pilote d'un coup le Bureau, les Actualités/Formations/Événements,
+// les Cycles & lauréats, et les montants/dossiers d'Adhésion affichés plus bas
+// sur la page. Un seul code, deux emplacements synchronisés.
+function renderPromotionSwitches(){
+  const promos = promotionsSorted();
+  const wraps = document.querySelectorAll('.promo-switch-global');
+  const selects = document.querySelectorAll('.promo-switch-select');
+  if(promos.length){
+    wraps.forEach(w => w.classList.add('is-visible'));
+    const optionsHtml = [`<option value="__main__">Promotion fondatrice</option>`]
+      .concat(promos.map(p => `<option value="${p.id}">${p.nom}${p.annee ? ' — '+p.annee : ''}</option>`)).join("");
+    const validId = (activePromotionId === '__main__' || promos.some(p => p.id === activePromotionId)) ? activePromotionId : '__main__';
+    activePromotionId = validId;
+    selects.forEach(sel => {
+      sel.innerHTML = optionsHtml;
+      sel.value = validId;
+      // Un bureau de promotion connecté reste cantonné à sa propre promotion :
+      // le sélecteur public est désactivé tant que cette session admin dure.
+      sel.disabled = !!(currentRole && currentRole.promotionId);
+    });
+  } else {
+    wraps.forEach(w => w.classList.remove('is-visible'));
+    activePromotionId = '__main__';
+  }
+}
 function switchPromotion(id){
   activePromotionId = id;
+  cyclesOffset = 0; activeCycleIndex = null; // les index de cycles ne sont pas partagés entre promotions
+  renderPromotionSwitches();
   renderBureau();
+  renderArticles();
+  renderCycles();
+  renderFees();
 }
 function renderBureau(){
-  const promos = promotionsSorted();
-  const switchWrap = document.getElementById('promotionSwitchWrap');
-  const sel = document.getElementById('promotionSwitch');
-  if(switchWrap && sel){
-    if(promos.length){
-      switchWrap.style.display = '';
-      sel.innerHTML = [`<option value="__main__">Promotion fondatrice</option>`]
-        .concat(promos.map(p => `<option value="${p.id}">${p.nom}${p.annee ? ' — '+p.annee : ''}</option>`)).join("");
-      sel.value = (activePromotionId === '__main__' || promos.some(p => p.id === activePromotionId)) ? activePromotionId : '__main__';
-    } else {
-      switchWrap.style.display = 'none';
-      activePromotionId = '__main__';
-    }
-  }
-
+  renderPromotionSwitches();
   const promo = activePromotion();
   const grid = document.getElementById('bureauGrid');
   const subtitle = document.getElementById('bureauSubtitle');
@@ -2065,13 +2097,13 @@ let managingPromotionId = null;
 let editingPromotionId = null;
 let editingPromotionMemberNum = null;
 
-function renderPromotionsAdmin(promos){
+function renderPromotionsAdmin(promos, locked){
   const managing = managingPromotionId ? (DATA.promotions[managingPromotionId] || null) : null;
 
   if(managing){
     const editingM = editingPromotionMemberNum ? (managing.bureau||[]).find(m => m.num === editingPromotionMemberNum) : null;
     return `
-      <p style="margin-bottom:14px;"><button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId=null; editingPromotionMemberNum=null; renderAdminContent();">← Retour aux promotions</button></p>
+      ${locked ? '' : `<p style="margin-bottom:14px;"><button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId=null; editingPromotionMemberNum=null; renderAdminContent();">← Retour aux promotions</button></p>`}
       <h4 style="font-family:'Space Grotesk', sans-serif; margin-bottom:4px;">Bureau — ${managing.nom}${managing.annee?' ('+managing.annee+')':''}</h4>
       <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte), une fois cette promotion sélectionnée dans le menu déroulant public.</p>
       <div class="check-step" style="margin-bottom:20px;">
@@ -2096,29 +2128,42 @@ function renderPromotionsAdmin(promos){
       <label>Nom de la promotion</label><input id="ad-promo-nom" placeholder="Ex : Génie Civil 3" value="${editingP?editingP.nom:''}">
       <label>Année (optionnel)</label><input id="ad-promo-annee" placeholder="Ex : 2026" value="${editingP?(editingP.annee||''):''}">
       <label>Mot de la promotion (optionnel)</label><textarea id="ad-promo-texte" rows="2" placeholder="Remplace la phrase sous « Le bureau administratif » quand cette promotion est sélectionnée">${editingP?(editingP.texte||''):''}</textarea>
+      <label style="margin-top:6px;">Mot de passe du bureau de cette promotion</label>
+      <input id="ad-promo-password" placeholder="Ex : gc3-labd26" value="${editingP?(editingP.password||''):''}">
+      <p class="frame-hint">Avec ce mot de passe, le bureau de cette promotion se connecte à son propre espace admin : son bureau, ses actualités/formations/événements, ses avis, ses candidatures et ses cycles/lauréats — uniquement les siens, rien de ce qui concerne les autres promotions. Laissez vide pour qu'aucun accès dédié n'existe encore.</p>
+      <label style="margin-top:6px;">Frais d'adhésion spécifiques (F CFA, optionnel)</label>
+      <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP && editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
+      <p class="frame-hint">Remplace, uniquement pour cette promotion, le montant affiché dans Cotisations/Adhésion et sur le formulaire de candidature.</p>
       <div class="row">
         <button class="btn-primary" onclick="savePromotion('${editingP?editingP.id:''}')">${editingP?'Enregistrer les modifications':'Créer la promotion'}</button>
         ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>` : ''}
       </div>
     </div>
-    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer le bureau</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion créée pour le moment — la promotion fondatrice reste affichée par défaut sur le site.</p>'}</div>`;
+    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}${p.password?' 🔒':''}</span><span class="meta">${(p.bureau||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer le bureau</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion créée pour le moment — la promotion fondatrice reste affichée par défaut sur le site.</p>'}</div>`;
 }
 
 async function savePromotion(id){
   const nom = document.getElementById('ad-promo-nom').value.trim();
   const annee = document.getElementById('ad-promo-annee').value.trim();
   const texte = document.getElementById('ad-promo-texte').value.trim();
+  const password = document.getElementById('ad-promo-password').value.trim();
+  const fraisVal = document.getElementById('ad-promo-frais').value.trim();
+  const fraisAdhesion = fraisVal === '' ? null : Number(fraisVal);
   if(!nom){ alert("Le nom de la promotion est requis."); return; }
+  if(fraisVal !== '' && (isNaN(fraisAdhesion) || fraisAdhesion < 0)){ alert("Le montant des frais d'adhésion doit être un nombre valide."); return; }
+  if(password && CONFIG.adminRoles.some(r => r.password === password)){ alert("Ce mot de passe est déjà utilisé par un compte admin existant — choisissez-en un autre."); return; }
+  if(password && Object.values(DATA.promotions).some(p => p.id !== id && p.password === password)){ alert("Ce mot de passe est déjà utilisé par une autre promotion — choisissez-en un autre."); return; }
   if(id){
-    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte });
+    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte, password: password || null, fraisAdhesion });
   } else {
     const newId = 'promo_' + uid();
     const ordre = promotionsSorted().length;
-    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, bureau:[] };
+    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, password: password || null, fraisAdhesion, bureau:[] };
   }
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
   renderBureau();
+  renderFees();
   renderAdminContent();
 }
 async function deletePromotion(id){
@@ -2220,7 +2265,9 @@ async function removeMemberPhoto(num){
   await mapDeleteItem('member-photos', num);
   renderMembers();
 }
-function laureateKey(cycleIndex, nom){ return cycleIndex + '-' + normName(nom); }
+function cyclePromoPrefix(){ return activePromotionId === '__main__' ? '' : activePromotionId + '-'; }
+function cycleStorageKey(cycleIndex){ return 'cy-' + cyclePromoPrefix() + cycleIndex; }
+function laureateKey(cycleIndex, nom){ return cyclePromoPrefix() + cycleIndex + '-' + normName(nom); }
 function handleLaureatePhoto(evt, key){
   const file = evt.target.files[0];
   evt.target.value = '';
@@ -2268,7 +2315,13 @@ async function removeLaureatePhoto(key){
   renderCycles();
 }
 
-function allCycles(){ return CONFIG.cycles.concat(DATA.cyclesExtra || []); }
+function allCycles(){
+  // Cycles & lauréats de la promotion fondatrice par défaut ; une fois une
+  // autre promotion sélectionnée, uniquement SES propres cycles/lauréats —
+  // les cycles d'origine (CONFIG.cycles) restent propres à la fondatrice.
+  if(activePromotionId === '__main__') return CONFIG.cycles.concat((DATA.cyclesExtra||[]).filter(c => !c.promotionId));
+  return (DATA.cyclesExtra||[]).filter(c => c.promotionId === activePromotionId);
+}
 const CYCLES_WINDOW_SIZE = 3;
 let cyclesOffset = 0;   // 0 = les 3 onglets les plus récents ; augmente pour remonter dans l'historique
 let activeCycleIndex = null; // index (global) de l'onglet actif ; null = onglet le plus récent de la fenêtre
@@ -2294,9 +2347,10 @@ function renderCycles(){
   tabs.innerHTML = visibleIdx.map(i => `<button class="tab-btn${i===activeCycleIndex?' active':''}" data-i="${i}">${cycles[i].label}</button>`).join("");
   panels.innerHTML = visibleIdx.map(i => {
     const c = cycles[i];
-    const laureats = (DATA.laureats['cy-'+i] && DATA.laureats['cy-'+i].length) ? DATA.laureats['cy-'+i] : (c.laureats || []);
+    const ck = cycleStorageKey(i);
+    const laureats = (DATA.laureats[ck] && DATA.laureats[ck].length) ? DATA.laureats[ck] : (c.laureats || []);
     return `
-    <div class="tab-panel${i===activeCycleIndex?' active':''}" id="cy-${i}">
+    <div class="tab-panel${i===activeCycleIndex?' active':''}" id="cy-${cyclePromoPrefix()}${i}">
       <p class="cycle-meta">${c.statut}</p>
       ${laureats.length ? `<div class="podium">${laureats.map(l => {
         const key = laureateKey(i, l.nom);
@@ -2669,7 +2723,13 @@ function updateDescToggles(){
 const articlesWindow = { actualite:{size:2,offset:0}, evenement:{size:2,offset:0}, formation:{size:2,offset:0} };
 
 function renderArticles(){
-  const merged = CONFIG.exampleArticles.concat(DATA.articles);
+  // Actualités/formations/événements de la promotion fondatrice par défaut ;
+  // dès qu'une autre promotion est sélectionnée (sélecteur dans la nav), on
+  // bascule sur SES propres publications uniquement.
+  const promoScopeId = activePromotionId === '__main__' ? null : activePromotionId;
+  const merged = promoScopeId
+    ? DATA.articles.filter(a => a.promotionId === promoScopeId)
+    : CONFIG.exampleArticles.concat(DATA.articles.filter(a => !a.promotionId));
   const emptyLabels = { actualite:'Aucune actualité pour le moment.', evenement:'Aucun événement pour le moment.', formation:'Aucune formation pour le moment.' };
   ['actualite','evenement','formation'].forEach(type => {
     const el = document.getElementById('grid-'+type);
@@ -3021,11 +3081,14 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   // Envoi mail (texte seul, sans pièce jointe) au TG, en copie Pr — juste une notification.
   // Les pièces jointes ne sont volontairement PAS envoyées par mail : elles restent
   // uniquement sur le site et ne deviennent visibles (au CRE) qu'après validation du paiement par le TG.
+  const candPromo = activePromotion();
+  const candPromoLabel = candPromo ? `${candPromo.nom}${candPromo.annee ? ' ('+candPromo.annee+')' : ''}` : 'Promotion fondatrice';
   const fd = new FormData();
-  fd.append('_subject', 'Nouvelle candidature — paiement à valider (LABD)');
+  fd.append('_subject', `Nouvelle candidature — paiement à valider (LABD, ${candPromoLabel})`);
   fd.append('_captcha', 'false');
   fd.append('Nom complet', nom);
   fd.append('Contact', contact);
+  fd.append('Promotion visée', candPromoLabel);
   fd.append('Règlement approuvé', 'Oui');
   fd.append('_cc', [CONFIG.emails.pr].join(','));
   try{
@@ -3047,7 +3110,7 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
     }
   }catch(err){ console.error('lecture fichiers candidature', err); }
 
-  const entry = { id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, lettre, sgSuivi:false };
+  const entry = { id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, lettre, sgSuivi:false, promotionId: activePromotionId === '__main__' ? null : activePromotionId };
   DATA.candidatures.unshift(entry);
   // On vérifie que l'enregistrement a bien réussi : le mail de notification part toujours,
   // même si ce dossier n'est pas sauvegardé — sans ce contrôle, un candidat pouvait voir
@@ -3082,7 +3145,7 @@ document.getElementById('avisForm').addEventListener('submit', async e => {
   try{
     await fetch('https://formsubmit.co/sourougangnambakpo99@gmail.com', { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
   }catch(err){ console.error(err); }
-  DATA.commentaires.unshift({ id:uid(), nom: nom || 'Anonyme', message:msg, date:Date.now() });
+  DATA.commentaires.unshift({ id:uid(), nom: nom || 'Anonyme', message:msg, date:Date.now(), promotionId: activePromotionId === '__main__' ? null : activePromotionId });
   await storageSet('commentaires', DATA.commentaires);
   document.getElementById('avisForm').style.display = 'none';
   document.getElementById('avisSuccess').style.display = 'block';
@@ -3108,14 +3171,31 @@ function openAdminEntry(){
     </div>
   `);
 }
+// Catégories ouvertes au bureau d'une promotion connecté avec SON propre mot
+// de passe : uniquement ce qui concerne sa promotion (jamais les autres
+// promotions, ni la promotion fondatrice).
+const PROMOTION_BUREAU_CATEGORIES = ['membres','articles','commentaires','cycles','candidatures','cotisations'];
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
-  const match = CONFIG.adminRoles.find(r => r.password === val);
+  let match = CONFIG.adminRoles.find(r => r.password === val);
+  if(!match && val){
+    const promo = Object.values(DATA.promotions || {}).find(p => p.password && p.password === val);
+    if(promo){
+      match = { role:`Bureau — ${promo.nom}`, categories:PROMOTION_BUREAU_CATEGORIES, promotionId:promo.id };
+    }
+  }
   if(match){
     adminUnlocked = true;
     currentRole = match;
     adminTab = match.categories.includes('*') ? 'articles' : match.categories[0];
     document.body.classList.add('admin-on');
+    if(match.promotionId){
+      // Le bureau d'une promotion reste cantonné à sa promotion pendant toute
+      // sa session admin : le sélecteur public se verrouille dessus.
+      activePromotionId = match.promotionId;
+      managingPromotionId = match.promotionId;
+    }
+    renderPromotionSwitches();
     openAdminDashboard();
     renderProjects();
   } else { alert("Mot de passe incorrect."); }
@@ -3159,10 +3239,20 @@ function openAdminDashboard(){
 }
 function switchAdminTab(id){ adminTab = id; openAdminDashboard(); }
 function adminLogout(){
+  const wasPromotionScoped = !!(currentRole && currentRole.promotionId);
   currentRole = null;
   adminUnlocked = false;
+  managingPromotionId = null;
   document.body.classList.remove('admin-on');
   closeModal();
+  if(wasPromotionScoped){
+    activePromotionId = '__main__'; // revenir à la vue par défaut (promotion fondatrice) en quittant
+    renderBureau();
+    renderCycles();
+    renderFees();
+  } else {
+    renderPromotionSwitches();
+  }
   renderProjects();
   renderArticles();
 }
@@ -3218,11 +3308,13 @@ function renderAdminContent(){
     // Il ne voit alors, ne crée alors et ne modifie alors que ce type ; les autres types
     // (actualités, événements déjà en ligne) restent invisibles et intouchés pour lui.
     const scope = currentRole && currentRole.articlesScope; // ex: "formation", ou undefined = tous types
+    const promoScope = currentRole && currentRole.promotionId; // bureau d'une promotion → ses propres publications seulement
     const canSetFormationPassword = !!currentRole && (currentRole.categories.includes('*') || scope === 'formation');
     let editing = DATA.articles.find(a => a.id === editingArticleId);
     if(scope && editing && editing.type !== scope) editing = null; // garde-fou : jamais hors du périmètre autorisé
+    if(promoScope && editing && editing.promotionId !== promoScope) editing = null; // ni hors de sa propre promotion
     const effectiveType = editing ? editing.type : (scope || 'actualite');
-    const visibleArticles = scope ? DATA.articles.filter(a => a.type === scope) : DATA.articles;
+    const visibleArticles = DATA.articles.filter(a => (!scope || a.type === scope) && (promoScope ? a.promotionId === promoScope : !a.promotionId));
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px;">
         ${editing ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editing.titre} »</p>` : ''}
@@ -3350,7 +3442,7 @@ function renderAdminContent(){
         <label>Lauréats (un par ligne)</label><textarea id="ad-cycle-laureats" rows="4" placeholder="1. Nom Prénom — mention"></textarea>
         <button class="btn-primary" onclick="addCycle()">Ajouter le cycle</button>
       </div>
-      <div>${cycles.map((c,i) => `<div class="admin-list-row"><span>${c.label}</span><span class="meta">${i>=CONFIG.cycles.length ? `<button class="link-btn" onclick="deleteCycle(${i-CONFIG.cycles.length})">Supprimer</button>` : "cycle d'origine"}</span></div>`).join("")}</div>`;
+      <div>${cycles.map((c) => `<div class="admin-list-row"><span>${c.label}</span><span class="meta">${CONFIG.cycles.includes(c) ? "cycle d'origine" : `<button class="link-btn" onclick="deleteCycle(${DATA.cyclesExtra.indexOf(c)})">Supprimer</button>`}</span></div>`).join("")}</div>`;
   }
   if(adminTab === 'outils'){
     el.innerHTML = `
@@ -3361,7 +3453,14 @@ function renderAdminContent(){
       </div>
       <div>${DATA.outils.map(o => `<div class="admin-list-row"><input value="${o.nom}" id="ad-outil-edit-${o.id}" style="flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line); border-radius:6px; margin-right:8px;"><span class="meta"><button class="link-btn" style="color:var(--teal-dark);" onclick="renameOutil('${o.id}')">Enregistrer</button><button class="link-btn" onclick="removeOutil('${o.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun logiciel dans le carrousel.</p>'}</div>`;
   }
-  if(adminTab === 'membres'){
+  if(adminTab === 'membres' && currentRole && currentRole.promotionId){
+    // Le bureau d'une promotion gère ici UNIQUEMENT son propre bureau, via le
+    // même écran (et le même gabarit de carte) que celui utilisé pour gérer
+    // les promotions depuis le compte PR/SG — rien à dupliquer.
+    managingPromotionId = currentRole.promotionId;
+    el.innerHTML = renderPromotionsAdmin(promotionsSorted(), true);
+  }
+  if(adminTab === 'membres' && !(currentRole && currentRole.promotionId)){
     const allBureau = getBureauList();
     const allMembres = getMembresList();
     let editingM = null, editingMCat = 'membre';
@@ -3455,8 +3554,10 @@ function renderAdminContent(){
     setupVideoFrameCapture('ad-media-photo', 'ad-media-poster-preview');
   }
   if(adminTab === 'candidatures'){
-    // Vue CRE (+ SG, Pr) : dossiers accessibles uniquement une fois le paiement validé par le TG.
-    const valides = DATA.candidatures.filter(c => c.paye);
+    // Vue CRE (+ SG, Pr, ou bureau d'une promotion pour ses propres dossiers) :
+    // dossiers accessibles uniquement une fois le paiement validé par le TG.
+    const promoScopeC = currentRole && currentRole.promotionId;
+    const valides = DATA.candidatures.filter(c => (promoScopeC ? c.promotionId === promoScopeC : !c.promotionId) && c.paye);
     el.innerHTML = `<p class="form-note" style="margin-bottom:14px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Vous pouvez consulter chaque pièce jointe, puis partager le dossier dans le groupe WhatsApp du bureau pour étude.</p>
       <div>${valides.map(c => `<div class="admin-list-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
           <div style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:6px;">
@@ -3480,11 +3581,18 @@ function renderAdminContent(){
         </div>`).join("") || '<p class="form-note">Aucun dossier validé pour le moment — les dossiers apparaissent ici une fois le paiement confirmé par le TG.</p>'}</div>`;
   }
   if(adminTab === 'cotisations'){
-    // Vue TG : uniquement les dossiers en attente, avec le nom pour le seul but de valider l'adhésion.
-    const pending = DATA.candidatures.filter(c => !c.paye);
-    const total = DATA.candidatures.filter(c=>c.paye).length;
+    // Vue TG : uniquement les dossiers en attente de SA promotion (ou de la
+    // fondatrice, pour le TG historique), avec le nom pour le seul but de
+    // valider l'adhésion.
+    const promoScopeT = currentRole && currentRole.promotionId;
+    const pending = DATA.candidatures.filter(c => (promoScopeT ? c.promotionId === promoScopeT : !c.promotionId) && !c.paye);
+    const total = DATA.candidatures.filter(c => (promoScopeT ? c.promotionId === promoScopeT : !c.promotionId) && c.paye).length;
     const f = DATA.fees;
+    const promoT = promoScopeT ? DATA.promotions[promoScopeT] : null;
     el.innerHTML = `
+      ${promoT ? `
+      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion de votre promotion : <strong>${fmtFcfa(effectiveFraisAdhesion())} F CFA</strong>${promoT.fraisAdhesion==null ? ' (montant commun à LABD — contactez le Président pour un montant propre à votre promotion)' : ''}. Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE de votre promotion.</p>
+      ` : `
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
         <label>Montants (mis à jour partout sur le site dès l'enregistrement)</label>
         <label style="font-weight:400; font-size:0.8rem;">Frais d'adhésion (F CFA)</label>
@@ -3497,12 +3605,15 @@ function renderAdminContent(){
         <input id="ad-fee-mensuelle-old" type="number" placeholder="Laisser vide si pas de changement récent" value="${f.mensuelleOld||''}">
         <button class="btn-primary" onclick="saveFees()">Enregistrer les montants</button>
       </div>
-      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion : ${fmtFcfa(f.adhesion)} F CFA (versement unique, aucune cotisation mensuelle). Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE.</p>
+      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion : ${fmtFcfa(f.adhesion)} F CFA (versement unique, aucune cotisation mensuelle). Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE. Chaque promotion peut avoir son propre montant, réglable depuis l'onglet Promotions.</p>
+      `}
       <p style="margin-bottom:14px;"><strong>${total}</strong> dossier(s) déjà validé(s) et transmis au CRE.</p>
       <div>${pending.map(c => `<div class="admin-list-row"><span><input type="checkbox" onchange="toggleCandidaturePaye('${c.id}')"> ${c.nom}</span><span class="meta">en attente de confirmation <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun dossier en attente de paiement.</p>'}</div>`;
   }
   if(adminTab === 'commentaires'){
-    el.innerHTML = `<div>${DATA.commentaires.map(c => `<div class="admin-list-row"><span>${c.nom} — ${c.message.slice(0,60)}${c.message.length>60?'…':''}</span><span class="meta">${fmtDate(c.date)}</span></div>`).join("") || '<p class="form-note">Aucun avis reçu pour le moment.</p>'}</div>`;
+    const promoScope = currentRole && currentRole.promotionId;
+    const visibleComments = DATA.commentaires.filter(c => promoScope ? c.promotionId === promoScope : !c.promotionId);
+    el.innerHTML = `<div>${visibleComments.map(c => `<div class="admin-list-row"><span>${c.nom} — ${c.message.slice(0,60)}${c.message.length>60?'…':''}</span><span class="meta">${fmtDate(c.date)}</span></div>`).join("") || '<p class="form-note">Aucun avis reçu pour le moment.</p>'}</div>`;
   }
   if(adminTab === 'parametres'){
     el.innerHTML = `
@@ -3681,7 +3792,7 @@ async function addCycle(){
     if(!m) return null;
     return { rang: parseInt(m[1]), nom: m[2].trim(), mention: (m[3]||'').trim() };
   }).filter(Boolean);
-  DATA.cyclesExtra.push({ label, statut: statut || 'Cycle en cours.', laureats });
+  DATA.cyclesExtra.push({ label, statut: statut || 'Cycle en cours.', laureats, promotionId: (currentRole && currentRole.promotionId) || null });
   await storageSet('cycles-extra', DATA.cyclesExtra);
   cyclesOffset = 0; activeCycleIndex = null; // afficher les 3 cycles les plus récents, dont le nouveau
   renderCycles();
@@ -3762,14 +3873,34 @@ function feeAmountHTML(current, old, unitLabel){
     : `${fmtFcfa(current)}`;
   return `${priceHTML} <span>${unitLabel}</span>`;
 }
+// Une promotion peut avoir son propre montant de frais d'adhésion (ex: GC3 à
+// 500f comme au lancement de LABD) — sinon elle hérite simplement du montant
+// commun. La cotisation mensuelle, elle, reste commune à tout LABD.
+function effectiveFraisAdhesion(){
+  const promo = activePromotion();
+  return (promo && promo.fraisAdhesion != null) ? promo.fraisAdhesion : DATA.fees.adhesion;
+}
 function renderFees(){
   const f = DATA.fees;
+  const promo = activePromotion();
+  const adhesionAmount = effectiveFraisAdhesion();
   const mensuelleEl = document.getElementById('feeMensuelleAmount');
   const adhesionEl = document.getElementById('feeAdhesionAmount');
   const chkLabel = document.getElementById('chkPaiementLabel');
+  const promoNote = document.getElementById('adhesionPromoNote');
   if(mensuelleEl) mensuelleEl.innerHTML = feeAmountHTML(f.mensuelle, f.mensuelleOld, 'F CFA / mois');
-  if(adhesionEl) adhesionEl.innerHTML = feeAmountHTML(f.adhesion, f.adhesionOld, 'F CFA · unique');
-  if(chkLabel) chkLabel.textContent = `Je confirme avoir versé ${fmtFcfa(f.adhesion)} F CFA au Trésorier Général`;
+  if(adhesionEl) adhesionEl.innerHTML = (promo && promo.fraisAdhesion != null)
+    ? feeAmountHTML(adhesionAmount, null, 'F CFA · unique')
+    : feeAmountHTML(f.adhesion, f.adhesionOld, 'F CFA · unique');
+  if(chkLabel) chkLabel.textContent = `Je confirme avoir versé ${fmtFcfa(adhesionAmount)} F CFA au Trésorier Général`;
+  if(promoNote){
+    if(promo){
+      promoNote.style.display = '';
+      promoNote.textContent = `Dossier adressé au bureau de la promotion ${promo.nom}${promo.annee ? ' ('+promo.annee+')' : ''}.`;
+    } else {
+      promoNote.style.display = 'none';
+    }
+  }
 }
 async function saveFees(){
   const adhesion = parseInt(document.getElementById('ad-fee-adhesion').value, 10);
@@ -3821,7 +3952,7 @@ async function publishArticle(){
     }
     editingArticleId = null;
   } else {
-    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, lien: lien || null, date:Date.now()});
+    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, lien: lien || null, date:Date.now(), promotionId: (currentRole && currentRole.promotionId) || null});
   }
   delete videoFrameCaptures['ad-art-photo'];
   await storageSet('articles', DATA.articles);

@@ -1191,6 +1191,9 @@ const CONFIG = {
     { hash:"6045f7b79c229c777b7f6a2178fa9e9ce735b2d1dd7c01805fdcb425674337cd",   role:"Accès général",                      categories:["*"] }
   ],
 
+  // Seul ce compte gère les mots de passe et les parties à gérer par poste (onglet « Mots de passe »).
+  ownerRole: "Accès général",
+
   // Emails mis en copie sur chaque candidature / avis reçu (notification).
 
   // Adresses mail de chaque membre du bureau, utilisées pour les notifications ciblées.
@@ -1393,6 +1396,66 @@ function pwHash(pw){
 }
 const IS_HASH = /^[0-9a-f]{64}$/;
 
+/* ---------- Coffre des mots de passe ----------
+   Pour que le propriétaire (compte « Accès général ») puisse RELIRE les mots de passe
+   qu'il a définis, chacun est aussi gardé chiffré (AES-GCM). La clé de chiffrement est
+   elle-même protégée par le mot de passe du propriétaire : sans lui, rien n'est lisible,
+   ni dans le code, ni dans la base. Les mots de passe définis avant cette fonction
+   n'existaient qu'en empreinte : ils s'affichent « Défini » jusqu'à ce qu'ils soient ressaisis. */
+let vaultKey = null;
+let vaultPlain = {};
+const b64 = {
+  enc: buf => { let s = ''; new Uint8Array(buf).forEach(b => s += String.fromCharCode(b)); return btoa(s); },
+  dec: str => Uint8Array.from(atob(str), c => c.charCodeAt(0))
+};
+function vaultAvailable(){ return !!(window.crypto && window.crypto.subtle); }
+async function deriveWrapKey(pw, saltB64){
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name:'PBKDF2', salt:b64.dec(saltB64), iterations:150000, hash:'SHA-256' }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+async function aesEnc(key, bytes){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, bytes);
+  return { iv:b64.enc(iv), ct:b64.enc(ct) };
+}
+async function aesDec(key, o){
+  return new Uint8Array(await crypto.subtle.decrypt({ name:'AES-GCM', iv:b64.dec(o.iv) }, key, b64.dec(o.ct)));
+}
+// (Re)protège la clé du coffre avec le mot de passe du propriétaire.
+async function wrapVault(pw){
+  const salt = b64.enc(crypto.getRandomValues(new Uint8Array(16)));
+  const wk = await deriveWrapKey(pw, salt);
+  const raw = new Uint8Array(await crypto.subtle.exportKey('raw', vaultKey));
+  const w = await aesEnc(wk, raw);
+  DATA.vault = Object.assign({ salt }, w);
+  return storageSet('vault', DATA.vault);
+}
+async function unlockVault(pw){
+  vaultKey = null; vaultPlain = {};
+  if(!vaultAvailable()) return;
+  try{
+    if(DATA.vault && DATA.vault.salt){
+      try{
+        const wk = await deriveWrapKey(pw, DATA.vault.salt);
+        const raw = await aesDec(wk, DATA.vault);
+        vaultKey = await crypto.subtle.importKey('raw', raw, 'AES-GCM', true, ['encrypt','decrypt']);
+      }catch(e){ vaultKey = null; }
+    }
+    if(!vaultKey){
+      // Première utilisation (ou mot de passe du propriétaire changé en dehors du tableau) : nouveau coffre.
+      vaultKey = await crypto.subtle.generateKey({ name:'AES-GCM', length:256 }, true, ['encrypt','decrypt']);
+      if(!(await wrapVault(pw))){ vaultKey = null; return; }
+      DATA.pwVault = {};
+      await storageSet('pw-vault', DATA.pwVault);
+    }
+    for(const id of Object.keys(DATA.pwVault || {})){
+      try{ vaultPlain[id] = new TextDecoder().decode(await aesDec(vaultKey, DATA.pwVault[id])); }catch(e){ /* entrée illisible : ignorée */ }
+    }
+  }catch(e){ console.error('coffre', e); vaultKey = null; }
+  if(adminUnlocked && adminTab === 'acces') renderAdminContent();
+}
+function vaultClear(){ vaultKey = null; vaultPlain = {}; }
+
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // Texte par défaut : le récit de la fondation de LABD, avec une mise en forme légère
@@ -1518,7 +1581,7 @@ function fileToDataUrl(file){
 
 // Envoie une notification mail ciblée (formsubmit.co) sans bloquer l'UI en cas d'échec réseau.
 async function notifyMail(subject, ccList, fields){
-  const list = (ccList || []).filter(Boolean);
+  const list = Array.from(new Set((ccList || []).filter(Boolean)));
   if(!list.length) return;
   const fd = new FormData();
   fd.append('_subject', subject);
@@ -1674,7 +1737,7 @@ async function mapDeleteItem(mapName, itemId){
 /* ==========================================================
    DONNEES DYNAMIQUES
 ========================================================== */
-let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null, promotions:{}, rolePasswords:{} };
+let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null, promotions:{}, rolePasswords:{}, rolePerms:{}, vault:null, pwVault:{} };
 
 async function loadPhotoMap(mapName, legacyKey){
   const data = await mapGetAll(mapName, null);
@@ -1698,7 +1761,7 @@ async function loadData(){
     projets, medias, candidatures, commentaires, settings, outils, outilsSeedDone,
     groupLogo, seedHidden, cyclesExtra, histoireText, heroPhoto, heroPhotoFocal,
     logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText,
-    promotions, rolePasswords
+    promotions, rolePasswords, rolePerms, vault, pwVault
   ] = await Promise.all([
     loadPhotoMap('bureau-photos', 'bureau-photos'),
     loadPhotoMap('member-photos', 'member-photos'),
@@ -1730,7 +1793,10 @@ async function loadData(){
     storageGet('histoire-teaser', null),
     storageGet('hero-text', null),
     storageGet('promotions', {}),
-    storageGet('role-passwords', {})
+    storageGet('role-passwords', {}),
+    storageGet('role-perms', {}),
+    storageGet('vault', null),
+    storageGet('pw-vault', {})
   ]);
 
   DATA.bureauPhotos = bureauPhotos;
@@ -1763,6 +1829,9 @@ async function loadData(){
   DATA.heroText = heroText;
   DATA.promotions = promotions || {};
   DATA.rolePasswords = rolePasswords || {};
+  DATA.rolePerms = rolePerms || {};
+  DATA.vault = vault || null;
+  DATA.pwVault = pwVault || {};
   await migratePasswords();
 
   if(!outilsSeedDone || !DATA.outils || !DATA.outils.length){
@@ -2122,16 +2191,55 @@ function roleCode(abbr){
   const c = (abbr || '').toString().trim().toUpperCase();
   return c === 'CAE' ? 'CRE' : c;
 }
+// ---- Parties à gérer par poste : réglées par la fondatrice (onglet « Mots de passe »),
+// valables pour la fondatrice ET pour toutes les promotions (au sein de ce que chaque promotion possède).
+const PERM_SECTIONS = [
+  {id:'art_actualite', label:'Actualités'}, {id:'art_evenement', label:'Événements'}, {id:'art_formation', label:'Formations'},
+  {id:'vision', label:'Vision (images)'}, {id:'histoire', label:'Notre histoire'}, {id:'outils', label:'Logiciels'},
+  {id:'membres', label:'Membres du groupe'}, {id:'promotions', label:'Promotions'}, {id:'projets', label:'Projets'},
+  {id:'cycles', label:'Cycles & lauréats'}, {id:'photos', label:'Photos'}, {id:'candidatures', label:'Candidatures'},
+  {id:'cotisations', label:'Cotisations'}, {id:'commentaires', label:'Commentaires'}, {id:'parametres', label:'Paramètres'}
+];
+const PERM_CODES = ['PR','VP','SG','TG','CRE','OG','CDM'];
+const ALL_ARTICLE_TYPES = ['actualite','evenement','formation'];
+function codeOfRoleName(name){ return Object.keys(ROLE_NAME_BY_CODE).find(k => ROLE_NAME_BY_CODE[k] === name) || null; }
+// Droits d'origine d'un poste (ceux de CONFIG.adminRoles) tant que la fondatrice n'a rien réglé.
+function defaultPerms(code){
+  if(code === 'PR') return PERM_SECTIONS.map(x => x.id);
+  if(PROMO_ONLY_ROLES[code]) return PERM_SECTIONS.filter(x => x.id !== 'vision' && x.id !== 'histoire' && x.id !== 'outils' && x.id !== 'promotions' && x.id !== 'parametres').map(x => x.id);
+  const base = CONFIG.adminRoles.find(r => r.role === ROLE_NAME_BY_CODE[code]);
+  if(!base) return ['commentaires'];
+  const ids = [];
+  base.categories.forEach(c => {
+    if(c === '*') PERM_SECTIONS.forEach(x => ids.push(x.id));
+    else if(c === 'articles'){ (base.articlesScope ? [base.articlesScope] : ALL_ARTICLE_TYPES).forEach(t => ids.push('art_' + t)); }
+    else ids.push(c);
+  });
+  return Array.from(new Set(ids));
+}
+function permsFor(code){
+  const saved = DATA.rolePerms && DATA.rolePerms[code];
+  return Array.isArray(saved) ? saved.slice() : defaultPerms(code);
+}
+// Transforme une liste de parties cochées en droits d'accès utilisables à la connexion.
+function accessFromPerms(ids, promoScoped){
+  let cats = [], types = [];
+  ids.forEach(id => {
+    if(id.indexOf('art_') === 0){ types.push(id.slice(4)); if(!cats.includes('articles')) cats.push('articles'); }
+    else if(!cats.includes(id)) cats.push(id);
+  });
+  if(promoScoped){
+    cats = cats.filter(c => PROMO_ALLOWED_CATEGORIES.includes(c));
+    if(!cats.includes('articles')) types = [];
+  }
+  return { categories:cats, articleTypes: cats.includes('articles') ? types : undefined };
+}
 function promoRoleFromMember(promo, m){
   const code = roleCode(m.abbr);
-  const base = CONFIG.adminRoles.find(r => r.role === ROLE_NAME_BY_CODE[code]);
-  let cats;
-  if(PROMO_ONLY_ROLES[code]) cats = PROMO_ALLOWED_CATEGORIES.slice();
-  else if(!base) cats = ['commentaires'];
-  else if(base.categories.includes('*')) cats = PROMO_ALLOWED_CATEGORIES.slice();
-  else cats = base.categories.filter(c => PROMO_ALLOWED_CATEGORIES.includes(c));
-  if(!cats.length) cats = ['commentaires'];
-  return { role:`${m.role || PROMO_ONLY_ROLES[code] || m.abbr || 'Bureau'} — ${promo.nom}`, categories:cats, promotionId:promo.id, articlesScope: base ? base.articlesScope : undefined, memberNum:m.num };
+  const label = `${m.role || PROMO_ONLY_ROLES[code] || m.abbr || 'Bureau'} — ${promo.nom}`;
+  if(code === 'PR') return { role:label, categories:PROMO_ALLOWED_CATEGORIES.slice(), promotionId:promo.id, memberNum:m.num };
+  const acc = accessFromPerms(PERM_CODES.includes(code) ? permsFor(code) : ['commentaires'], true);
+  return { role:label, categories:acc.categories, articleTypes:acc.articleTypes, promotionId:promo.id, memberNum:m.num };
 }
 function promoBureauByCode(promo, code){
   return (promo.bureau || []).find(m => roleCode(m.abbr) === code) || null;
@@ -2148,7 +2256,7 @@ function bureauEmails(promo){
     Object.keys(fb).forEach(k => { if(!map[k]) map[k] = fb[k]; });
   }
   const all = Array.from(new Set([map.PR].concat(list.map(m => m.email)).concat(Object.values(map)).filter(Boolean)));
-  return { pr:map.PR||null, sg:map.SG||null, og:map.OG||null, tg:map.TG||null, cae:map.CRE||null, all };
+  return { pr:map.PR||null, vp:map.VP||null, sg:map.SG||null, og:map.OG||null, tg:map.TG||null, cae:map.CRE||null, all };
 }
 function emailsForPromotion(promo){ return bureauEmails(promo); }
 function promoLabel(promo){ return promo ? `${promo.nom}${promo.annee ? ' ('+promo.annee+')' : ''}` : 'Promotion fondatrice'; }
@@ -2264,6 +2372,7 @@ function renderPromotionsAdmin(promos, locked){
       <label>Nom de la promotion</label><input id="ad-promo-nom" placeholder="Ex : Génie Civil 3" value="${editingP?editingP.nom:''}">
       <label>Année (optionnel)</label><input id="ad-promo-annee" placeholder="Ex : 2026" value="${editingP?(editingP.annee||''):''}">
       <label>Date de création</label><input id="ad-promo-date" type="date" value="${editingP && editingP.dateDebut ? new Date(editingP.dateDebut).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)}">
+      <label>Lien du groupe WhatsApp (optionnel)</label><input id="ad-promo-group" placeholder="https://chat.whatsapp.com/..." value="${editingP ? (editingP.groupLink||'').replace(/"/g,'&quot;') : ''}">
       <label>Mot de la promotion (optionnel)</label><textarea id="ad-promo-texte" rows="2" placeholder="Remplace la phrase sous « Le bureau administratif » quand cette promotion est sélectionnée">${editingP?(editingP.texte||''):''}</textarea>
       <label>Frais d'adhésion spécifiques (F CFA, optionnel)</label>
       <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP && editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
@@ -2275,13 +2384,53 @@ function renderPromotionsAdmin(promos, locked){
     <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
 }
 
+let openPerms = false;
+function permsMatrixHTML(){
+  const th = 'text-align:center; padding:6px 4px; font-size:0.7rem; letter-spacing:0.05em; color:var(--muted-2); border-bottom:1px solid var(--line);';
+  const td = 'padding:5px 4px; border-bottom:1px solid var(--line); text-align:center;';
+  const rows = PERM_SECTIONS.map(sec => `<tr><td style="${td} text-align:left; font-size:0.82rem; white-space:nowrap;">${sec.label}</td>${PERM_CODES.map(code => {
+    const locked = code === 'PR';
+    const on = locked || permsFor(code).includes(sec.id);
+    return `<td style="${td}"><input type="checkbox" class="perm-box" data-code="${code}" data-sec="${sec.id}" ${on ? 'checked' : ''} ${locked ? 'disabled' : ''} style="width:16px; height:16px;"></td>`;
+  }).join("")}</tr>`).join("");
+  return `
+    <details ${openPerms ? 'open' : ''} ontoggle="openPerms = this.open" style="margin-top:20px; border-top:1px solid var(--line); padding-top:12px;">
+      <summary style="cursor:pointer; font-weight:700; font-size:0.9rem;">Parties à gérer par poste</summary>
+      <div style="overflow-x:auto; margin:10px 0;"><table style="width:100%; border-collapse:collapse;">
+        <thead><tr><th style="${th} text-align:left;">Partie</th>${PERM_CODES.map(c => `<th style="${th}">${c}</th>`).join("")}</tr></thead>
+        <tbody>${rows}</tbody></table></div>
+      <div class="row" style="gap:10px; align-items:center;">
+        <button class="btn-primary" onclick="savePerms()">Enregistrer les accès</button>
+        <button class="link-btn" onclick="resetPerms()">Rétablir les accès d'origine</button>
+      </div>
+    </details>`;
+}
+async function savePerms(){
+  if(!isOwner()) return;
+  PERM_CODES.forEach(code => {
+    if(code === 'PR') return;
+    DATA.rolePerms[code] = Array.from(document.querySelectorAll(`.perm-box[data-code="${code}"]`)).filter(b => b.checked).map(b => b.dataset.sec);
+  });
+  await storageSet('role-perms', DATA.rolePerms);
+  renderAdminContent();
+  alert("Accès enregistrés — ils s'appliquent à la prochaine connexion de chaque personne.");
+}
+async function resetPerms(){
+  if(!isOwner()) return;
+  if(!confirm("Rétablir les accès d'origine de tous les postes ?")) return;
+  DATA.rolePerms = {};
+  await storageSet('role-perms', DATA.rolePerms);
+  renderAdminContent();
+}
 async function savePasswordsTable(){
-  const inputs = Array.from(document.querySelectorAll('.pw-input')).filter(i => i.value.trim());
-  if(!inputs.length){ alert("Aucun nouveau mot de passe saisi."); return; }
-  const short = inputs.find(i => i.value.trim().length < 8);
+  if(!isOwner()) return;
+  const changedInputs = Array.from(document.querySelectorAll('.pw-input')).filter(i => i.value.trim() && i.value.trim() !== (i.dataset.orig || ''));
+  if(!changedInputs.length){ alert("Aucun nouveau mot de passe saisi."); return; }
+  const short = changedInputs.find(i => i.value.trim().length < 8);
   if(short){ alert("Chaque mot de passe doit contenir au moins 8 caractères."); return; }
+  const idOf = i => i.dataset.kind + '|' + i.dataset.pid + '|' + i.dataset.num;
   // Empreintes déjà en place (hors les lignes qu'on modifie), pour refuser les doublons.
-  const edited = new Set(inputs.map(i => i.dataset.kind + '|' + i.dataset.pid + '|' + i.dataset.num));
+  const edited = new Set(changedInputs.map(idOf));
   const used = new Set();
   CONFIG.adminRoles.forEach(r => { if(!edited.has('role|' + r.role + '|')) used.add(roleHash(r)); });
   Object.values(DATA.promotions).forEach(p => {
@@ -2289,33 +2438,43 @@ async function savePasswordsTable(){
     (p.bureau||[]).forEach(m => { if(m.pwHash && !edited.has('member|' + p.id + '|' + m.num)) used.add(m.pwHash); });
   });
   const computed = [];
-  for(const i of inputs){
+  for(const i of changedInputs){
     const h = pwHash(i.value.trim());
     if(used.has(h)){ alert("Un de ces mots de passe est déjà utilisé par un autre accès — chaque accès doit avoir son propre mot de passe."); return; }
     used.add(h); computed.push([i, h]);
   }
-  let touchedRoles = false, touchedPromos = false;
-  computed.forEach(([i, h]) => {
-    const kind = i.dataset.kind;
-    if(kind === 'role'){ DATA.rolePasswords[i.dataset.pid.replace(/&quot;/g,'"')] = h; touchedRoles = true; return; }
-    const promo = DATA.promotions[i.dataset.pid];
-    if(!promo) return;
-    if(kind === 'promo') promo.pwHash = h;
-    else { const m = (promo.bureau||[]).find(x => x.num === i.dataset.num); if(m) m.pwHash = h; }
-    touchedPromos = true;
-  });
+  let touchedRoles = false, touchedPromos = false, touchedVault = false;
+  for(const [i, h] of computed){
+    const kind = i.dataset.kind, pw = i.value.trim(), id = idOf(i);
+    if(kind === 'role'){
+      DATA.rolePasswords[i.dataset.pid] = h; touchedRoles = true;
+      // Le propriétaire change son propre mot de passe : la clé du coffre doit suivre.
+      if(i.dataset.pid === CONFIG.ownerRole && vaultKey) await wrapVault(pw);
+    } else {
+      const promo = DATA.promotions[i.dataset.pid];
+      if(!promo) continue;
+      if(kind === 'promo') promo.pwHash = h;
+      else { const m = (promo.bureau||[]).find(x => x.num === i.dataset.num); if(m) m.pwHash = h; }
+      touchedPromos = true;
+    }
+    if(vaultKey){ DATA.pwVault[id] = await aesEnc(vaultKey, new TextEncoder().encode(pw)); vaultPlain[id] = pw; touchedVault = true; }
+  }
   if(touchedRoles) await storageSet('role-passwords', DATA.rolePasswords);
   if(touchedPromos) await storageSet('promotions', DATA.promotions);
+  if(touchedVault) await storageSet('pw-vault', DATA.pwVault);
   renderAdminContent();
   alert("Mots de passe enregistrés.");
 }
 async function removeAccess(pid, num){
+  if(!isOwner()) return;
   if(!confirm("Retirer cet accès ? La personne ne pourra plus se connecter.")) return;
   const promo = DATA.promotions[pid];
   if(!promo) return;
   if(!num) promo.pwHash = null;
   else { const m = (promo.bureau||[]).find(x => x.num === num); if(m) m.pwHash = null; }
   await storageSet('promotions', DATA.promotions);
+  const id = (num ? 'member' : 'promo') + '|' + pid + '|' + (num || '');
+  if(DATA.pwVault[id]){ delete DATA.pwVault[id]; delete vaultPlain[id]; await storageSet('pw-vault', DATA.pwVault); }
   renderAdminContent();
 }
 async function savePromotion(id){
@@ -2323,17 +2482,18 @@ async function savePromotion(id){
   const annee = document.getElementById('ad-promo-annee').value.trim();
   const texte = document.getElementById('ad-promo-texte').value.trim();
   const fraisVal = document.getElementById('ad-promo-frais').value.trim();
+  const groupLink = document.getElementById('ad-promo-group').value.trim();
   const dateVal = document.getElementById('ad-promo-date').value;
   const dateDebut = dateVal ? new Date(dateVal + 'T00:00:00').getTime() : Date.now();
   const fraisAdhesion = fraisVal === '' ? null : Number(fraisVal);
   if(!nom){ alert("Le nom de la promotion est requis."); return; }
   if(fraisVal !== '' && (isNaN(fraisAdhesion) || fraisAdhesion < 0)){ alert("Le montant des frais d'adhésion doit être un nombre valide."); return; }
   if(id){
-    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte, dateDebut, fraisAdhesion });
+    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte, dateDebut, groupLink, fraisAdhesion });
   } else {
     const newId = 'promo_' + uid();
     const ordre = promotionsSorted().length;
-    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, pwHash: null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
+    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, groupLink, pwHash: null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
   }
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
@@ -3296,7 +3456,7 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   const candMails = bureauEmails(candPromo);
   await notifyMail(
     `Nouvelle candidature — paiement à valider (LABD, ${candPromoLabel})`,
-    [candMails.tg, candMails.pr],
+    [candMails.tg, candMails.pr, candMails.vp],
     { 'Nom complet': nom, 'Contact': contact, 'Promotion visée': candPromoLabel, 'Règlement approuvé': 'Oui' }
   );
 
@@ -3382,6 +3542,12 @@ function tryUnlock(){
   if(!val){ alert("Mot de passe incorrect."); return; }
   const h = pwHash(val);
   let match = CONFIG.adminRoles.find(r => roleHash(r) === h);
+  if(match && !match.categories.includes('*')){
+    // Poste de la fondatrice : parties à gérer = celles réglées dans l'onglet « Mots de passe ».
+    const code = codeOfRoleName(match.role);
+    const acc = accessFromPerms(code ? permsFor(code) : match.categories, false);
+    match = { role:match.role, categories:acc.categories, articleTypes:acc.articleTypes };
+  }
   if(!match){
     for(const promo of Object.values(DATA.promotions || {})){
       // 1) mot de passe personnel d'un membre du bureau → droits de SON poste
@@ -3394,9 +3560,11 @@ function tryUnlock(){
       }
     }
   }
+  if(match && !match.categories.length){ alert("Aucune partie à gérer n'est attribuée à ce poste pour le moment."); return; }
   if(match){
     adminUnlocked = true;
     currentRole = match;
+    if(isOwner()) unlockVault(val);
     adminTab = match.categories.includes('*') ? 'articles' : match.categories[0];
     document.body.classList.add('admin-on');
     if(match.promotionId){
@@ -3429,9 +3597,10 @@ const ADMIN_CATEGORIES = [
   {id:'commentaires', label:'Commentaires'},
   {id:'parametres', label:'Paramètres'}
 ];
+function isOwner(){ return !!currentRole && currentRole.role === CONFIG.ownerRole; }
 function visibleCategories(){
-  if(currentRole.categories.includes('*')) return ADMIN_CATEGORIES;
-  return ADMIN_CATEGORIES.filter(c => currentRole.categories.includes(c.id));
+  const all = currentRole.categories.includes('*') ? ADMIN_CATEGORIES : ADMIN_CATEGORIES.filter(c => currentRole.categories.includes(c.id));
+  return all.filter(c => c.id !== 'acces' || isOwner());
 }
 
 function openAdminDashboard(){
@@ -3451,6 +3620,7 @@ function openAdminDashboard(){
 }
 function switchAdminTab(id){ adminTab = id; openAdminDashboard(); }
 function adminLogout(){
+  vaultClear();
   const wasPromotionScoped = !!(currentRole && currentRole.promotionId);
   currentRole = null;
   adminUnlocked = false;
@@ -3572,14 +3742,15 @@ function renderAdminContent(){
     // Un rôle peut être cantonné à un seul type d'article (ex: CRE → "formation" uniquement).
     // Il ne voit alors, ne crée alors et ne modifie alors que ce type ; les autres types
     // (actualités, événements déjà en ligne) restent invisibles et intouchés pour lui.
-    const scope = currentRole && currentRole.articlesScope; // ex: "formation", ou undefined = tous types
+    const allowedTypes = (currentRole && currentRole.articleTypes) || ALL_ARTICLE_TYPES; // types d'articles ouverts à ce poste
+    const scope = allowedTypes.length === 1 ? allowedTypes[0] : null;
     const promoScope = currentRole && currentRole.promotionId; // bureau d'une promotion → ses propres publications seulement
     const canSetFormationPassword = !!currentRole && (currentRole.categories.includes('*') || scope === 'formation');
     let editing = DATA.articles.find(a => a.id === editingArticleId);
-    if(scope && editing && editing.type !== scope) editing = null; // garde-fou : jamais hors du périmètre autorisé
+    if(editing && !allowedTypes.includes(editing.type)) editing = null; // garde-fou : jamais hors du périmètre autorisé
     if(promoScope && editing && editing.promotionId !== promoScope) editing = null; // ni hors de sa propre promotion
-    const effectiveType = editing ? editing.type : (scope || 'actualite');
-    const visibleArticles = DATA.articles.filter(a => (!scope || a.type === scope) && (promoScope ? a.promotionId === promoScope : !a.promotionId));
+    const effectiveType = editing ? editing.type : allowedTypes[0];
+    const visibleArticles = DATA.articles.filter(a => allowedTypes.includes(a.type) && (promoScope ? a.promotionId === promoScope : !a.promotionId));
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px;">
         ${editing ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editing.titre} »</p>` : ''}
@@ -3591,9 +3762,9 @@ function renderAdminContent(){
         ` : `
           <label>Type</label>
           <select id="ad-art-type" onchange="document.getElementById('formationPassBlock').style.display = this.value==='formation' ? '' : 'none';">
-            <option value="actualite" ${effectiveType==='actualite'?'selected':''}>Actualité</option>
-            <option value="formation" ${effectiveType==='formation'?'selected':''}>Formation</option>
-            <option value="evenement" ${effectiveType==='evenement'?'selected':''}>Événement</option>
+            ${allowedTypes.includes('actualite') ? `<option value="actualite" ${effectiveType==='actualite'?'selected':''}>Actualité</option>` : ''}
+            ${allowedTypes.includes('formation') ? `<option value="formation" ${effectiveType==='formation'?'selected':''}>Formation</option>` : ''}
+            ${allowedTypes.includes('evenement') ? `<option value="evenement" ${effectiveType==='evenement'?'selected':''}>Événement</option>` : ''}
           </select>
         `}
         <label>Description</label><textarea id="ad-art-desc" placeholder="Description — **gras**, *italique*, colle un lien http(s):// pour qu'il soit cliquable">${editing?editing.description:''}</textarea>
@@ -3740,16 +3911,19 @@ function renderAdminContent(){
       ${memberFormHTML('mb', editingM, editingMCat, !!(editingM && !isExtra), 'saveMember()', "editingMemberNum=null; renderAdminContent();")}
       ${memberListHTML(allBureau, allMembres, 'editMember', 'removeMember')}`;
   }
-  if(adminTab === 'acces'){
+  if(adminTab === 'acces' && isOwner()){
     const promos = promotionsSorted();
     const COLS = ['PR','VP','SG','TG','CRE','OG','CDM'];
     const ROLE_OF_COL = { PR:'Président', SG:'Secrétaire Générale', TG:'Trésorier Général', CRE:'Chargé des Relations Extérieures', OG:'Organisateur Général', CDM:'Chargé des médias' };
     const th = 'text-align:center; padding:6px 3px; font-size:0.68rem; letter-spacing:0.05em; color:var(--muted-2); border-bottom:1px solid var(--line); white-space:nowrap;';
     const td = 'padding:6px 3px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle;';
     const esc = v => String(v).replace(/"/g,'&quot;');
-    const cell = (kind, pid, num, isSet, removable, label) => `<div style="position:relative; display:inline-block;">
-      <input class="pw-input" data-kind="${kind}" data-pid="${esc(pid)}" data-num="${esc(num)}" autocomplete="off" title="${esc(label||'')}" placeholder="${isSet ? 'Défini' : 'Aucun'}" style="width:64px; padding:5px 4px; border:1px solid var(--line); border-radius:6px; font-size:0.72rem; text-align:center; ${isSet ? 'background:var(--teal-soft);' : ''}">
+    const cell = (kind, pid, num, isSet, removable, label) => {
+      const plain = vaultPlain[kind + '|' + pid + '|' + num] || '';
+      return `<div style="position:relative; display:inline-block;">
+      <input class="pw-input" data-kind="${kind}" data-pid="${esc(pid)}" data-num="${esc(num)}" data-orig="${esc(plain)}" value="${esc(plain)}" autocomplete="off" title="${esc(label||'')}" placeholder="${isSet ? 'Défini' : 'Aucun'}" style="width:92px; padding:5px 4px; border:1px solid var(--line); border-radius:6px; font-size:0.72rem; text-align:center; ${isSet ? 'background:var(--teal-soft);' : ''}">
       ${isSet && removable ? `<button class="link-btn" title="Retirer l'accès" style="position:absolute; top:-8px; right:-5px; font-size:0.7rem; line-height:1; padding:1px 3px; background:#fff; border-radius:50%;" onclick="removeAccess('${pid}','${num}')">✕</button>` : ''}</div>`;
+    };
     const dash = '<span style="color:var(--muted-2);">—</span>';
     // ligne fondatrice
     const foundingRow = `<tr><td style="${td} text-align:left; font-weight:700; white-space:nowrap;">Fondatrice</td>
@@ -3773,7 +3947,8 @@ function renderAdminContent(){
       <div style="overflow-x:auto; margin-bottom:14px;"><table style="width:100%; border-collapse:collapse;">
         <thead><tr><th style="${th} text-align:left;">Promo</th>${COLS.map(c => `<th style="${th}">${c}</th>`).join("")}<th style="${th}">Commun</th><th style="${th}">Autres</th></tr></thead>
         <tbody>${foundingRow}${promoRows}</tbody></table></div>
-      <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>`;
+      <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>
+      ${permsMatrixHTML()}`;
   }
   if(adminTab === 'promotions'){
     const promos = promotionsSorted();
@@ -3909,6 +4084,7 @@ function renderAdminContent(){
         <label>Lien Facebook</label><input id="ad-set-fb" value="${getFacebookUrl()}">
         <label>Email de contact</label><input id="ad-set-email" value="${getContactEmail()}">
         <label>Téléphone du secrétariat</label><input id="ad-set-phone" value="${getContactPhone()}">
+        <label>Lien du groupe WhatsApp (envoyé aux candidats acceptés)</label><input id="ad-set-group" placeholder="https://chat.whatsapp.com/..." value="${(DATA.settings.groupLink||'').replace(/"/g,'&quot;')}">
         <label>Texte sous le logo (bas de page)</label><textarea id="ad-set-footer-tagline" rows="2" style="width:100%; font-family:inherit; font-size:0.85rem; padding:10px 12px; border:1px solid var(--line); border-radius:8px;">${getFooterTagline()}</textarea>
         <button class="btn-primary" onclick="saveSettings()">Enregistrer</button>
       </div>`;
@@ -3989,7 +4165,7 @@ async function toggleCandidaturePaye(id){
     const vMails = bureauEmails(vPromo);
     notifyMail(
       `Dossier enregistré — accessible au CRE (LABD${vPromo ? ', '+promoLabel(vPromo) : ''})`,
-      [vMails.cae, vMails.pr, vMails.sg],
+      [vMails.cae, vMails.pr, vMails.vp, vMails.sg],
       { 'Nom complet': c.nom, 'Contact': c.contact, 'Statut': 'Paiement confirmé par le TG — dossier accessible au CRE' }
     );
   }
@@ -4001,6 +4177,66 @@ async function toggleSgSuivi(id){
   c.sgSuivi = !c.sgSuivi;
   await storageSet('candidatures', DATA.candidatures);
   renderAdminContent();
+  if(c.sgSuivi) openReplyModal(id); // dossier bouclé : on prépare le message avec le lien du groupe
+}
+
+/* ---------- Réponse au candidat avec le lien du groupe ----------
+   Le site n'a pas de serveur d'envoi : il prépare le message (modifiable) avec le lien du groupe
+   de la bonne promotion, et un clic l'envoie par WhatsApp ou par email depuis le téléphone/l'ordinateur de la SG. */
+function groupLinkFor(c){
+  const promo = c.promotionId ? DATA.promotions[c.promotionId] : null;
+  return (promo ? promo.groupLink : DATA.settings.groupLink) || '';
+}
+function candidateReachability(contact){
+  const email = (String(contact || '').match(/[^\s@]+@[^\s@]+\.[^\s@]+/) || [null])[0];
+  let digits = String(contact || '').replace(/[^\d+]/g, '');
+  let phone = null;
+  if(!email){
+    if(digits.indexOf('+') === 0) phone = digits.slice(1);
+    else if(digits.indexOf('00') === 0) phone = digits.slice(2);
+    else if(digits.length === 10 && digits.indexOf('01') === 0) phone = '229' + digits;
+    else if(digits.replace(/\D/g,'').length >= 8) phone = digits.replace(/\D/g,'');
+  }
+  return { email, phone };
+}
+function replyMessageText(c){
+  const promo = c.promotionId ? DATA.promotions[c.promotionId] : null;
+  const link = groupLinkFor(c);
+  return `Bonjour ${c.nom},\n\nNous avons bien étudié votre dossier de candidature et nous sommes heureux de vous accueillir au sein de LABD${promo ? ' (' + promo.nom + ')' : ''}.\n\n` +
+    (link ? `Pour rejoindre notre groupe, cliquez sur ce lien :\n${link}\n\n` : '') +
+    `À très bientôt,\nLe bureau LABD`;
+}
+function openReplyModal(id){
+  const c = DATA.candidatures.find(x => x.id === id);
+  if(!c) return;
+  const reach = candidateReachability(c.contact);
+  const link = groupLinkFor(c);
+  openModal(`
+    <h3>Réponse à ${escapeHtml(c.nom)}</h3>
+    <p class="form-note" style="margin-bottom:8px;">Contact : ${escapeHtml(c.contact)}</p>
+    ${link ? '' : `<p class="form-note" style="color:#c0392b; margin-bottom:8px;">Aucun lien de groupe n'est défini : le message part sans lien. Il se règle dans Paramètres (fondatrice) ou dans Promotions.</p>`}
+    <textarea id="reply-text" rows="9" style="width:100%; font-family:inherit; font-size:0.88rem; padding:10px 12px; border:1px solid var(--line); border-radius:8px;">${escapeHtml(replyMessageText(c))}</textarea>
+    <div class="row" style="gap:10px; flex-wrap:wrap; margin-top:12px;">
+      ${reach.phone ? `<button class="btn-primary" onclick="sendReplyWhatsApp('${id}')">Envoyer par WhatsApp</button>` : ''}
+      ${reach.email ? `<button class="btn-primary" onclick="sendReplyEmail('${id}')">Envoyer par email</button>` : ''}
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="copyReply()">Copier le message</button>
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal(); openAdminDashboard();">Fermer</button>
+    </div>`);
+}
+function replyText(){ const t = document.getElementById('reply-text'); return t ? t.value : ''; }
+function sendReplyWhatsApp(id){
+  const c = DATA.candidatures.find(x => x.id === id); if(!c) return;
+  const r = candidateReachability(c.contact);
+  if(r.phone) window.open(`https://wa.me/${r.phone}?text=${encodeURIComponent(replyText())}`, '_blank');
+}
+function sendReplyEmail(id){
+  const c = DATA.candidatures.find(x => x.id === id); if(!c) return;
+  const r = candidateReachability(c.contact);
+  if(r.email) window.location.href = `mailto:${r.email}?subject=${encodeURIComponent('Votre candidature à LABD')}&body=${encodeURIComponent(replyText())}`;
+}
+async function copyReply(){
+  try{ await navigator.clipboard.writeText(replyText()); alert("Message copié."); }
+  catch(e){ const t = document.getElementById('reply-text'); if(t){ t.select(); document.execCommand('copy'); alert("Message copié."); } }
 }
 // Suppression définitive d'un dossier de candidature (et des pièces jointes qu'il contient).
 // Utile pour archiver/nettoyer les dossiers déjà traités. Irréversible.
@@ -4386,6 +4622,7 @@ async function saveSettings(){
     facebookUrl: document.getElementById('ad-set-fb').value.trim(),
     contactEmail: document.getElementById('ad-set-email').value.trim(),
     secretariatPhone: document.getElementById('ad-set-phone').value.trim(),
+    groupLink: document.getElementById('ad-set-group').value.trim(),
     footerTagline: document.getElementById('ad-set-footer-tagline').value.trim()
   };
   await storageSet('settings', DATA.settings);

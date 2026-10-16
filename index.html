@@ -912,13 +912,13 @@
       <div class="form-panel card" id="adhesionPanel">
         <h3>Dossier de candidature</h3>
         <p class="form-note" id="adhesionPromoNote" style="display:none; margin-bottom:10px;"></p>
-        <p class="lead">Remplissez le formulaire et joignez votre CV ainsi que votre lettre de motivation manuscrite (scannée ou photographiée), dans deux champs séparés. Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
+        <p class="lead">Remplissez le formulaire et joignez votre CV ainsi que votre lettre de motivation manuscrite (scannée ou photographiée, sur une ou deux images), dans deux champs séparés. Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
 
         <form id="adhesionForm">
           <div class="field"><label for="j-nom">Nom complet</label><input id="j-nom" type="text" placeholder="Votre nom et prénom" required></div>
           <div class="field"><label for="j-contact">Email ou téléphone</label><input id="j-contact" type="text" placeholder="Comment vous joindre" required></div>
           <div class="field field-file"><label for="j-file">CV (PDF ou image)</label><input id="j-file" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple required></div>
-          <div class="field field-file"><label for="j-lettre">Lettre de motivation manuscrite (scan ou photo)</label><input id="j-lettre" type="file" accept=".pdf,.jpg,.jpeg,.png" required></div>
+          <div class="field field-file"><label for="j-lettre">Lettre de motivation manuscrite (scan ou photo — jusqu'à 2 images)</label><input id="j-lettre" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple required></div>
 
           <div class="check-step">
             <div class="check-step-head">
@@ -3263,11 +3263,19 @@ function refreshSubmitState(){
 }
 [chkReglement, chkPaiement, fileInputJ, lettreInputJ, nomInputJ, contactInputJ].forEach(el => el.addEventListener('input', refreshSubmitState));
 [chkReglement, chkPaiement].forEach(el => el.addEventListener('change', refreshSubmitState));
+lettreInputJ.addEventListener('change', () => {
+  if(lettreInputJ.files.length > 2){
+    alert("La lettre de motivation peut comporter au maximum 2 images. Merci de ne sélectionner que 2 fichiers.");
+    lettreInputJ.value = '';
+    refreshSubmitState();
+  }
+});
 
 document.getElementById('adhesionForm').addEventListener('submit', async e => {
   e.preventDefault();
   // Limite de Cloudinary (plan gratuit) : 10 Mo pour un document, 10 Mo pour une image.
   // On vérifie avant tout envoi pour donner un message clair plutôt qu'un échec silencieux.
+  if(lettreInputJ.files.length > 2){ alert("La lettre de motivation peut comporter au maximum 2 images."); return; }
   const tousFichiers = [...Array.from(fileInputJ.files), ...Array.from(lettreInputJ.files)];
   const tropLourd = tousFichiers.find(f => f.size > 10*1024*1024);
   if(tropLourd){
@@ -3295,19 +3303,19 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   // Fichiers conservés en base pour consultation ultérieure par le CRE, une fois le paiement validé par le TG.
   // Le CV (fichiers) et la lettre manuscrite (lettre) restent dans deux champs distincts.
   let fichiers = [];
-  let lettre = null;
+  let lettres = [];
   try{
     fichiers = await Promise.all(Array.from(fileInputJ.files).map(async f => ({
       name: f.name,
       dataUrl: f.type.startsWith('image/') ? await uploadImage(f, 1800) : await uploadDocToCloudinary(f)
     })));
-    const lf = lettreInputJ.files[0];
-    if(lf){
-      lettre = { name: lf.name, dataUrl: lf.type.startsWith('image/') ? await uploadImage(lf, 1800) : await uploadDocToCloudinary(lf) };
-    }
+    lettres = await Promise.all(Array.from(lettreInputJ.files).slice(0, 2).map(async lf => ({
+      name: lf.name,
+      dataUrl: lf.type.startsWith('image/') ? await uploadImage(lf, 1800) : await uploadDocToCloudinary(lf)
+    })));
   }catch(err){ console.error('lecture fichiers candidature', err); }
 
-  const entry = { id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, lettre, sgSuivi:false, promotionId: activePromotionId === '__main__' ? null : activePromotionId };
+  const entry = { id:uid(), nom, contact, date:Date.now(), paye:false, fichiers, lettres, sgSuivi:false, promotionId: activePromotionId === '__main__' ? null : activePromotionId };
   DATA.candidatures.unshift(entry);
   // On vérifie que l'enregistrement a bien réussi : le mail de notification part toujours,
   // même si ce dossier n'est pas sauvegardé — sans ce contrôle, un candidat pouvait voir
@@ -3469,15 +3477,57 @@ function shareWhatsApp(text){
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
 }
 
-// Partage d'un dossier de candidature précis : nom/prénom tel qu'écrit par l'intéressé,
-// contact, ET les fichiers eux-mêmes (CV + lettre manuscrite) en pièces jointes réelles —
-// pas de simples liens — via le partage natif du téléphone (celui-ci laisse choisir
-// WhatsApp et y dépose les fichiers directement, comme une pièce jointe classique).
+// Anciennes candidatures : une seule lettre (c.lettre) ; nouvelles : jusqu'à 2 (c.lettres).
+function candLettres(c){ return (c.lettres && c.lettres.length) ? c.lettres : (c.lettre ? [c.lettre] : []); }
+let openCands = new Set();
+function toggleCandOpen(id, isOpen){ if(isOpen) openCands.add(id); else openCands.delete(id); }
+
+// Message WhatsApp : gras (*...*), sauts de ligne et sections espacées.
+function candidatureMessage(c, withLinks){
+  const promo = c.promotionId ? DATA.promotions[c.promotionId] : null;
+  const clean = t => String(t || '').replace(/\*/g, '').trim();
+  const cv = c.fichiers || [];
+  const lettres = candLettres(c);
+  const line = (d, i, label) => {
+    const link = withLinks && /^https?:/.test(d.dataUrl || '') ? `\n   ${d.dataUrl}` : '';
+    return `   ▫️ ${label}${(label === 'CV' ? cv : lettres).length > 1 ? ' ' + (i + 1) : ''} — ${clean(d.name)}${link}`;
+  };
+  const parts = [
+    `━━━━━━━━━━━━━━━━━━`,
+    `📋 *NOUVEAU DOSSIER DE CANDIDATURE*`,
+    `*LABD* · ${clean(promoLabel(promo))}`,
+    `━━━━━━━━━━━━━━━━━━`,
+    ``,
+    `👤 *Candidat(e)*`,
+    `${clean(c.nom)}`,
+    ``,
+    `📞 *Contact*`,
+    `${clean(c.contact)}`,
+    ``,
+    `📅 *Dossier reçu le*`,
+    `${fmtDate(c.date)}`,
+    ``,
+    `📎 *CV* (${cv.length})`,
+    cv.length ? cv.map((d,i) => line(d,i,'CV')).join('\n') : `   Aucun CV`,
+    ``,
+    `✍️ *Lettre de motivation manuscrite* (${lettres.length})`,
+    lettres.length ? lettres.map((d,i) => line(d,i,'Lettre')).join('\n') : `   Aucune lettre`,
+    ``,
+    `✅ *Paiement confirmé par le Trésorier Général*`,
+    ``,
+    `_Merci de donner votre avis sur ce dossier._`
+  ];
+  return parts.join('\n');
+}
+
+// Partage d'un dossier de candidature : message mis en forme + fichiers (CV et lettre)
+// en pièces jointes réelles via le partage natif du téléphone (qui laisse choisir
+// WhatsApp). Sur ordinateur, WhatsApp Web s'ouvre avec le message et les liens.
 async function shareCandidatureWhatsApp(id){
   const c = DATA.candidatures.find(x => x.id === id);
   if(!c) return;
-  const text = `📋 Dossier de candidature LABD à étudier\nNom : ${c.nom}\nContact : ${c.contact}\nReçu le ${fmtDate(c.date)}`;
-  const docs = [...(c.fichiers||[]), ...(c.lettre ? [c.lettre] : [])].filter(d => d && d.dataUrl);
+  const text = candidatureMessage(c, false);
+  const docs = [...(c.fichiers||[]), ...candLettres(c)].filter(d => d && d.dataUrl);
 
   if(docs.length && navigator.share && navigator.canShare){
     try{
@@ -3498,12 +3548,7 @@ async function shareCandidatureWhatsApp(id){
       console.error('partage natif', err);
     }
   }
-
-  // Repli (ordinateur, ou navigateur sans partage de fichiers natif) : on ouvre WhatsApp
-  // Web avec le texte et des liens vers les documents, faute de pouvoir joindre un vrai fichier.
-  let fallbackText = text;
-  if(docs.length) fallbackText += `\n\n` + docs.map(d => d.dataUrl).join('\n');
-  shareWhatsApp(fallbackText);
+  shareWhatsApp(candidatureMessage(c, true));
 }
 
 function renderAdminContent(){
@@ -3766,27 +3811,41 @@ function renderAdminContent(){
     // dossiers accessibles uniquement une fois le paiement validé par le TG.
     const promoScopeC = currentRole && currentRole.promotionId;
     const valides = DATA.candidatures.filter(c => (promoScopeC ? c.promotionId === promoScopeC : !c.promotionId) && c.paye);
-    el.innerHTML = `<p class="form-note" style="margin-bottom:14px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Vous pouvez consulter chaque pièce jointe, puis partager le dossier dans le groupe WhatsApp du bureau pour étude.</p>
-      <div>${valides.map(c => `<div class="admin-list-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
-          <div style="display:flex; justify-content:space-between; width:100%; flex-wrap:wrap; gap:6px;">
-            <strong>${c.nom}</strong><span class="meta">${c.contact} · ${fmtDate(c.date)}</span>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-            <div>
-              <span class="form-note" style="display:block; margin-bottom:4px;">CV :</span>
-              ${(c.fichiers||[]).length ? `<div style="display:flex; flex-wrap:wrap; gap:8px;">${c.fichiers.map((f,i) => `<a href="${f.dataUrl}" target="_blank" rel="noopener" download="${f.name}" class="link-btn" style="color:var(--teal-dark);">📎 ${f.name}</a>`).join("")}</div>` : '<span class="form-note">Aucun CV enregistré.</span>'}
+    el.innerHTML = `<p class="form-note" style="margin-bottom:14px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Déroulez un dossier pour consulter le CV et la lettre, puis le partager (ou non) dans le groupe WhatsApp du bureau.</p>
+      <div>${valides.map(c => {
+        const cv = c.fichiers || [];
+        const lettres = candLettres(c);
+        const fileLink = (d, icon) => /\.(jpe?g|png)(\?|$)/i.test(d.name || '') || /^data:image|\/image\/upload\//.test(d.dataUrl || '')
+          ? `<a href="${d.dataUrl}" target="_blank" rel="noopener" style="display:inline-flex; flex-direction:column; gap:4px; font-size:0.78rem; color:var(--teal-dark); max-width:120px;"><img src="${d.dataUrl}" alt="${d.name}" loading="lazy" style="width:110px; height:110px; object-fit:cover; border:1px solid var(--line); border-radius:8px;"><span style="word-break:break-all;">${icon} ${d.name}</span></a>`
+          : `<a href="${d.dataUrl}" target="_blank" rel="noopener" download="${d.name}" class="link-btn" style="color:var(--teal-dark);">${icon} ${d.name}</a>`;
+        const block = (title, badge, items, icon, empty) => `
+          <div style="border:1px solid var(--line); border-radius:10px; padding:12px; background:var(--paper-2);">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="background:var(--navy); color:#fff; font-size:0.68rem; font-weight:700; letter-spacing:0.06em; padding:3px 8px; border-radius:6px;">${badge}</span>
+              <strong style="font-size:0.9rem;">${title}</strong>
+              <span class="form-note">(${items.length})</span>
             </div>
-            <div>
-              <span class="form-note" style="display:block; margin-bottom:4px;">Lettre de motivation manuscrite :</span>
-              ${c.lettre ? `<a href="${c.lettre.dataUrl}" target="_blank" rel="noopener" download="${c.lettre.name}" class="link-btn" style="color:var(--teal-dark);">✍️ ${c.lettre.name}</a>` : '<span class="form-note">Aucune lettre manuscrite enregistrée.</span>'}
+            ${items.length ? `<div style="display:flex; flex-wrap:wrap; gap:10px;">${items.map(d => fileLink(d, icon)).join("")}</div>` : `<span class="form-note">${empty}</span>`}
+          </div>`;
+        return `<details class="cand-item" ${openCands.has(c.id)?'open':''} ontoggle="toggleCandOpen('${c.id}', this.open)" style="border-bottom:1px solid var(--line); padding:12px 0;">
+          <summary style="cursor:pointer; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="display:flex; flex-direction:column; gap:2px;">
+              <strong>${c.nom}</strong>
+              <span class="meta" style="font-size:0.78rem; color:var(--muted-2);">${fmtDate(c.date)} · ${c.contact}</span>
+            </span>
+            <span class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); padding:6px 12px; font-size:.82rem; pointer-events:none;">Voir le dossier ▾</span>
+          </summary>
+          <div style="display:flex; flex-direction:column; gap:12px; margin-top:14px;">
+            ${block('Curriculum vitae', 'CV', cv, '📎', 'Aucun CV enregistré.')}
+            ${block('Lettre de motivation manuscrite', 'LETTRE', lettres, '✍️', 'Aucune lettre manuscrite enregistrée.')}
+            <div class="row" style="gap:10px; flex-wrap:wrap; align-items:center;">
+              <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); padding:6px 12px; font-size:.85rem;" onclick="shareCandidatureWhatsApp('${c.id}')">Partager sur WhatsApp (bureau)</button>
+              <label style="display:flex; align-items:center; gap:6px; font-size:.85rem;"><input type="checkbox" ${c.sgSuivi?'checked':''} onchange="toggleSgSuivi('${c.id}')"> Réponse SG envoyée à l'adhérent</label>
+              <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button>
             </div>
           </div>
-          <div class="row" style="gap:10px; flex-wrap:wrap;">
-            <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); padding:6px 12px; font-size:.85rem;" onclick="shareCandidatureWhatsApp('${c.id}')">Partager sur WhatsApp (bureau)</button>
-            <label style="display:flex; align-items:center; gap:6px; font-size:.85rem;"><input type="checkbox" ${c.sgSuivi?'checked':''} onchange="toggleSgSuivi('${c.id}')"> Réponse SG envoyée à l'adhérent</label>
-            <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button>
-          </div>
-        </div>`).join("") || '<p class="form-note">Aucun dossier validé pour le moment — les dossiers apparaissent ici une fois le paiement confirmé par le TG.</p>'}</div>`;
+        </details>`;
+      }).join("") || '<p class="form-note">Aucun dossier validé pour le moment — les dossiers apparaissent ici une fois le paiement confirmé par le TG.</p>'}</div>`;
   }
   if(adminTab === 'cotisations'){
     // Vue TG : uniquement les dossiers en attente de SA promotion (ou de la

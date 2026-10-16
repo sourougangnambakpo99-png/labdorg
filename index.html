@@ -2200,7 +2200,7 @@ const PERM_SECTIONS = [
   {id:'cycles', label:'Cycles & lauréats'}, {id:'photos', label:'Photos'}, {id:'candidatures', label:'Candidatures'},
   {id:'cotisations', label:'Cotisations'}, {id:'commentaires', label:'Commentaires'}, {id:'parametres', label:'Paramètres'}
 ];
-const PERM_CODES = ['PR','VP','SG','TG','CRE','OG','CDM'];
+const PERM_CODES = ['VP','SG','TG','CRE','OG','CDM'];
 const ALL_ARTICLE_TYPES = ['actualite','evenement','formation'];
 function codeOfRoleName(name){ return Object.keys(ROLE_NAME_BY_CODE).find(k => ROLE_NAME_BY_CODE[k] === name) || null; }
 // Droits d'origine d'un poste (ceux de CONFIG.adminRoles) tant que la fondatrice n'a rien réglé.
@@ -2330,7 +2330,7 @@ function renderBureau(){
   if(promo){
     grid.innerHTML = (promo.bureau||[]).map((m,i) => bureauCardHTML(m, i, promo.id+'_'+m.num)).join("")
       || '<p class="form-note">Aucun membre de bureau enregistré pour cette promotion pour le moment.</p>';
-    if(subtitle) subtitle.textContent = promo.texte || `Bureau de la promotion ${promo.nom}${promo.annee ? ' ('+promo.annee+')' : ''}.`;
+    if(subtitle) subtitle.textContent = `Un bureau issu du parcours de sélection de la promotion, constitué le ${fmtLongDate(promo.dateDebut || Date.now())}.`;
   } else {
     grid.innerHTML = getBureauList().map((m,i) => bureauCardHTML(m, i, m.num)).join("");
     if(subtitle) subtitle.textContent = "Élu lors de la séance fondatrice du 16 octobre 2025.";
@@ -2350,6 +2350,30 @@ let managingPromotionId = null;
 let editingPromotionId = null;
 let editingPromotionMemberNum = null;
 
+function childPromoOf(parentId){
+  return promotionsSorted().find(p => (p.parentId || '__main__') === parentId) || null;
+}
+function promoDepth(p){
+  let d = 1, cur = p, guard = 0;
+  while(cur && guard++ < 50){ d++; const par = cur.parentId || '__main__'; if(par === '__main__') break; cur = DATA.promotions[par]; }
+  return d;
+}
+function fmtLongDate(ts){
+  try{ return new Date(ts).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }); }catch(e){ return ''; }
+}
+async function createSuccessor(parentId){
+  parentId = parentId || '__main__';
+  if(childPromoOf(parentId)){ alert("Une seule promotion suivante peut être créée."); return; }
+  const parent = parentId === '__main__' ? null : DATA.promotions[parentId];
+  const num = parent ? promoDepth(parent) + 1 : 2;
+  if(!confirm(`Créer la ${num}è Promotion ? Son nom et sa date de création sont automatiques, et une seule promotion suivante est possible.`)) return;
+  const now = Date.now();
+  const newId = 'promo_' + uid();
+  DATA.promotions[newId] = { id:newId, nom:num + 'è Promotion', annee:String(new Date(now).getFullYear()), ordre:promotionsSorted().length, dateDebut:now,
+    parentId, groupLink:'', pwHash:null, fraisAdhesion:null, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
+  await storageSet('promotions', DATA.promotions);
+  renderBureau(); renderFees(); renderAdminContent();
+}
 function renderPromotionsAdmin(promos, locked){
   const managing = managingPromotionId ? (DATA.promotions[managingPromotionId] || null) : null;
 
@@ -2366,22 +2390,70 @@ function renderPromotionsAdmin(promos, locked){
   }
 
   const editingP = editingPromotionId ? promos.find(p => p.id === editingPromotionId) : null;
+  const canCreate = !childPromoOf('__main__');
   return `
-    <div class="check-step" style="margin-bottom:20px;">
-      ${editingP ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} »</p>` : ''}
-      <label>Nom de la promotion</label><input id="ad-promo-nom" placeholder="Ex : Génie Civil 3" value="${editingP?editingP.nom:''}">
-      <label>Année (optionnel)</label><input id="ad-promo-annee" placeholder="Ex : 2026" value="${editingP?(editingP.annee||''):''}">
-      <label>Date de création</label><input id="ad-promo-date" type="date" value="${editingP && editingP.dateDebut ? new Date(editingP.dateDebut).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)}">
-      <label>Lien du groupe WhatsApp (optionnel)</label><input id="ad-promo-group" placeholder="https://chat.whatsapp.com/..." value="${editingP ? (editingP.groupLink||'').replace(/"/g,'&quot;') : ''}">
-      <label>Mot de la promotion (optionnel)</label><textarea id="ad-promo-texte" rows="2" placeholder="Remplace la phrase sous « Le bureau administratif » quand cette promotion est sélectionnée">${editingP?(editingP.texte||''):''}</textarea>
+    ${editingP ? `<div class="check-step" style="margin-bottom:20px;">
+      <p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} » (nom et date automatiques, non modifiables)</p>
+      <label>Lien du groupe WhatsApp (optionnel)</label><input id="ad-promo-group" placeholder="https://chat.whatsapp.com/..." value="${(editingP.groupLink||'').replace(/"/g,'&quot;')}">
       <label>Frais d'adhésion spécifiques (F CFA, optionnel)</label>
-      <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP && editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
+      <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
       <div class="row">
-        <button class="btn-primary" onclick="savePromotion('${editingP?editingP.id:''}')">${editingP?'Enregistrer les modifications':'Créer la promotion'}</button>
-        ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>` : ''}
-      </div>
-    </div>
+        <button class="btn-primary" onclick="savePromotion('${editingP.id}')">Enregistrer les modifications</button>
+        <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>
+      </div></div>` : `<div class="check-step" style="margin-bottom:20px;">
+      ${canCreate ? `<p class="form-note">La promotion fondatrice peut créer <b>une seule</b> promotion suivante. Son nom (« 2è Promotion ») et sa date de création sont définis automatiquement.</p>
+      <button class="btn-primary" onclick="createSuccessor('__main__')">Créer la 2è Promotion</button>`
+      : `<p class="form-note">La promotion suivante est déjà créée. Chaque promotion ne peut en créer qu'une seule : la suivante sera créée par le bureau de cette promotion.</p>`}
+    </div>`}
     <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
+}
+
+// Onglet « Promotion suivante » (bureau d'une promotion) : créer l'unique successeur,
+// gérer SES membres et SES mots de passe — et rien d'autre.
+function renderSuiteAdmin(){
+  const me = currentRole && currentRole.promotionId;
+  const child = me ? childPromoOf(me) : null;
+  if(!child){
+    return `<div class="check-step"><p class="form-note">Votre promotion peut créer <b>une seule</b> promotion suivante. Son nom et sa date de création sont automatiques.</p>
+      <button class="btn-primary" onclick="createSuccessor('${me}')">Créer la promotion suivante</button></div>`;
+  }
+  managingPromotionId = child.id;
+  const esc = v => String(v).replace(/"/g,'&quot;');
+  const line = (kind, num, label, isSet) => `<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="min-width:120px; font-size:0.82rem;">${label}</span>
+    <input class="pw-child" data-kind="${kind}" data-num="${esc(num)}" autocomplete="off" placeholder="${isSet ? 'Défini (retapez pour changer)' : 'Aucun'}" style="flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line); border-radius:6px;"></div>`;
+  const rows = [line('promo', '', 'Accès général', !!child.pwHash)].concat((child.bureau||[]).filter(m => roleCode(m.abbr) !== 'PR')
+    .map(m => line('member', m.num, `${m.abbr || '?'} — ${m.nom}`, !!m.pwHash))).join("");
+  return `
+    <p class="form-note" style="margin-bottom:12px;"><b>${child.nom}</b> — créée le ${fmtLongDate(child.dateDebut)}</p>
+    <div class="check-step" style="margin-bottom:20px;"><label>Mots de passe de ${child.nom}</label>${rows}
+      <button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>
+      <p class="form-note" style="margin-top:6px;">Le Président utilise l'« Accès général ».</p></div>
+    ${renderPromotionsAdmin(promotionsSorted(), true)}`;
+}
+async function saveChildPasswords(childId){
+  const me = currentRole && currentRole.promotionId;
+  const child = DATA.promotions[childId];
+  if(!child || !me || (child.parentId || '__main__') !== me){ alert("Vous ne pouvez gérer que les mots de passe de votre promotion suivante."); return; }
+  const inputs = Array.from(document.querySelectorAll('.pw-child')).filter(i => i.value.trim());
+  if(!inputs.length){ alert("Aucun nouveau mot de passe saisi."); return; }
+  if(inputs.find(i => i.value.trim().length < 8)){ alert("Chaque mot de passe doit contenir au moins 8 caractères."); return; }
+  const edited = new Set(inputs.map(i => i.dataset.kind + '|' + i.dataset.num));
+  const used = new Set();
+  CONFIG.adminRoles.forEach(r => used.add(roleHash(r)));
+  Object.values(DATA.promotions).forEach(p => {
+    if(p.pwHash && !(p.id === childId && edited.has('promo|'))) used.add(p.pwHash);
+    (p.bureau||[]).forEach(m => { if(m.pwHash && !(p.id === childId && edited.has('member|' + m.num))) used.add(m.pwHash); });
+  });
+  for(const i of inputs){
+    const h = pwHash(i.value.trim());
+    if(used.has(h)){ alert("Un de ces mots de passe est déjà utilisé par un autre accès — chaque accès doit avoir son propre mot de passe."); return; }
+    used.add(h);
+    if(i.dataset.kind === 'promo') child.pwHash = h;
+    else { const m = (child.bureau||[]).find(x => x.num === i.dataset.num); if(m) m.pwHash = h; }
+  }
+  await storageSet('promotions', DATA.promotions);
+  renderAdminContent();
+  alert("Mots de passe enregistrés.");
 }
 
 let openPerms = false;
@@ -2389,7 +2461,7 @@ function permsMatrixHTML(){
   const th = 'text-align:center; padding:6px 4px; font-size:0.7rem; letter-spacing:0.05em; color:var(--muted-2); border-bottom:1px solid var(--line);';
   const td = 'padding:5px 4px; border-bottom:1px solid var(--line); text-align:center;';
   const rows = PERM_SECTIONS.map(sec => `<tr><td style="${td} text-align:left; font-size:0.82rem; white-space:nowrap;">${sec.label}</td>${PERM_CODES.map(code => {
-    const locked = code === 'PR';
+    const locked = false;
     const on = locked || permsFor(code).includes(sec.id);
     return `<td style="${td}"><input type="checkbox" class="perm-box" data-code="${code}" data-sec="${sec.id}" ${on ? 'checked' : ''} ${locked ? 'disabled' : ''} style="width:16px; height:16px;"></td>`;
   }).join("")}</tr>`).join("");
@@ -2408,7 +2480,6 @@ function permsMatrixHTML(){
 async function savePerms(){
   if(!isOwner()) return;
   PERM_CODES.forEach(code => {
-    if(code === 'PR') return;
     DATA.rolePerms[code] = Array.from(document.querySelectorAll(`.perm-box[data-code="${code}"]`)).filter(b => b.checked).map(b => b.dataset.sec);
   });
   await storageSet('role-perms', DATA.rolePerms);
@@ -2478,28 +2549,15 @@ async function removeAccess(pid, num){
   renderAdminContent();
 }
 async function savePromotion(id){
-  const nom = document.getElementById('ad-promo-nom').value.trim();
-  const annee = document.getElementById('ad-promo-annee').value.trim();
-  const texte = document.getElementById('ad-promo-texte').value.trim();
+  if(!id || !DATA.promotions[id]) return;
   const fraisVal = document.getElementById('ad-promo-frais').value.trim();
   const groupLink = document.getElementById('ad-promo-group').value.trim();
-  const dateVal = document.getElementById('ad-promo-date').value;
-  const dateDebut = dateVal ? new Date(dateVal + 'T00:00:00').getTime() : Date.now();
   const fraisAdhesion = fraisVal === '' ? null : Number(fraisVal);
-  if(!nom){ alert("Le nom de la promotion est requis."); return; }
   if(fraisVal !== '' && (isNaN(fraisAdhesion) || fraisAdhesion < 0)){ alert("Le montant des frais d'adhésion doit être un nombre valide."); return; }
-  if(id){
-    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte, dateDebut, groupLink, fraisAdhesion });
-  } else {
-    const newId = 'promo_' + uid();
-    const ordre = promotionsSorted().length;
-    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, groupLink, pwHash: null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
-  }
+  DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { groupLink, fraisAdhesion });
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
-  renderBureau();
-  renderFees();
-  renderAdminContent();
+  renderBureau(); renderFees(); renderAdminContent();
 }
 async function deletePromotion(id){
   if(!confirm("Supprimer définitivement cette promotion et tout son bureau ? Cette action est irréversible.")) return;
@@ -3536,12 +3594,12 @@ function openAdminEntry(){
 // Catégories ouvertes au bureau d'une promotion connecté avec SON propre mot
 // de passe : uniquement ce qui concerne sa promotion (jamais les autres
 // promotions, ni la promotion fondatrice).
-const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES;
+const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES.concat(['suite']);
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
   if(!val){ alert("Mot de passe incorrect."); return; }
   const h = pwHash(val);
-  let match = CONFIG.adminRoles.find(r => roleHash(r) === h);
+  let match = CONFIG.adminRoles.find(r => r.role !== 'Président' && roleHash(r) === h); // le Président utilise l'Accès général
   if(match && !match.categories.includes('*')){
     // Poste de la fondatrice : parties à gérer = celles réglées dans l'onglet « Mots de passe ».
     const code = codeOfRoleName(match.role);
@@ -3551,7 +3609,7 @@ function tryUnlock(){
   if(!match){
     for(const promo of Object.values(DATA.promotions || {})){
       // 1) mot de passe personnel d'un membre du bureau → droits de SON poste
-      const mem = (promo.bureau || []).find(m => m.pwHash && m.pwHash === h);
+      const mem = (promo.bureau || []).find(m => roleCode(m.abbr) !== 'PR' && m.pwHash && m.pwHash === h);
       if(mem){ match = promoRoleFromMember(promo, mem); break; }
       // 2) mot de passe commun du bureau
       if(promo.pwHash && promo.pwHash === h){
@@ -3588,6 +3646,7 @@ const ADMIN_CATEGORIES = [
   {id:'outils', label:'Logiciels (carrousel)'},
   {id:'membres', label:'Membres du groupe'},
   {id:'promotions', label:'Promotions'},
+  {id:'suite', label:'Promotion suivante'},
   {id:'acces', label:'Mots de passe'},
   {id:'projets', label:'Projets'},
   {id:'cycles', label:'Cycles & lauréats'},
@@ -3600,7 +3659,7 @@ const ADMIN_CATEGORIES = [
 function isOwner(){ return !!currentRole && currentRole.role === CONFIG.ownerRole; }
 function visibleCategories(){
   const all = currentRole.categories.includes('*') ? ADMIN_CATEGORIES : ADMIN_CATEGORIES.filter(c => currentRole.categories.includes(c.id));
-  return all.filter(c => c.id !== 'acces' || isOwner());
+  return all.filter(c => (c.id !== 'acces' || isOwner()) && (c.id !== 'suite' || (currentRole.promotionId && currentRole.categories.includes('suite'))));
 }
 
 function openAdminDashboard(){
@@ -3796,6 +3855,17 @@ function renderAdminContent(){
     const ht = DATA.heroText || {};
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
+        <label>Logo du groupe (header, pied de page, filigranes sur les photos/vidéos)</label>
+        ${DATA.groupLogo ? `<img src="${DATA.groupLogo}" style="width:80px; height:80px; object-fit:cover; border-radius:50%; margin-bottom:8px;">` : ''}
+        <input type="file" accept="image/*" id="ad-group-logo">
+        <div class="row">
+          <button class="btn-primary" onclick="saveGroupLogo()">Enregistrer le logo</button>
+          ${DATA.groupLogo ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeGroupLogo()">Retirer le logo partout</button>` : ''}
+        </div>
+        ${DATA.groupLogo && DATA.logoHiddenGallery ? `<p class="form-note" style="margin-top:8px;">La tuile du logo est actuellement masquée dans la galerie (le logo reste actif partout ailleurs). <button class="link-btn" style="color:var(--teal-dark);" onclick="showLogoInGallery()">Le réafficher dans la galerie</button></p>` : ''}
+        ${DATA.groupLogo && !DATA.logoHiddenGallery ? `<p class="form-note" style="margin-top:8px;">Le logo apparaît aussi comme une tuile dans la galerie. La croix (✕) sur cette tuile ne fait que la masquer de la galerie — le logo reste actif partout ailleurs. Pour le supprimer complètement, utilisez « Retirer le logo partout » ci-dessus.</p>` : ''}
+      </div>
+      <div class="check-step" style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
         <label>Texte du bandeau principal (en haut de la page)</label>
         <label style="font-weight:400; font-size:0.8rem;">Petite ligne au-dessus du titre</label>
         <input id="ad-hero-eyebrow" value="${ht.eyebrow || 'LES LOGICIELS AU BOUT DES DOIGTS · GÉNIE CIVIL'}">
@@ -3913,7 +3983,7 @@ function renderAdminContent(){
   }
   if(adminTab === 'acces' && isOwner()){
     const promos = promotionsSorted();
-    const COLS = ['PR','VP','SG','TG','CRE','OG','CDM'];
+    const COLS = ['VP','SG','TG','CRE','OG','CDM'];
     const ROLE_OF_COL = { PR:'Président', SG:'Secrétaire Générale', TG:'Trésorier Général', CRE:'Chargé des Relations Extérieures', OG:'Organisateur Général', CDM:'Chargé des médias' };
     const th = 'text-align:center; padding:6px 3px; font-size:0.68rem; letter-spacing:0.05em; color:var(--muted-2); border-bottom:1px solid var(--line); white-space:nowrap;';
     const td = 'padding:6px 3px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle;';
@@ -3927,8 +3997,8 @@ function renderAdminContent(){
     const dash = '<span style="color:var(--muted-2);">—</span>';
     // ligne fondatrice
     const foundingRow = `<tr><td style="${td} text-align:left; font-weight:700; white-space:nowrap;">Fondatrice</td>
-      ${COLS.map(c => { const r = CONFIG.adminRoles.find(x => x.role === ROLE_OF_COL[c]); return `<td style="${td}">${r ? cell('role', r.role, '', true, false, r.role) : dash}</td>`; }).join("")}
       <td style="${td}">${(() => { const r = CONFIG.adminRoles.find(x => x.role === 'Accès général'); return r ? cell('role', r.role, '', true, false, 'Accès général') : dash; })()}</td>
+      ${COLS.map(c => { const r = CONFIG.adminRoles.find(x => x.role === ROLE_OF_COL[c]); return `<td style="${td}">${r ? cell('role', r.role, '', true, false, r.role) : dash}</td>`; }).join("")}
       <td style="${td}">${dash}</td></tr>`;
     // une ligne par promotion (ajoutée automatiquement à la création d'une promotion)
     const promoRows = promos.map(p => {
@@ -3940,16 +4010,17 @@ function renderAdminContent(){
         used.add(m.num);
         return `<td style="${td}">${cell('member', p.id, m.num, !!m.pwHash, true, m.nom)}</td>`;
       }).join("");
-      const autres = bureau.filter(x => !used.has(x.num)).map(m => `<div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;"><span style="font-size:0.68rem; color:var(--muted-2); min-width:30px; text-align:right;">${m.abbr || '?'}</span>${cell('member', p.id, m.num, !!m.pwHash, true, m.nom)}</div>`).join("");
-      return `<tr><td style="${td} text-align:left; font-weight:700; white-space:nowrap;">${p.nom}${p.annee ? ' <span style="font-weight:400; color:var(--muted-2);">'+p.annee+'</span>' : ''}</td>${cols}<td style="${td}">${cell('promo', p.id, '', !!p.pwHash, true, 'Accès commun')}</td><td style="${td}">${autres || dash}</td></tr>`;
+      const autres = bureau.filter(x => !used.has(x.num) && roleCode(x.abbr) !== 'PR').map(m => `<div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;"><span style="font-size:0.68rem; color:var(--muted-2); min-width:30px; text-align:right;">${m.abbr || '?'}</span>${cell('member', p.id, m.num, !!m.pwHash, true, m.nom)}</div>`).join("");
+      return `<tr><td style="${td} text-align:left; font-weight:700; white-space:nowrap;">${p.nom}${p.annee ? ' <span style="font-weight:400; color:var(--muted-2);">'+p.annee+'</span>' : ''}</td><td style="${td}">${cell('promo', p.id, '', !!p.pwHash, true, 'Accès général')}</td>${cols}<td style="${td}">${autres || dash}</td></tr>`;
     }).join("");
     el.innerHTML = `
       <div style="overflow-x:auto; margin-bottom:14px;"><table style="width:100%; border-collapse:collapse;">
-        <thead><tr><th style="${th} text-align:left;">Promo</th>${COLS.map(c => `<th style="${th}">${c}</th>`).join("")}<th style="${th}">Commun</th><th style="${th}">Autres</th></tr></thead>
+        <thead><tr><th style="${th} text-align:left;">Promo</th><th style="${th}">Accès général</th>${COLS.map(c => `<th style="${th}">${c}</th>`).join("")}<th style="${th}">Autres</th></tr></thead>
         <tbody>${foundingRow}${promoRows}</tbody></table></div>
       <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>
       ${permsMatrixHTML()}`;
   }
+  if(adminTab === 'suite' && currentRole && currentRole.promotionId){ el.innerHTML = renderSuiteAdmin(); }
   if(adminTab === 'promotions'){
     const promos = promotionsSorted();
     el.innerHTML = renderPromotionsAdmin(promos);
@@ -3988,17 +4059,6 @@ function renderAdminContent(){
     const seedVisible = mScope ? [] : CONFIG.seedGallery.map((m,i)=>({m,i})).filter(x => !DATA.seedHidden.includes(x.i));
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px;">
-        <label>Logo du groupe (header, pied de page, filigranes sur les photos/vidéos)</label>
-        ${DATA.groupLogo ? `<img src="${DATA.groupLogo}" style="width:80px; height:80px; object-fit:cover; border-radius:50%; margin-bottom:8px;">` : ''}
-        <input type="file" accept="image/*" id="ad-group-logo">
-        <div class="row">
-          <button class="btn-primary" onclick="saveGroupLogo()">Enregistrer le logo</button>
-          ${DATA.groupLogo ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeGroupLogo()">Retirer le logo partout</button>` : ''}
-        </div>
-        ${DATA.groupLogo && DATA.logoHiddenGallery ? `<p class="form-note" style="margin-top:8px;">La tuile du logo est actuellement masquée dans la galerie (le logo reste actif partout ailleurs). <button class="link-btn" style="color:var(--teal-dark);" onclick="showLogoInGallery()">Le réafficher dans la galerie</button></p>` : ''}
-        ${DATA.groupLogo && !DATA.logoHiddenGallery ? `<p class="form-note" style="margin-top:8px;">Le logo apparaît aussi comme une tuile dans la galerie. La croix (✕) sur cette tuile ne fait que la masquer de la galerie — le logo reste actif partout ailleurs. Pour le supprimer complètement, utilisez « Retirer le logo partout » ci-dessus.</p>` : ''}
-      </div>
-      <div class="check-step" style="margin-bottom:20px;">
         ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.legende} »</p>` : ''}
         <label>Noms des personnes sur la photo</label><input id="ad-media-legende" placeholder="Ex : Rencontre du bureau" value="${editingM?editingM.legende:''}">
         <label>Photo ou vidéo${editingM?' (laisser vide pour garder le média actuel)':''}</label><input type="file" accept="image/*,video/*" id="ad-media-photo">
@@ -4011,7 +4071,6 @@ function renderAdminContent(){
       </div>
       <div>${scopedMedias.map(m => `<div class="admin-list-row"><span>${m.legende}${m.video?' &#127909;':''}</span><span class="meta">${fmtDate(m.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMedia('${m.id}')">Modifier</button><button class="link-btn" onclick="deleteMedia('${m.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune photo publiée.</p>'}
       ${seedVisible.map(x => `<div class="admin-list-row"><span>${x.m.legende||'Photo du groupe'}</span><span class="meta">photo d'origine <button class="link-btn" onclick="deleteSeedPhoto(${x.i})">Supprimer</button></span></div>`).join("")}</div>`;
-    if(mScope){ const logoBox = el.querySelector('.check-step'); if(logoBox) logoBox.remove(); } // le logo est celui du groupe : réglé uniquement côté fondatrice
     setupVideoFrameCapture('ad-media-photo', 'ad-media-poster-preview');
   }
   if(adminTab === 'candidatures'){

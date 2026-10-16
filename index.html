@@ -28,9 +28,8 @@
   2) Contenu publié au fil du temps (articles, projets, photos,
      candidatures, commentaires) : bouton "Espace admin" en bas
      à droite du site une fois publié en ligne.
-     Mot de passe par défaut : labd2026 (à changer dans
-     CONFIG.adminPassword, ou depuis Paramètres > admin une fois
-     connecté).
+     Les mots de passe se changent depuis l'espace admin, onglet
+     « Mots de passe » (Président / accès général).
   3) L'espace admin enregistre ses données dans une base Firebase
      (Google, gratuite). Il faut coller la config de TON projet
      Firebase dans le bloc <script type="module"> juste avant le
@@ -1179,16 +1178,17 @@ function observeTileVideos(){
    CONFIG — contenu de base
 ========================================================== */
 const CONFIG = {
-  // Comptes admin : mot de passe -> rôle -> catégories visibles dans le tableau de bord.
-  // "*" = accès à tout. Changez ces mots de passe librement, un par personne.
+  // Comptes admin : empreinte du mot de passe -> rôle -> catégories visibles dans le tableau de bord.
+  // "*" = accès à tout. Les mots de passe ne sont PAS écrits ici : seule leur empreinte chiffrée l'est.
+  // Pour en changer un : espace admin > onglet « Mots de passe ».
   adminRoles: [
-    { password:"pr-labd26",  role:"Président",                          categories:["*"] },
-    { password:"cre-labd26", role:"Chargé des Relations Extérieures",   categories:["candidatures","commentaires","articles"], articlesScope:"formation" },
-    { password:"tg-labd26",  role:"Trésorier Général",                  categories:["cotisations","commentaires"] },
-    { password:"cdm-labd26", role:"Chargé des médias",                  categories:["articles","photos","vision","outils","cycles","commentaires"] },
-    { password:"og-labd26",  role:"Organisateur Général",               categories:["articles","commentaires"] },
-    { password:"sg-labd26",  role:"Secrétaire Générale",                categories:["membres","promotions","commentaires","candidatures"] },
-    { password:"labd2026",   role:"Accès général",                      categories:["*"] }
+    { hash:"3c4fd316d0eec177185dda3ac030b0dfa3761f24d3106f4eeb562f7084f4495a",  role:"Président",                          categories:["*"] },
+    { hash:"731bd94ea12e8cd6c0720ba1b7dc96e7d9769e56f2bfb3d0ad08441e6874232a", role:"Chargé des Relations Extérieures",   categories:["candidatures","commentaires","articles"], articlesScope:"formation" },
+    { hash:"0251a03c0d2cd25224975fbf097f8ff02bda7c13f0680ded0b40d18d34da668d",  role:"Trésorier Général",                  categories:["cotisations","commentaires"] },
+    { hash:"f63a4395208d0741650f925a00d432e3e521f6f8688bd79f9216dfc50c26f68e", role:"Chargé des médias",                  categories:["articles","photos","vision","outils","cycles","commentaires"] },
+    { hash:"65a9368f1ccea90e30ec0b1474f5e2ac877f3ebdb31f744061021c2a00171d01",  role:"Organisateur Général",               categories:["articles","commentaires"] },
+    { hash:"8a9f26f053e3676d8f3f51841438517658a494940c6f84d872501e7a96bd64c4",  role:"Secrétaire Générale",                categories:["membres","promotions","commentaires","candidatures"] },
+    { hash:"6045f7b79c229c777b7f6a2178fa9e9ce735b2d1dd7c01805fdcb425674337cd",   role:"Accès général",                      categories:["*"] }
   ],
 
   // Emails mis en copie sur chaque candidature / avis reçu (notification).
@@ -1350,6 +1350,48 @@ function waHref(p, presetText){
   const text = presetText ? '?text=' + encodeURIComponent(presetText) : '';
   return `https://wa.me/${digits}${text}`;
 }
+
+/* ---------- Mots de passe : jamais stockés en clair ----------
+   On ne garde que l'empreinte SHA-256 (répétée 10 000 fois, avec un sel propre
+   au site). Même mot de passe => même empreinte, ce qui permet aussi de
+   refuser les doublons. Implémentation intégrée pour ne dépendre de rien. */
+function sha256Hex(str){
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const bytes = Array.from(new TextEncoder().encode(str));
+  const bitLen = bytes.length * 8;
+  bytes.push(0x80);
+  while(bytes.length % 64 !== 56) bytes.push(0);
+  for(let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i * 8)) & 0xff);
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  const w = new Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for(let off = 0; off < bytes.length; off += 64){
+    for(let i = 0; i < 16; i++) w[i] = (bytes[off+i*4]<<24) | (bytes[off+i*4+1]<<16) | (bytes[off+i*4+2]<<8) | bytes[off+i*4+3];
+    for(let i = 16; i < 64; i++){
+      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15]>>>3);
+      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2]>>>10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for(let i = 0; i < 64; i++){
+      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) | 0;
+      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) | 0;
+      h=g; g=f; f=e; e=(d + t1) | 0; d=c; c=b; b=a; a=(t1 + t2) | 0;
+    }
+    h0=(h0+a)|0; h1=(h1+b)|0; h2=(h2+c)|0; h3=(h3+d)|0; h4=(h4+e)|0; h5=(h5+f)|0; h6=(h6+g)|0; h7=(h7+h)|0;
+  }
+  return [h0,h1,h2,h3,h4,h5,h6,h7].map(x => (x >>> 0).toString(16).padStart(8,'0')).join('');
+}
+function pwHash(pw){
+  let h = sha256Hex('labd-v1|' + pw);
+  for(let i = 0; i < 10000; i++) h = sha256Hex(h + '|' + pw);
+  return h;
+}
+const IS_HASH = /^[0-9a-f]{64}$/;
 
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -1632,7 +1674,7 @@ async function mapDeleteItem(mapName, itemId){
 /* ==========================================================
    DONNEES DYNAMIQUES
 ========================================================== */
-let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null, promotions:{} };
+let DATA = { bureauPhotos:{}, memberPhotos:{}, laureats:{}, laureatPhotos:{}, laureatFocal:{}, visionImages:{}, membresExtra:[], membresRemoved:[], membresOverrides:{}, articles:[], projets:[], medias:[], candidatures:[], commentaires:[], settings:{}, outils:[], groupLogo:null, logoHiddenGallery:false, seedHidden:[], cyclesExtra:[], histoireText:null, heroPhoto:null, heroPhotoFocal:'50% 50%', heroText:null, formationPassword:null, fees:{ adhesion:2675, adhesionOld:null, mensuelle:500, mensuelleOld:null }, reglementText:null, histoireTeaser:null, promotions:{}, rolePasswords:{} };
 
 async function loadPhotoMap(mapName, legacyKey){
   const data = await mapGetAll(mapName, null);
@@ -1656,7 +1698,7 @@ async function loadData(){
     projets, medias, candidatures, commentaires, settings, outils, outilsSeedDone,
     groupLogo, seedHidden, cyclesExtra, histoireText, heroPhoto, heroPhotoFocal,
     logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText,
-    promotions
+    promotions, rolePasswords
   ] = await Promise.all([
     loadPhotoMap('bureau-photos', 'bureau-photos'),
     loadPhotoMap('member-photos', 'member-photos'),
@@ -1687,7 +1729,8 @@ async function loadData(){
     storageGet('reglement-text', null),
     storageGet('histoire-teaser', null),
     storageGet('hero-text', null),
-    storageGet('promotions', {})
+    storageGet('promotions', {}),
+    storageGet('role-passwords', {})
   ]);
 
   DATA.bureauPhotos = bureauPhotos;
@@ -1719,6 +1762,8 @@ async function loadData(){
   DATA.histoireTeaser = histoireTeaser;
   DATA.heroText = heroText;
   DATA.promotions = promotions || {};
+  DATA.rolePasswords = rolePasswords || {};
+  await migratePasswords();
 
   if(!outilsSeedDone || !DATA.outils || !DATA.outils.length){
     // Réinitialise une seule fois la liste (répare un ancien état corrompu par un bug de chargement).
@@ -1727,6 +1772,18 @@ async function loadData(){
     await storageSet('outils-seed-v2', true);
   }
 }
+// Remplace tout mot de passe encore en clair (anciennes saisies) par son empreinte.
+async function migratePasswords(){
+  let changed = false;
+  Object.values(DATA.promotions || {}).forEach(p => {
+    if(p.password){ if(!p.pwHash) p.pwHash = IS_HASH.test(p.password) ? p.password : pwHash(p.password); delete p.password; changed = true; }
+    (p.bureau || []).forEach(m => {
+      if(m.password){ if(!m.pwHash) m.pwHash = IS_HASH.test(m.password) ? m.password : pwHash(m.password); delete m.password; changed = true; }
+    });
+  });
+  if(changed) await storageSet('promotions', DATA.promotions);
+}
+function roleHash(r){ return (DATA.rolePasswords && DATA.rolePasswords[r.role]) || r.hash; }
 function getFacebookUrl(){ return DATA.settings.facebookUrl || CONFIG.facebookUrl; }
 function getFooterTagline(){ return DATA.settings.footerTagline || CONFIG.footerTagline; }
 function getContactEmail(){ return DATA.settings.contactEmail || CONFIG.contact.email; }
@@ -2044,15 +2101,6 @@ async function removeMember(num){
    correction ou un style modifié s'applique donc automatiquement à toutes
    les promotions, présentes et futures. */
 let activePromotionId = '__main__';
-// Un mot de passe ne doit désigner qu'une seule personne / un seul accès.
-function passwordTaken(pw, exceptPromoId, exceptMemberNum){
-  if(!pw) return false;
-  if(CONFIG.adminRoles.some(r => r.password === pw)) return true;
-  return Object.values(DATA.promotions || {}).some(p => {
-    if(p.password === pw && p.id !== exceptPromoId) return true;
-    return (p.bureau || []).some(m => m.password === pw && !(p.id === exceptPromoId && m.num === exceptMemberNum));
-  });
-}
 function promotionsSorted(){
   return Object.values(DATA.promotions || {}).sort((a,b) => (a.ordre||0) - (b.ordre||0));
 }
@@ -2228,24 +2276,47 @@ function renderPromotionsAdmin(promos, locked){
 }
 
 async function savePasswordsTable(){
-  const inputs = Array.from(document.querySelectorAll('.pw-input'));
-  const seen = new Map();
+  const inputs = Array.from(document.querySelectorAll('.pw-input')).filter(i => i.value.trim());
+  if(!inputs.length){ alert("Aucun nouveau mot de passe saisi."); return; }
+  const short = inputs.find(i => i.value.trim().length < 8);
+  if(short){ alert("Chaque mot de passe doit contenir au moins 8 caractères."); return; }
+  // Empreintes déjà en place (hors les lignes qu'on modifie), pour refuser les doublons.
+  const edited = new Set(inputs.map(i => i.dataset.kind + '|' + i.dataset.pid + '|' + i.dataset.num));
+  const used = new Set();
+  CONFIG.adminRoles.forEach(r => { if(!edited.has('role|' + r.role + '|')) used.add(roleHash(r)); });
+  Object.values(DATA.promotions).forEach(p => {
+    if(p.pwHash && !edited.has('promo|' + p.id + '|')) used.add(p.pwHash);
+    (p.bureau||[]).forEach(m => { if(m.pwHash && !edited.has('member|' + p.id + '|' + m.num)) used.add(m.pwHash); });
+  });
+  const computed = [];
   for(const i of inputs){
-    const v = i.value.trim();
-    if(!v) continue;
-    if(CONFIG.adminRoles.some(r => r.password === v) || seen.has(v)){ alert(`Le mot de passe « ${v} » est utilisé deux fois — chaque accès doit avoir son propre mot de passe.`); return; }
-    seen.set(v, true);
+    const h = pwHash(i.value.trim());
+    if(used.has(h)){ alert("Un de ces mots de passe est déjà utilisé par un autre accès — chaque accès doit avoir son propre mot de passe."); return; }
+    used.add(h); computed.push([i, h]);
   }
-  inputs.forEach(i => {
+  let touchedRoles = false, touchedPromos = false;
+  computed.forEach(([i, h]) => {
+    const kind = i.dataset.kind;
+    if(kind === 'role'){ DATA.rolePasswords[i.dataset.pid.replace(/&quot;/g,'"')] = h; touchedRoles = true; return; }
     const promo = DATA.promotions[i.dataset.pid];
     if(!promo) return;
-    const v = i.value.trim() || null;
-    if(!i.dataset.num){ promo.password = v; return; }
-    const m = (promo.bureau||[]).find(x => x.num === i.dataset.num);
-    if(m) m.password = v || '';
+    if(kind === 'promo') promo.pwHash = h;
+    else { const m = (promo.bureau||[]).find(x => x.num === i.dataset.num); if(m) m.pwHash = h; }
+    touchedPromos = true;
   });
-  await storageSet('promotions', DATA.promotions);
+  if(touchedRoles) await storageSet('role-passwords', DATA.rolePasswords);
+  if(touchedPromos) await storageSet('promotions', DATA.promotions);
+  renderAdminContent();
   alert("Mots de passe enregistrés.");
+}
+async function removeAccess(pid, num){
+  if(!confirm("Retirer cet accès ? La personne ne pourra plus se connecter.")) return;
+  const promo = DATA.promotions[pid];
+  if(!promo) return;
+  if(!num) promo.pwHash = null;
+  else { const m = (promo.bureau||[]).find(x => x.num === num); if(m) m.pwHash = null; }
+  await storageSet('promotions', DATA.promotions);
+  renderAdminContent();
 }
 async function savePromotion(id){
   const nom = document.getElementById('ad-promo-nom').value.trim();
@@ -2262,7 +2333,7 @@ async function savePromotion(id){
   } else {
     const newId = 'promo_' + uid();
     const ordre = promotionsSorted().length;
-    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, password: null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
+    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, pwHash: null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
   }
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
@@ -3300,14 +3371,16 @@ function openAdminEntry(){
 const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES;
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
-  let match = CONFIG.adminRoles.find(r => r.password === val);
-  if(!match && val){
+  if(!val){ alert("Mot de passe incorrect."); return; }
+  const h = pwHash(val);
+  let match = CONFIG.adminRoles.find(r => roleHash(r) === h);
+  if(!match){
     for(const promo of Object.values(DATA.promotions || {})){
       // 1) mot de passe personnel d'un membre du bureau → droits de SON poste
-      const mem = (promo.bureau || []).find(m => m.password && m.password === val);
+      const mem = (promo.bureau || []).find(m => m.pwHash && m.pwHash === h);
       if(mem){ match = promoRoleFromMember(promo, mem); break; }
-      // 2) mot de passe commun du bureau (ancien fonctionnement)
-      if(promo.password && promo.password === val){
+      // 2) mot de passe commun du bureau
+      if(promo.pwHash && promo.pwHash === h){
         match = { role:`Bureau — ${promo.nom}`, categories:PROMOTION_BUREAU_CATEGORIES, promotionId:promo.id };
         break;
       }
@@ -3612,16 +3685,17 @@ function renderAdminContent(){
     const promos = promotionsSorted();
     const th = 'text-align:left; padding:8px 10px; font-size:0.72rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-2); border-bottom:1px solid var(--line);';
     const td = 'padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:middle;';
-    const inp = (pid, num, val) => `<input class="pw-input" data-pid="${pid}" data-num="${num}" value="${(val||'').replace(/"/g,'&quot;')}" placeholder="Aucun accès" style="width:100%; min-width:150px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">`;
-    const rows = promos.map(p => `
-      <tr><td style="${td} font-weight:700;">${p.nom}${p.annee?' — '+p.annee:''}</td><td style="${td}">Accès commun du bureau</td><td style="${td}">—</td><td style="${td}">${inp(p.id,'',p.password)}</td></tr>
-      ${(p.bureau||[]).map(m => `<tr><td style="${td}"></td><td style="${td}">${m.nom}</td><td style="${td}">${m.role||m.abbr||''}</td><td style="${td}">${inp(p.id,m.num,m.password)}</td></tr>`).join("")}`).join("");
-    el.innerHTML = promos.length ? `
+    const inp = (kind, pid, num, isSet, removable) => `<div style="display:flex; gap:8px; align-items:center;"><input class="pw-input" data-kind="${kind}" data-pid="${pid}" data-num="${num}" autocomplete="off" placeholder="${isSet ? 'Défini — saisir pour changer' : 'Aucun accès'}" style="width:100%; min-width:170px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">${isSet && removable ? `<button class="link-btn" onclick="removeAccess('${pid}','${num}')">Retirer</button>` : ''}</div>`;
+    const roleRows = CONFIG.adminRoles.map((r, i) => `
+      <tr><td style="${td} font-weight:700;">${i===0 ? 'Fondatrice' : ''}</td><td style="${td}">${r.role}</td><td style="${td}">—</td><td style="${td}">${inp('role', r.role.replace(/"/g,'&quot;'), '', true, false)}</td></tr>`).join("");
+    const promoRows = promos.map(p => `
+      <tr><td style="${td} font-weight:700;">${p.nom}${p.annee?' — '+p.annee:''}</td><td style="${td}">Accès commun du bureau</td><td style="${td}">—</td><td style="${td}">${inp('promo', p.id, '', !!p.pwHash, true)}</td></tr>
+      ${(p.bureau||[]).map(m => `<tr><td style="${td}"></td><td style="${td}">${m.nom}</td><td style="${td}">${m.role||m.abbr||''}</td><td style="${td}">${inp('member', p.id, m.num, !!m.pwHash, true)}</td></tr>`).join("")}`).join("");
+    el.innerHTML = `
       <div style="overflow-x:auto; margin-bottom:16px;"><table style="width:100%; border-collapse:collapse; font-size:0.86rem;">
         <thead><tr><th style="${th}">Promotion</th><th style="${th}">Membre</th><th style="${th}">Poste</th><th style="${th}">Mot de passe</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>
-      <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>`
-      : '<p class="form-note">Aucune promotion pour le moment.</p>';
+        <tbody>${roleRows}${promoRows}</tbody></table></div>
+      <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>`;
   }
   if(adminTab === 'promotions'){
     const promos = promotionsSorted();

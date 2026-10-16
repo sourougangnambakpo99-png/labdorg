@@ -994,7 +994,6 @@
         <div>
           <div class="display">LABD Org</div>
           <p id="footerTaglineText">Logiciels Au Bout des Doigts — bureau d'étude étudiant, département de génie civil, bâtiment B-2610.</p>
-          <div id="footerContact" style="margin-top:12px;"></div>
           <div class="footer-social" id="footerSocial"></div>
         </div>
       </div>
@@ -1232,11 +1231,11 @@ const CONFIG = {
   ],
 
   bureau: [
-    { num:"LABD-001", nom:"GANGNAMBAKPO Sourou", role:"Président", abbr:"Pr", phone:"+229 01 66 94 28 67" },
-    { num:"LABD-003", nom:"ABDOULAYE Latifatou", role:"Secrétaire Générale", abbr:"SG", phone:"+229 01 41 76 01 65" },
-    { num:"LABD-004", nom:"GNANSOUNOU Kenneth", role:"Organisateur Général", abbr:"OG", phone:"+229 01 54 97 45 05" },
-    { num:"LABD-005", nom:"HEVOU Bénitez", role:"Trésorier Général", abbr:"TG", phone:"+229 01 46 30 00 66" },
-    { num:"LABD-006", nom:"ZINSOU Jean", role:"Chargé des Relations Extérieures", abbr:"CRE", phone:"+229 43 85 78 96" }
+    { num:"LABD-001", nom:"GANGNAMBAKPO Sourou", role:"Président", abbr:"Pr", phone:"+229 01 66 94 28 67", email:"sourougangnambakpo99@gmail.com" },
+    { num:"LABD-003", nom:"ABDOULAYE Latifatou", role:"Secrétaire Générale", abbr:"SG", phone:"+229 01 41 76 01 65", email:"abdoulayebakelatifa@gmail.com" },
+    { num:"LABD-004", nom:"GNANSOUNOU Kenneth", role:"Organisateur Général", abbr:"OG", phone:"+229 01 54 97 45 05", email:"gnassounoukenneth@gmail.com" },
+    { num:"LABD-005", nom:"HEVOU Bénitez", role:"Trésorier Général", abbr:"TG", phone:"+229 01 46 30 00 66", email:"benitezhevou44@gmail.com" },
+    { num:"LABD-006", nom:"ZINSOU Jean", role:"Chargé des Relations Extérieures", abbr:"CRE", phone:"+229 43 85 78 96", email:"jeanzinsou56@gmail.com" }
   ],
 
   membres: [
@@ -1971,6 +1970,32 @@ function getBureauList(){
 function getMembresList(){
   return CONFIG.membres.concat(DATA.membresExtra.filter(m => m.cat === 'membre')).filter(m => !DATA.membresRemoved.includes(m.num)).map(applyOverride);
 }
+// Un seul gabarit pour la fondatrice et pour les promotions : même champs, même ordre.
+function memberFormHTML(px, editingM, cat, lockCat, saveCall, cancelCall){
+  return `
+      <div class="check-step" style="margin-bottom:20px;">
+        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom} »</p>` : ''}
+        <label>Nom complet</label><input id="ad-${px}-nom" placeholder="Ex : NOM Prénom" value="${editingM?editingM.nom:''}">
+        <label>Catégorie</label>
+        <select id="ad-${px}-cat" ${lockCat ? 'disabled' : ''}>
+          <option value="membre" ${cat==='membre'?'selected':''}>Membre LABDien</option>
+          <option value="bureau" ${cat==='bureau'?'selected':''}>Membre du bureau</option>
+        </select>
+        <label>Poste (si bureau)</label><input id="ad-${px}-role" placeholder="Ex : Chargé des médias" value="${editingM?(editingM.role||''):''}">
+        <label>Abréviation (si bureau)</label><input id="ad-${px}-abbr" placeholder="Ex : CDM" value="${editingM?(editingM.abbr||''):''}">
+        <label>Email (optionnel)</label><input id="ad-${px}-email" type="email" placeholder="prenom@gmail.com" value="${editingM?(editingM.email||''):''}">
+        <label>Téléphone (optionnel)</label><input id="ad-${px}-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
+        <div class="row">
+          <button class="btn-primary" onclick="${saveCall}">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
+          ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="${cancelCall}">Annuler</button>` : ''}
+        </div>
+      </div>`;
+}
+function memberListHTML(bureau, membres, editFn, removeFn){
+  const head = t => `<div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:${t==='Bureau'?'0':'18px'} 0 4px;">${t}</div>`;
+  const row = (m, withAbbr) => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta">${withAbbr ? (m.abbr||'')+' ' : ''}<button class="link-btn" style="color:var(--teal-dark);" onclick="${editFn}('${m.num}')">Modifier</button><button class="link-btn" onclick="${removeFn}('${m.num}')">Retirer</button></span></div>`;
+  return head('Bureau') + `<div>${bureau.map(m => row(m,true)).join("")}</div>` + head('Membres') + `<div>${membres.map(m => row(m,false)).join("")}</div>`;
+}
 let editingMemberNum = null;
 function editMember(num){
   editingMemberNum = num;
@@ -1982,20 +2007,22 @@ async function saveMember(){
   const role = document.getElementById('ad-mb-role').value.trim();
   const abbr = document.getElementById('ad-mb-abbr').value.trim();
   const phone = document.getElementById('ad-mb-phone').value.trim();
+  const email = document.getElementById('ad-mb-email').value.trim();
   if(!nom){ alert("Le nom est requis."); return; }
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert("L'adresse email n'est pas valide."); return; }
   if(editingMemberNum){
     const extraIdx = DATA.membresExtra.findIndex(m => m.num === editingMemberNum);
     if(extraIdx > -1){
-      DATA.membresExtra[extraIdx] = Object.assign({}, DATA.membresExtra[extraIdx], { nom, cat, role, abbr, phone });
+      DATA.membresExtra[extraIdx] = Object.assign({}, DATA.membresExtra[extraIdx], { nom, cat, role, abbr, phone, email });
       await storageSet('membres-extra', DATA.membresExtra);
     } else {
-      DATA.membresOverrides[editingMemberNum] = { nom, role, abbr, phone };
+      DATA.membresOverrides[editingMemberNum] = { nom, role, abbr, phone, email };
       await storageSet('membres-overrides', DATA.membresOverrides);
     }
     editingMemberNum = null;
   } else {
     const num = 'EXTRA-' + uid();
-    DATA.membresExtra.push({ num, nom, cat, role, abbr, phone });
+    DATA.membresExtra.push({ num, nom, cat, role, abbr, phone, email });
     await storageSet('membres-extra', DATA.membresExtra);
   }
   renderBureau(); renderCycles(); renderAdminContent();
@@ -2038,39 +2065,45 @@ function activePromotion(){
    promotion fondatrice (CONFIG.adminRoles) : si le fonctionnement d'un poste
    change côté fondatrice, il change automatiquement pour toutes les promotions.
    Seules les rubriques qui existent par promotion sont ouvertes. */
-const PROMO_ALLOWED_CATEGORIES = ['membres','articles','commentaires','cycles','candidatures','cotisations','projets'];
-const ROLE_NAME_BY_CODE = { PR:'Président', SG:'Secrétaire Générale', TG:'Trésorier Général', CRE:'Chargé des Relations Extérieures', CAE:'Chargé des Relations Extérieures', OG:'Organisateur Général', CDM:'Chargé des médias' };
-function roleCode(abbr){ return (abbr || '').toString().trim().toUpperCase(); }
+const PROMO_ALLOWED_CATEGORIES = ['membres','articles','commentaires','cycles','candidatures','cotisations','projets','photos'];
+const ROLE_NAME_BY_CODE = { PR:'Président', SG:'Secrétaire Générale', TG:'Trésorier Général', CRE:'Chargé des Relations Extérieures', OG:'Organisateur Général', CDM:'Chargé des médias' };
+// Le poste de Vice-Président n'existe que dans les promotions (supprimé au niveau de la fondatrice) :
+// il a le même périmètre que le Président, dans sa promotion uniquement.
+const PROMO_ONLY_ROLES = { VP:'Vice-Président' };
+function roleCode(abbr){
+  const c = (abbr || '').toString().trim().toUpperCase();
+  return c === 'CAE' ? 'CRE' : c;
+}
 function promoRoleFromMember(promo, m){
-  const base = CONFIG.adminRoles.find(r => r.role === ROLE_NAME_BY_CODE[roleCode(m.abbr)]);
+  const code = roleCode(m.abbr);
+  const base = CONFIG.adminRoles.find(r => r.role === ROLE_NAME_BY_CODE[code]);
   let cats;
-  if(!base) cats = ['commentaires'];
+  if(PROMO_ONLY_ROLES[code]) cats = PROMO_ALLOWED_CATEGORIES.slice();
+  else if(!base) cats = ['commentaires'];
   else if(base.categories.includes('*')) cats = PROMO_ALLOWED_CATEGORIES.slice();
   else cats = base.categories.filter(c => PROMO_ALLOWED_CATEGORIES.includes(c));
   if(!cats.length) cats = ['commentaires'];
-  return { role:`${m.role || m.abbr || 'Bureau'} — ${promo.nom}`, categories:cats, promotionId:promo.id, articlesScope: base ? base.articlesScope : undefined, memberNum:m.num };
+  return { role:`${m.role || PROMO_ONLY_ROLES[code] || m.abbr || 'Bureau'} — ${promo.nom}`, categories:cats, promotionId:promo.id, articlesScope: base ? base.articlesScope : undefined, memberNum:m.num };
 }
-// Contact de la promotion : numéro du SG DE CETTE PROMOTION (jamais celui de la fondatrice).
 function promoBureauByCode(promo, code){
-  return (promo.bureau || []).find(m => roleCode(m.abbr) === code || (code === 'CRE' && roleCode(m.abbr) === 'CAE')) || null;
+  return (promo.bureau || []).find(m => roleCode(m.abbr) === code) || null;
 }
-function promoEmails(promo){
-  const g = code => { const m = promoBureauByCode(promo, code); return (m && m.email) || null; };
-  return { pr:g('PR'), sg:g('SG'), og:g('OG'), tg:g('TG'), cae:g('CRE'), cdm:g('CDM') };
+// Emails du bureau (fondatrice ou promotion) : l'email saisi sur chaque membre
+// du bureau entre automatiquement dans le système de notifications.
+function bureauEmails(promo){
+  const list = promo ? (promo.bureau || []) : getBureauList();
+  const map = {};
+  list.forEach(m => { if(m.email) map[roleCode(m.abbr)] = m.email; });
+  if(!promo){
+    // filet de sécurité : adresses d'origine si un champ a été vidé
+    const fb = { PR:CONFIG.emails.pr, SG:CONFIG.emails.sg, OG:CONFIG.emails.og, TG:CONFIG.emails.tg, CRE:CONFIG.emails.cae };
+    Object.keys(fb).forEach(k => { if(!map[k]) map[k] = fb[k]; });
+  }
+  const all = Array.from(new Set([map.PR].concat(list.map(m => m.email)).concat(Object.values(map)).filter(Boolean)));
+  return { pr:map.PR||null, sg:map.SG||null, og:map.OG||null, tg:map.TG||null, cae:map.CRE||null, all };
 }
-function emailsForPromotion(promo){ return promo ? promoEmails(promo) : CONFIG.emails; }
+function emailsForPromotion(promo){ return bureauEmails(promo); }
 function promoLabel(promo){ return promo ? `${promo.nom}${promo.annee ? ' ('+promo.annee+')' : ''}` : 'Promotion fondatrice'; }
-function currentContact(){
-  const promo = activePromotion();
-  if(!promo) return { email:getContactEmail(), phone:getContactPhone(), label:CONFIG.contact.secretariatLabel };
-  const sg = promoBureauByCode(promo, 'SG');
-  const pr = promoBureauByCode(promo, 'PR');
-  return {
-    email: (sg && sg.email) || (pr && pr.email) || null,
-    phone: (sg && sg.phone) || null,
-    label: `${CONFIG.contact.secretariatLabel} — ${promo.nom}`
-  };
-}
 function bureauCardHTML(m, i, photoKey){
   const photo = effectivePhoto(DATA.bureauPhotos, photoKey, m.photo);
   return `
@@ -2089,7 +2122,7 @@ function bureauCardHTML(m, i, photoKey){
           <div class="name">${m.nom}</div>
         </div>
       </div>
-      <a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>
+      ${m.phone ? `<a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>` : ''}
       ${m.note ? `<span class="tenure-note">${ICONS.info} ${m.note}</span>` : ''}
     </div>`;
 }
@@ -2123,12 +2156,14 @@ function switchPromotion(id){
   activePromotionId = id;
   cyclesOffset = 0; activeCycleIndex = null; // les index de cycles ne sont pas partagés entre promotions
   projectsWindow.realise = {size:2, offset:0}; projectsWindow.exercice = {size:2, offset:0};
+  galleryPage = 0;
   renderPromotionSwitches();
   renderBureau();      // bureau + membres + compteurs (renderMembers / renderStats)
   renderArticles();
   renderCycles();
   renderFees();
   renderProjects();
+  renderGallery();
   renderContact();
 }
 function renderBureau(){
@@ -2166,83 +2201,68 @@ function renderPromotionsAdmin(promos, locked){
     const inBureau = editingPromotionMemberNum ? (managing.bureau||[]).find(m => m.num === editingPromotionMemberNum) : null;
     const inMembres = (!inBureau && editingPromotionMemberNum) ? (managing.membres||[]).find(m => m.num === editingPromotionMemberNum) : null;
     const editingM = inBureau || inMembres;
-    const editingCat = inMembres ? 'membre' : 'bureau';
-    const missing = ['PR','SG','TG','CRE'].filter(c => { const m = promoBureauByCode(managing, c); return !(m && m.email); });
-    const row = (m, cat) => `<div class="admin-list-row"><span>${m.nom}${m.password?' 🔒':''}</span><span class="meta">${m.abbr||''} <button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionMemberNum='${m.num}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="removePromotionMember('${managing.id}','${m.num}')">Retirer</button></span></div>`;
+    const editingCat = inMembres ? 'membre' : (inBureau ? 'bureau' : 'membre');
     return `
       ${locked ? '' : `<p style="margin-bottom:14px;"><button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId=null; editingPromotionMemberNum=null; renderAdminContent();">← Retour aux promotions</button></p>`}
-      <h4 style="font-family:'Space Grotesk', sans-serif; margin-bottom:4px;">Bureau et membres — ${managing.nom}${managing.annee?' ('+managing.annee+')':''}</h4>
-      <p class="form-note" style="margin-bottom:10px;">Changez la photo directement depuis le site (icône sur chaque carte), une fois cette promotion sélectionnée.</p>
-      <p class="form-note" style="margin-bottom:14px;">Le numéro affiché dans « Contact » et en bas de page est celui du <strong>Secrétaire Général (abréviation SG)</strong> de cette promotion, défini automatiquement. ${missing.length ? `<br><strong>Emails manquants pour : ${missing.join(', ')}</strong> — sans eux, les notifications d'avis et de candidatures ne partent pas.` : ''}</p>
-      <div class="check-step" style="margin-bottom:20px;">
-        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom} »</p>` : ''}
-        <label>Catégorie</label>
-        <select id="ad-pm-cat" onchange="document.getElementById('ad-pm-bureau-only').style.display = this.value==='bureau' ? '' : 'none';" ${editingM ? 'disabled' : ''}>
-          <option value="bureau" ${editingCat==='bureau'?'selected':''}>Membre du bureau</option>
-          <option value="membre" ${editingCat==='membre'?'selected':''}>Membre LABDien</option>
-        </select>
-        <label>Nom complet</label><input id="ad-pm-nom" placeholder="Ex : NOM Prénom" value="${editingM?editingM.nom:''}">
-        <label>Poste</label><input id="ad-pm-role" placeholder="Ex : Président" value="${editingM?(editingM.role||''):''}">
-        <label>Abréviation (PR, SG, TG, CRE, OG, CDM…)</label><input id="ad-pm-abbr" placeholder="Ex : PR" value="${editingM?(editingM.abbr||''):''}">
-        <label>Téléphone (WhatsApp, optionnel)</label><input id="ad-pm-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
-        <div id="ad-pm-bureau-only" style="${editingCat==='bureau'?'':'display:none;'}">
-          <label>Email (pour les notifications d'avis et de candidatures)</label><input id="ad-pm-email" type="email" placeholder="prenom@gmail.com" value="${editingM?(editingM.email||''):''}">
-          <label>Mot de passe personnel de connexion (optionnel)</label><input id="ad-pm-password" placeholder="Ex : gc3-pr-26" value="${editingM?(editingM.password||''):''}">
-          <p class="frame-hint">Avec ce mot de passe, cette personne se connecte à l'espace admin de sa promotion, avec les mêmes droits que ce poste dans la promotion fondatrice (le TG gère les cotisations, la CRE les candidatures, etc.). Laissez vide : pas de connexion pour ce membre.</p>
-        </div>
-        <div class="row">
-          <button class="btn-primary" onclick="savePromotionMember('${managing.id}')">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
-          ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionMemberNum=null; renderAdminContent();">Annuler</button>` : ''}
-        </div>
-      </div>
-      <h5 style="margin:6px 0;">Bureau</h5>
-      <div>${(managing.bureau||[]).map(m => row(m,'bureau')).join("") || '<p class="form-note">Aucun membre de bureau pour le moment.</p>'}</div>
-      <h5 style="margin:14px 0 6px;">Membres LABDiens</h5>
-      <div>${(managing.membres||[]).map(m => row(m,'membre')).join("") || '<p class="form-note">Aucun membre pour le moment.</p>'}</div>`;
+      <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte, visible tant que l'admin est actif).</p>
+      ${memberFormHTML('pm', editingM, editingCat, !!editingM, `savePromotionMember('${managing.id}')`, "editingPromotionMemberNum=null; renderAdminContent();")}
+      ${memberListHTML(managing.bureau||[], managing.membres||[], 'editPromotionMember', 'removePromotionMemberOf')}`;
   }
 
   const editingP = editingPromotionId ? promos.find(p => p.id === editingPromotionId) : null;
   return `
-    <p class="form-note" style="margin-bottom:14px;">La promotion fondatrice (gérée depuis « Membres du bureau ») n'apparaît pas ici — créez ici UNIQUEMENT les promotions suivantes (GC3, puis les prochaines années). Dès qu'une promotion existe, un menu de sélection apparaît au-dessus du Bureau sur le site public ; tant qu'aucune n'existe, rien ne change pour les visiteurs.</p>
     <div class="check-step" style="margin-bottom:20px;">
       ${editingP ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} »</p>` : ''}
       <label>Nom de la promotion</label><input id="ad-promo-nom" placeholder="Ex : Génie Civil 3" value="${editingP?editingP.nom:''}">
       <label>Année (optionnel)</label><input id="ad-promo-annee" placeholder="Ex : 2026" value="${editingP?(editingP.annee||''):''}">
-      <label>Date de création de la promotion</label><input id="ad-promo-date" type="date" value="${editingP && editingP.dateDebut ? new Date(editingP.dateDebut).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)}">
-      <p class="frame-hint">Sert au compteur « Mois d'existence » du ruban en haut du site pour cette promotion.</p>
+      <label>Date de création</label><input id="ad-promo-date" type="date" value="${editingP && editingP.dateDebut ? new Date(editingP.dateDebut).toISOString().slice(0,10) : new Date().toISOString().slice(0,10)}">
       <label>Mot de la promotion (optionnel)</label><textarea id="ad-promo-texte" rows="2" placeholder="Remplace la phrase sous « Le bureau administratif » quand cette promotion est sélectionnée">${editingP?(editingP.texte||''):''}</textarea>
-      <label style="margin-top:6px;">Mot de passe commun du bureau (optionnel)</label>
-      <input id="ad-promo-password" placeholder="Ex : gc3-labd26" value="${editingP?(editingP.password||''):''}">
-      <p class="frame-hint">Accès général au bureau de cette promotion. Le mieux : laisser vide et donner à chaque membre son mot de passe personnel (bouton « Gérer le bureau »), pour que chacun ait les droits de son poste.</p>
-      <label style="margin-top:6px;">Frais d'adhésion spécifiques (F CFA, optionnel)</label>
+      <label>Frais d'adhésion spécifiques (F CFA, optionnel)</label>
       <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP && editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
-      <p class="frame-hint">Remplace, uniquement pour cette promotion, le montant affiché dans Cotisations/Adhésion et sur le formulaire de candidature.</p>
       <div class="row">
         <button class="btn-primary" onclick="savePromotion('${editingP?editingP.id:''}')">${editingP?'Enregistrer les modifications':'Créer la promotion'}</button>
         ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>` : ''}
       </div>
     </div>
-    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}${p.password?' 🔒':''}</span><span class="meta">${(p.bureau||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer le bureau</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion créée pour le moment — la promotion fondatrice reste affichée par défaut sur le site.</p>'}</div>`;
+    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
 }
 
+async function savePasswordsTable(){
+  const inputs = Array.from(document.querySelectorAll('.pw-input'));
+  const seen = new Map();
+  for(const i of inputs){
+    const v = i.value.trim();
+    if(!v) continue;
+    if(CONFIG.adminRoles.some(r => r.password === v) || seen.has(v)){ alert(`Le mot de passe « ${v} » est utilisé deux fois — chaque accès doit avoir son propre mot de passe.`); return; }
+    seen.set(v, true);
+  }
+  inputs.forEach(i => {
+    const promo = DATA.promotions[i.dataset.pid];
+    if(!promo) return;
+    const v = i.value.trim() || null;
+    if(!i.dataset.num){ promo.password = v; return; }
+    const m = (promo.bureau||[]).find(x => x.num === i.dataset.num);
+    if(m) m.password = v || '';
+  });
+  await storageSet('promotions', DATA.promotions);
+  alert("Mots de passe enregistrés.");
+}
 async function savePromotion(id){
   const nom = document.getElementById('ad-promo-nom').value.trim();
   const annee = document.getElementById('ad-promo-annee').value.trim();
   const texte = document.getElementById('ad-promo-texte').value.trim();
-  const password = document.getElementById('ad-promo-password').value.trim();
   const fraisVal = document.getElementById('ad-promo-frais').value.trim();
   const dateVal = document.getElementById('ad-promo-date').value;
   const dateDebut = dateVal ? new Date(dateVal + 'T00:00:00').getTime() : Date.now();
   const fraisAdhesion = fraisVal === '' ? null : Number(fraisVal);
   if(!nom){ alert("Le nom de la promotion est requis."); return; }
   if(fraisVal !== '' && (isNaN(fraisAdhesion) || fraisAdhesion < 0)){ alert("Le montant des frais d'adhésion doit être un nombre valide."); return; }
-  if(password && passwordTaken(password, id, null)){ alert("Ce mot de passe est déjà utilisé par un autre compte — choisissez-en un autre."); return; }
   if(id){
-    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte, dateDebut, password: password || null, fraisAdhesion });
+    DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { nom, annee, texte, dateDebut, fraisAdhesion });
   } else {
     const newId = 'promo_' + uid();
     const ordre = promotionsSorted().length;
-    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, password: password || null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
+    DATA.promotions[newId] = { id:newId, nom, annee, texte, ordre, dateDebut, password: null, fraisAdhesion, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
   }
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
@@ -2259,6 +2279,8 @@ async function deletePromotion(id){
   renderBureau();
   renderAdminContent();
 }
+function editPromotionMember(num){ editingPromotionMemberNum = num; renderAdminContent(); }
+function removePromotionMemberOf(num){ return removePromotionMember(managingPromotionId, num); }
 async function savePromotionMember(promoId){
   const promo = DATA.promotions[promoId];
   if(!promo) return;
@@ -2267,14 +2289,12 @@ async function savePromotionMember(promoId){
   const abbr = document.getElementById('ad-pm-abbr').value.trim();
   const phone = document.getElementById('ad-pm-phone').value.trim();
   const cat = document.getElementById('ad-pm-cat').value;
-  const email = cat === 'bureau' ? document.getElementById('ad-pm-email').value.trim() : '';
-  const password = cat === 'bureau' ? document.getElementById('ad-pm-password').value.trim() : '';
+  const email = document.getElementById('ad-pm-email').value.trim();
   if(!nom){ alert("Le nom est requis."); return; }
   if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert("L'adresse email n'est pas valide."); return; }
-  if(password && passwordTaken(password, promoId, editingPromotionMemberNum)){ alert("Ce mot de passe est déjà utilisé par un autre compte — choisissez-en un autre."); return; }
   if(!promo.bureau) promo.bureau = [];
   if(!promo.membres) promo.membres = [];
-  const data = cat === 'bureau' ? { nom, role, abbr, phone, email, password } : { nom, role, abbr, phone };
+  const data = { nom, role, abbr, phone, email };
   if(editingPromotionMemberNum){
     const arr = promo.bureau.some(m => m.num === editingPromotionMemberNum) ? promo.bureau : promo.membres;
     const idx = arr.findIndex(m => m.num === editingPromotionMemberNum);
@@ -2582,13 +2602,14 @@ function openImageLightbox(src, caption){
 let galleryPage = 0;
 const GALLERY_PAGE_SIZE = 14;
 function renderGallery(){
-  const logoTile = (DATA.groupLogo && !DATA.logoHiddenGallery) ? `<div class="gallery-tile logo-tile" onclick="openLightbox('logo')">
+  const gPromo = activePromotion();
+  const logoTile = (!gPromo && DATA.groupLogo && !DATA.logoHiddenGallery) ? `<div class="gallery-tile logo-tile" onclick="openLightbox('logo')">
       <img src="${DATA.groupLogo}" alt="Logo LABD" style="object-fit:contain; background:transparent; padding:8px;">
       <div class="tile-admin" onclick="event.stopPropagation();"><button class="del" title="Retirer de la galerie (le logo reste actif partout ailleurs)" onclick="hideLogoFromGallery()">&#10005;</button></div>
       <div class="cap">Logo du groupe</div>
     </div>` : '';
-  const dynamicItems = DATA.medias.map(m => galleryTileHTML({photo:m.photo, video:m.video, poster:m.poster, legende:m.legende, key:'media-'+m.id, id:m.id, editable:true}));
-  const seedItems = CONFIG.seedGallery.map((m,i) => (DATA.seedHidden.includes(i) ? '' : galleryTileHTML({photo:m.src, legende:m.legende, key:'seed-'+i, id:i, editable:true, seed:true}))).filter(Boolean);
+  const dynamicItems = DATA.medias.filter(m => gPromo ? m.promotionId === gPromo.id : !m.promotionId).map(m => galleryTileHTML({photo:m.photo, video:m.video, poster:m.poster, legende:m.legende, key:'media-'+m.id, id:m.id, editable:true}));
+  const seedItems = gPromo ? [] : CONFIG.seedGallery.map((m,i) => (DATA.seedHidden.includes(i) ? '' : galleryTileHTML({photo:m.src, legende:m.legende, key:'seed-'+i, id:i, editable:true, seed:true}))).filter(Boolean);
   const items = dynamicItems.concat(seedItems);
   const totalPages = Math.max(1, Math.ceil(items.length / GALLERY_PAGE_SIZE));
   if(galleryPage > totalPages - 1) galleryPage = totalPages - 1;
@@ -3139,25 +3160,20 @@ function projectsPrev(t){
 }
 
 function renderContact(){
-  const c = currentContact();
-  const cards = [];
-  if(c.email) cards.push(`<a class="contact-card" href="mailto:${c.email}"><span class="k">Email</span><span class="v">${c.email}</span></a>`);
-  if(c.phone) cards.push(`<a class="contact-card" href="${waHref(c.phone)}" target="_blank" rel="noopener"><span class="k">${c.label}</span><span class="v" style="display:flex; align-items:center; gap:8px;">${ICONS.whatsapp}${c.phone}</span></a>`);
-  document.getElementById('contactGrid').innerHTML = cards.join("") || '<p class="form-note" style="color:var(--light-muted);">Les coordonnées du secrétariat de cette promotion seront bientôt disponibles.</p>';
+  // Même présentation pour toutes les promotions : email général du groupe,
+  // et seul le numéro du secrétariat suit la promotion affichée (celui du SG de la promo).
+  const promo = activePromotion();
+  const phone = promo ? ((promoBureauByCode(promo, 'SG') || {}).phone || null) : getContactPhone();
+  document.getElementById('contactGrid').innerHTML = `
+    <a class="contact-card" href="mailto:${getContactEmail()}"><span class="k">Email</span><span class="v">${getContactEmail()}</span></a>
+    ${phone ? `<a class="contact-card" href="${waHref(phone)}" target="_blank" rel="noopener"><span class="k">${CONFIG.contact.secretariatLabel}</span><span class="v" style="display:flex; align-items:center; gap:8px;">${ICONS.whatsapp}${phone}</span></a>` : ''}`;
   document.getElementById('footerSocial').innerHTML = `
     <a href="${getFacebookUrl()}" aria-label="Page Facebook LABD" target="_blank" rel="noopener">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
     </a>
-    ${c.email ? `<a href="mailto:${c.email}" aria-label="Email du secrétariat">
+    <a href="mailto:${getContactEmail()}" aria-label="Email LABD">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 6l10 7 10-7"/></svg>
-    </a>` : ''}`;
-  // Ruban du bas : le numéro du secrétariat de la promotion affichée.
-  const fc = document.getElementById('footerContact');
-  if(fc){
-    fc.innerHTML = c.phone
-      ? `<a href="${waHref(c.phone)}" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:8px; color:var(--light-muted); font-size:0.85rem;">${ICONS.whatsapp}<span>${c.label} : ${c.phone}</span></a>`
-      : '';
-  }
+    </a>`;
 }
 
 /* ==========================================================
@@ -3198,7 +3214,7 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   // Destinataires = le TG et le Pr DE LA PROMOTION visée (ceux de la fondatrice si c'est elle).
   const candPromo = activePromotion();
   const candPromoLabel = promoLabel(candPromo);
-  const candMails = emailsForPromotion(candPromo);
+  const candMails = bureauEmails(candPromo);
   await notifyMail(
     `Nouvelle candidature — paiement à valider (LABD, ${candPromoLabel})`,
     [candMails.tg, candMails.pr],
@@ -3248,20 +3264,10 @@ document.getElementById('avisForm').addEventListener('submit', async e => {
   const msg = document.getElementById('a-msg').value.trim();
   // Avis : tout le bureau de la promotion concernée est notifié.
   const avisPromo = activePromotion();
-  if(avisPromo){
-    const dest = Array.from(new Set(Object.values(promoEmails(avisPromo)).filter(Boolean)));
-    await notifyMail(`Avis ou proposition — LABD (${promoLabel(avisPromo)})`, dest, { 'Nom': nom || 'Anonyme', 'Message': msg });
-  } else {
-    const fd = new FormData();
-    fd.append('_subject', 'Avis ou proposition — LABD');
-    fd.append('_captcha', 'false');
-    fd.append('_cc', CONFIG.notifyEmails.join(','));
-    fd.append('Nom', nom || 'Anonyme');
-    fd.append('Message', msg);
-    try{
-      await fetch('https://formsubmit.co/sourougangnambakpo99@gmail.com', { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
-    }catch(err){ console.error(err); }
-  }
+  const avisMails = bureauEmails(avisPromo).all;
+  await notifyMail(avisPromo ? `Avis ou proposition — LABD (${promoLabel(avisPromo)})` : 'Avis ou proposition — LABD',
+    avisMails.length ? avisMails : CONFIG.notifyEmails,
+    { 'Nom': nom || 'Anonyme', 'Message': msg });
   DATA.commentaires.unshift({ id:uid(), nom: nom || 'Anonyme', message:msg, date:Date.now(), promotionId: activePromotionId === '__main__' ? null : activePromotionId });
   await storageSet('commentaires', DATA.commentaires);
   document.getElementById('avisForm').style.display = 'none';
@@ -3320,7 +3326,7 @@ function tryUnlock(){
     }
     renderPromotionSwitches();
     openAdminDashboard();
-    if(match.promotionId){ renderBureau(); renderCycles(); renderArticles(); renderFees(); renderContact(); }
+    if(match.promotionId){ renderBureau(); renderCycles(); renderArticles(); renderFees(); renderGallery(); renderContact(); }
     renderProjects();
   } else { alert("Mot de passe incorrect."); }
 }
@@ -3331,8 +3337,9 @@ const ADMIN_CATEGORIES = [
   {id:'vision', label:'Vision (images)'},
   {id:'histoire', label:'Notre histoire'},
   {id:'outils', label:'Logiciels (carrousel)'},
-  {id:'membres', label:'Membres du bureau'},
+  {id:'membres', label:'Membres du groupe'},
   {id:'promotions', label:'Promotions'},
+  {id:'acces', label:'Mots de passe'},
   {id:'projets', label:'Projets'},
   {id:'cycles', label:'Cycles & lauréats'},
   {id:'photos', label:'Photos'},
@@ -3374,6 +3381,7 @@ function adminLogout(){
     renderBureau();
     renderCycles();
     renderFees();
+    renderGallery();
     renderContact();
   } else {
     renderPromotionSwitches();
@@ -3597,26 +3605,23 @@ function renderAdminContent(){
     const isExtra = editingMemberNum && editingMemberNum.startsWith('EXTRA-');
     el.innerHTML = `
       <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte, visible tant que l'admin est actif).</p>
-      <div class="check-step" style="margin-bottom:20px;">
-        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom} »</p>` : ''}
-        <label>Nom complet</label><input id="ad-mb-nom" placeholder="Ex : NOM Prénom" value="${editingM?editingM.nom:''}">
-        <label>Catégorie</label>
-        <select id="ad-mb-cat" ${editingM && !isExtra ? 'disabled' : ''}>
-          <option value="membre" ${editingMCat==='membre'?'selected':''}>Membre LABDien</option>
-          <option value="bureau" ${editingMCat==='bureau'?'selected':''}>Membre du bureau</option>
-        </select>
-        <label>Poste (si bureau)</label><input id="ad-mb-role" placeholder="Ex : Chargé des médias" value="${editingM?(editingM.role||''):''}">
-        <label>Abréviation (si bureau)</label><input id="ad-mb-abbr" placeholder="Ex : CDM" value="${editingM?(editingM.abbr||''):''}">
-        <label>Téléphone (optionnel)</label><input id="ad-mb-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
-        <div class="row">
-          <button class="btn-primary" onclick="saveMember()">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
-          ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingMemberNum=null; renderAdminContent();">Annuler</button>` : ''}
-        </div>
-      </div>
-      <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin-bottom:4px;">Bureau</div>
-      <div>${allBureau.map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta">${m.abbr||''} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMember('${m.num}')">Modifier</button><button class="link-btn" onclick="removeMember('${m.num}')">Retirer</button></span></div>`).join("")}</div>
-      <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:18px 0 4px;">Membres</div>
-      <div>${allMembres.map(m => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta"><button class="link-btn" style="color:var(--teal-dark);" onclick="editMember('${m.num}')">Modifier</button><button class="link-btn" onclick="removeMember('${m.num}')">Retirer</button></span></div>`).join("")}</div>`;
+      ${memberFormHTML('mb', editingM, editingMCat, !!(editingM && !isExtra), 'saveMember()', "editingMemberNum=null; renderAdminContent();")}
+      ${memberListHTML(allBureau, allMembres, 'editMember', 'removeMember')}`;
+  }
+  if(adminTab === 'acces'){
+    const promos = promotionsSorted();
+    const th = 'text-align:left; padding:8px 10px; font-size:0.72rem; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-2); border-bottom:1px solid var(--line);';
+    const td = 'padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:middle;';
+    const inp = (pid, num, val) => `<input class="pw-input" data-pid="${pid}" data-num="${num}" value="${(val||'').replace(/"/g,'&quot;')}" placeholder="Aucun accès" style="width:100%; min-width:150px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">`;
+    const rows = promos.map(p => `
+      <tr><td style="${td} font-weight:700;">${p.nom}${p.annee?' — '+p.annee:''}</td><td style="${td}">Accès commun du bureau</td><td style="${td}">—</td><td style="${td}">${inp(p.id,'',p.password)}</td></tr>
+      ${(p.bureau||[]).map(m => `<tr><td style="${td}"></td><td style="${td}">${m.nom}</td><td style="${td}">${m.role||m.abbr||''}</td><td style="${td}">${inp(p.id,m.num,m.password)}</td></tr>`).join("")}`).join("");
+    el.innerHTML = promos.length ? `
+      <div style="overflow-x:auto; margin-bottom:16px;"><table style="width:100%; border-collapse:collapse; font-size:0.86rem;">
+        <thead><tr><th style="${th}">Promotion</th><th style="${th}">Membre</th><th style="${th}">Poste</th><th style="${th}">Mot de passe</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+      <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>`
+      : '<p class="form-note">Aucune promotion pour le moment.</p>';
   }
   if(adminTab === 'promotions'){
     const promos = promotionsSorted();
@@ -3650,8 +3655,10 @@ function renderAdminContent(){
       <div>${DATA.projets.filter(p => (currentRole && currentRole.promotionId) ? p.promotionId === currentRole.promotionId : !p.promotionId).map(p => `<div class="admin-list-row"><span>${p.titre}</span><span class="meta">${PROJET_TYPE_LABELS[p.type]} <button class="link-btn" style="color:var(--teal-dark);" onclick="editProjet('${p.id}')">Modifier</button><button class="link-btn" onclick="deleteProjet('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun projet publié.</p>'}</div>`;
   }
   if(adminTab === 'photos'){
-    const editingM = DATA.medias.find(m => m.id === editingMediaId);
-    const seedVisible = CONFIG.seedGallery.map((m,i)=>({m,i})).filter(x => !DATA.seedHidden.includes(x.i));
+    const mScope = (currentRole && currentRole.promotionId) || null;
+    const scopedMedias = DATA.medias.filter(m => (m.promotionId || null) === mScope);
+    const editingM = scopedMedias.find(m => m.id === editingMediaId);
+    const seedVisible = mScope ? [] : CONFIG.seedGallery.map((m,i)=>({m,i})).filter(x => !DATA.seedHidden.includes(x.i));
     el.innerHTML = `
       <div class="check-step" style="margin-bottom:20px;">
         <label>Logo du groupe (header, pied de page, filigranes sur les photos/vidéos)</label>
@@ -3675,8 +3682,9 @@ function renderAdminContent(){
           ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingMediaId=null; renderAdminContent();">Annuler</button>` : ''}
         </div>
       </div>
-      <div>${DATA.medias.map(m => `<div class="admin-list-row"><span>${m.legende}${m.video?' &#127909;':''}</span><span class="meta">${fmtDate(m.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMedia('${m.id}')">Modifier</button><button class="link-btn" onclick="deleteMedia('${m.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune photo publiée.</p>'}
+      <div>${scopedMedias.map(m => `<div class="admin-list-row"><span>${m.legende}${m.video?' &#127909;':''}</span><span class="meta">${fmtDate(m.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editMedia('${m.id}')">Modifier</button><button class="link-btn" onclick="deleteMedia('${m.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune photo publiée.</p>'}
       ${seedVisible.map(x => `<div class="admin-list-row"><span>${x.m.legende||'Photo du groupe'}</span><span class="meta">photo d'origine <button class="link-btn" onclick="deleteSeedPhoto(${x.i})">Supprimer</button></span></div>`).join("")}</div>`;
+    if(mScope){ const logoBox = el.querySelector('.check-step'); if(logoBox) logoBox.remove(); } // le logo est celui du groupe : réglé uniquement côté fondatrice
     setupVideoFrameCapture('ad-media-photo', 'ad-media-poster-preview');
   }
   if(adminTab === 'candidatures'){
@@ -3718,15 +3726,14 @@ function renderAdminContent(){
     el.innerHTML = `
       ${promoT ? `
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
-        <label>Cotisation mensuelle de votre promotion (F CFA)</label>
-        <p class="form-note" style="margin-bottom:8px;">${promoT.mensuelle ? 'Actuellement affichée sur le site.' : 'Pas encore définie : la cotisation mensuelle n\'apparaît pas sur le site tant que vous ne l\'avez pas enregistrée.'}</p>
+        <label>Montants (mis à jour partout sur le site dès l'enregistrement)</label>
+        <label style="font-weight:400; font-size:0.8rem;">Cotisation mensuelle (F CFA)</label>
         <input id="ad-pfee-mensuelle" type="number" min="0" placeholder="Ex : 500" value="${promoT.mensuelle||''}">
         <label style="font-weight:400; font-size:0.8rem;">Ancien montant à afficher barré (optionnel)</label>
         <input id="ad-pfee-mensuelle-old" type="number" min="0" placeholder="Laisser vide si pas de changement récent" value="${promoT.mensuelleOld||''}">
-        <button class="btn-primary" onclick="savePromoMensuelle()">Enregistrer la cotisation mensuelle</button>
-        <p class="frame-hint">Laissez le montant vide puis enregistrez pour la retirer du site.</p>
+        <button class="btn-primary" onclick="savePromoMensuelle()">Enregistrer les montants</button>
       </div>
-      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion de votre promotion : <strong>${fmtFcfa(effectiveFraisAdhesion())} F CFA</strong>${promoT.fraisAdhesion==null ? ' (montant commun à LABD — contactez le Président pour un montant propre à votre promotion)' : ''}. Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE de votre promotion.</p>
+      <p class="form-note" style="margin-bottom:14px;">Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE.</p>
       ` : `
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
         <label>Montants (mis à jour partout sur le site dès l'enregistrement)</label>
@@ -3740,7 +3747,7 @@ function renderAdminContent(){
         <input id="ad-fee-mensuelle-old" type="number" placeholder="Laisser vide si pas de changement récent" value="${f.mensuelleOld||''}">
         <button class="btn-primary" onclick="saveFees()">Enregistrer les montants</button>
       </div>
-      <p class="form-note" style="margin-bottom:14px;">Frais d'adhésion : ${fmtFcfa(f.adhesion)} F CFA (versement unique, aucune cotisation mensuelle). Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE. Chaque promotion peut avoir son propre montant, réglable depuis l'onglet Promotions.</p>
+      <p class="form-note" style="margin-bottom:14px;">Cochez une fois le versement vérifié — c'est cette confirmation qui enregistre officiellement le dossier et le transmet au CRE.</p>
       `}
       <p style="margin-bottom:14px;"><strong>${total}</strong> dossier(s) déjà validé(s) et transmis au CRE.</p>
       <div>${pending.map(c => `<div class="admin-list-row"><span><input type="checkbox" onchange="toggleCandidaturePaye('${c.id}')"> ${c.nom}</span><span class="meta">en attente de confirmation <button class="link-btn" onclick="deleteCandidature('${c.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucun dossier en attente de paiement.</p>'}</div>`;
@@ -3839,7 +3846,7 @@ async function toggleCandidaturePaye(id){
   if(c.paye){
     // Le dossier est officiellement enregistré : le CRE peut désormais y accéder, en copie Pr/SG.
     const vPromo = c.promotionId ? DATA.promotions[c.promotionId] : null;
-    const vMails = emailsForPromotion(vPromo);
+    const vMails = bureauEmails(vPromo);
     notifyMail(
       `Dossier enregistré — accessible au CRE (LABD${vPromo ? ', '+promoLabel(vPromo) : ''})`,
       [vMails.cae, vMails.pr, vMails.sg],
@@ -4060,7 +4067,7 @@ async function savePromoMensuelle(){
   await storageSet('promotions', DATA.promotions);
   renderFees();
   renderAdminContent();
-  alert(promo.mensuelle ? "Cotisation mensuelle publiée sur le site de votre promotion." : "Cotisation mensuelle retirée du site.");
+  alert("Montants mis à jour partout sur le site.");
 }
 async function saveFees(){
   const adhesion = parseInt(document.getElementById('ad-fee-adhesion').value, 10);
@@ -4220,14 +4227,14 @@ async function publishMedia(){
     }
   }
   if(editingMediaId){
-    const m = DATA.medias.find(x => x.id === editingMediaId);
+    const m = DATA.medias.find(x => x.id === editingMediaId && (x.promotionId || null) === ((currentRole && currentRole.promotionId) || null));
     if(m){
       m.legende = legende || m.legende;
       if(file || videoUrl){ m.photo = photo; m.video = video; if(poster) m.poster = poster; }
     }
     editingMediaId = null;
   } else {
-    DATA.medias.unshift({id:uid(), legende: legende || "Média LABD", photo, video, poster, date:Date.now()});
+    DATA.medias.unshift({id:uid(), legende: legende || "Média LABD", photo, video, poster, date:Date.now(), promotionId: (currentRole && currentRole.promotionId) || null});
   }
   delete videoFrameCaptures['ad-media-photo'];
   await storageSet('medias', DATA.medias);

@@ -2098,20 +2098,23 @@ function getMembresList(){
 }
 // Un seul gabarit pour la fondatrice et pour les promotions : même champs, même ordre.
 function memberFormHTML(px, editingM, cat, lockCat, saveCall, cancelCall){
+  const isSlot = !!editingM && String(editingM.num).startsWith('SL-');
+  const promoForm = px === 'pm';
+  const showPost = !promoForm || cat === 'bureau';
+  const ro = isSlot ? 'readonly' : '';
   return `
       <div class="check-step" style="margin-bottom:20px;">
-        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom} »</p>` : ''}
+        ${editingM ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingM.nom || editingM.role || ''} »</p>` : ''}
         <label>Nom complet</label><input id="ad-${px}-nom" placeholder="Ex : NOM Prénom" value="${editingM?editingM.nom:''}">
         <label>Catégorie</label>
         <select id="ad-${px}-cat" ${lockCat ? 'disabled' : ''}>
           <option value="membre" ${cat==='membre'?'selected':''}>Membre LABDien</option>
-          <option value="bureau" ${cat==='bureau'?'selected':''}>Membre du bureau</option>
+          ${(!promoForm || cat==='bureau') ? `<option value="bureau" ${cat==='bureau'?'selected':''}>Membre du bureau</option>` : ''}
         </select>
-        <label>Poste (si bureau)</label><input id="ad-${px}-role" placeholder="Ex : Secrétaire Générale" value="${editingM?(editingM.role||''):''}">
-        <label>Abréviation (si bureau)</label><input id="ad-${px}-abbr" placeholder="PR, VP, SG, OG, TG ou CRE" value="${editingM?(editingM.abbr||''):''}">
-        <p class="form-note" style="margin:-4px 0 8px;">Abréviations : PR (Président) · VP (Vice-Président) · SG (Secrétaire Générale) · OG (Organisateur Général) · TG (Trésorier Général) · CRE (Chargé des Relations Extérieures)</p>
-        <label>Email (optionnel)</label><input id="ad-${px}-email" type="email" placeholder="prenom@gmail.com" value="${editingM?(editingM.email||''):''}">
-        <label>Téléphone (optionnel)</label><input id="ad-${px}-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
+        ${showPost ? `<label>Poste</label><input id="ad-${px}-role" ${ro} value="${editingM?(editingM.role||''):''}">
+        <label>Abréviation</label><input id="ad-${px}-abbr" ${ro} value="${editingM?(editingM.abbr||''):''}">` : `<input type="hidden" id="ad-${px}-role" value=""><input type="hidden" id="ad-${px}-abbr" value="">`}
+        <label>Email</label><input id="ad-${px}-email" type="email" placeholder="prenom@gmail.com" value="${editingM?(editingM.email||''):''}">
+        <label>Téléphone</label><input id="ad-${px}-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
         <div class="row">
           <button class="btn-primary" onclick="${saveCall}">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
           ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="${cancelCall}">Annuler</button>` : ''}
@@ -2417,7 +2420,7 @@ function renderPromotionsAdmin(promos, locked){
   const canCreate = !childPromoOf('__main__');
   return `
     ${editingP ? `<div class="check-step" style="margin-bottom:20px;">
-      <p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} » (le nom est automatique)</p>
+      <p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} »</p>
       <label>Date de l'élection du bureau</label><input id="ad-promo-date" type="date" value="${editingP.dateDebut ? (d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))(new Date(editingP.dateDebut)) : ''}">
       <label>Lien du groupe WhatsApp (optionnel)</label><input id="ad-promo-group" placeholder="https://chat.whatsapp.com/..." value="${(editingP.groupLink||'').replace(/"/g,'&quot;')}">
       <label>Frais d'adhésion spécifiques (F CFA, optionnel)</label>
@@ -2426,10 +2429,10 @@ function renderPromotionsAdmin(promos, locked){
         <button class="btn-primary" onclick="savePromotion('${editingP.id}')">Enregistrer les modifications</button>
         <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>
       </div></div>` : `<div class="check-step" style="margin-bottom:20px;">
-      ${canCreate ? `<p class="form-note">La promotion fondatrice peut créer <b>une seule</b> promotion suivante. Son nom est automatique ; indiquez seulement la date de son élection.</p>
+      ${canCreate ? `<p class="form-note">Une seule promotion suivante peut être créée.</p>
       <label>Date de l'élection du bureau</label><input id="ad-promo-date" type="date">
       <button class="btn-primary" onclick="createSuccessor('__main__')">Créer la 2è Promotion</button>`
-      : `<p class="form-note">La promotion suivante est déjà créée. Chaque promotion ne peut en créer qu'une seule : la suivante sera créée par le bureau de cette promotion.</p>`}
+      : `<p class="form-note">La promotion suivante est déjà créée.</p>`}
     </div>`}
     <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).filter(m => m.nom).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
 }
@@ -2475,16 +2478,23 @@ async function renderPromoAcces(el){
   const childMap = child ? await openMap(sessionSecret, child.pwUp) : null;
   const mine = pwRowHTML(me, myMap, false);
   const kid = child ? pwRowHTML(child, childMap, true) : null;
-  const nextNum = promoDepth(me) + 1;
   el.innerHTML = `
     <div style="overflow-x:auto; margin-bottom:14px;"><table style="width:100%; border-collapse:collapse;"><thead>${mine.head}</thead>
       <tbody>${mine.row}${kid ? kid.row : ''}</tbody></table></div>
-    <p class="form-note" style="margin-bottom:12px;">Votre ligne est en lecture seule : ses mots de passe sont définis par la promotion qui vous a créés. ${kid ? "La ligne de la " + child.nom + " est modifiable par vous seul." : ''}</p>
-    ${kid ? `<button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>
-      <p class="form-note" style="margin-top:6px;">Commencez par l'Accès général. Le Président utilise l'Accès général.</p>`
-    : `<div class="check-step"><p class="form-note">Votre promotion peut créer <b>une seule</b> promotion suivante. Son nom est automatique ; indiquez seulement la date de son élection.</p>
-      <label>Date de l'élection du bureau</label><input id="ad-suite-date" type="date">
-      <button class="btn-primary" onclick="createSuccessor('${me.id}')">Créer la ${nextNum}è Promotion</button></div>`}`;
+    ${kid ? `<button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>` : ''}`;
+}
+// Onglet « Promotions » d'une promotion : créer l'unique promotion suivante.
+function renderPromoPromotions(el){
+  const me = DATA.promotions[currentRole.promotionId];
+  if(!me){ el.innerHTML = ''; return; }
+  const child = childPromoOf(me.id);
+  if(child){
+    el.innerHTML = `<div class="admin-list-row"><span>${child.nom}</span><span class="meta">élection du ${fmtLongDate(child.dateDebut)}</span></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="check-step"><p class="form-note">Une seule promotion suivante peut être créée.</p>
+    <label>Date de l'élection du bureau</label><input id="ad-suite-date" type="date">
+    <button class="btn-primary" onclick="createSuccessor('${me.id}')">Créer la ${promoDepth(me) + 1}è Promotion</button></div>`;
 }
 async function saveChildPasswords(childId){
   const me = currentRole && currentRole.promotionId;
@@ -3226,7 +3236,7 @@ function renderArticles(){
     const el = document.getElementById('grid-'+type);
     const moreBtnExisting = document.getElementById('more-'+type);
 
-    if(type === 'formation' && DATA.formationPassword && !formationUnlocked && !currentRole){
+    if(type === 'formation' && formationPwGet() && formationUnlockedFor !== activePromotionId && !currentRole){
       // Aperçu complet, en taille réelle, mais flouté — pour donner envie sans rien révéler de lisible.
       const previewList = merged.filter(a => a.type === 'formation').sort((a,b) => b.date - a.date);
       const previewCards = previewList.map(a => {
@@ -3310,10 +3320,15 @@ function renderArticles(){
   requestAnimationFrame(updateDescToggles);
   observeTileVideos();
 }
-let formationUnlocked = false;
+let formationUnlockedFor = null;
+// Mot de passe de la section Formations : un par promotion (la fondatrice garde le sien).
+function formationPwGet(){
+  const pr = (currentRole && currentRole.promotionId) ? DATA.promotions[currentRole.promotionId] : activePromotion();
+  return pr ? (pr.formationPassword || null) : DATA.formationPassword;
+}
 function tryFormationUnlock(){
   const val = document.getElementById('formationPassInline').value;
-  if(val === (DATA.formationPassword || '')){ formationUnlocked = true; renderArticles(); }
+  if(val === (formationPwGet() || '')){ formationUnlockedFor = activePromotionId; renderArticles(); }
   else alert("Mot de passe incorrect.");
 }
 function articlesNext(type, maxOffset3){
@@ -3673,7 +3688,7 @@ function openAdminEntry(){
 // Catégories ouvertes au bureau d'une promotion connecté avec SON propre mot
 // de passe : uniquement ce qui concerne sa promotion (jamais les autres
 // promotions, ni la promotion fondatrice).
-const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES.concat(['acces']);
+const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES.concat(['acces','promotions']);
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
   if(!val){ alert("Mot de passe incorrect."); return; }
@@ -3884,7 +3899,7 @@ function renderAdminContent(){
     const allowedTypes = (currentRole && currentRole.articleTypes) || ALL_ARTICLE_TYPES; // types d'articles ouverts à ce poste
     const scope = allowedTypes.length === 1 ? allowedTypes[0] : null;
     const promoScope = currentRole && currentRole.promotionId; // bureau d'une promotion → ses propres publications seulement
-    const canSetFormationPassword = !!currentRole && (currentRole.categories.includes('*') || scope === 'formation');
+    const canSetFormationPassword = !!currentRole && (currentRole.categories.includes('*') || scope === 'formation' || (!!promoScope && allowedTypes.includes('formation')));
     let editing = DATA.articles.find(a => a.id === editingArticleId);
     if(editing && !allowedTypes.includes(editing.type)) editing = null; // garde-fou : jamais hors du périmètre autorisé
     if(promoScope && editing && editing.promotionId !== promoScope) editing = null; // ni hors de sa propre promotion
@@ -3920,7 +3935,7 @@ function renderAdminContent(){
         <div id="formationPassBlock" style="${effectiveType==='formation' ? '' : 'display:none;'}">
           <label style="margin-top:6px;">Mot de passe de la section Formations (optionnel)</label>
           <p class="frame-hint">S'applique à toutes les formations du site, pas seulement à celle-ci. Enregistré en même temps que cette publication. Laissez vide pour un accès libre.</p>
-          <input id="ad-art-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
+          <input id="ad-art-formation-pass" placeholder="Ex : labdformation26" value="${formationPwGet()||''}">
         </div>` : ''}
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
@@ -4101,7 +4116,8 @@ function renderAdminContent(){
       ${permsMatrixHTML()}`;
   }
   if(adminTab === 'acces' && !isOwner() && currentRole && currentRole.promotionId){ renderPromoAcces(el); }
-  if(adminTab === 'promotions'){
+  if(adminTab === 'promotions' && currentRole && currentRole.promotionId){ renderPromoPromotions(el); }
+  if(adminTab === 'promotions' && !(currentRole && currentRole.promotionId)){
     const promos = promotionsSorted();
     el.innerHTML = renderPromotionsAdmin(promos);
   }
@@ -4233,7 +4249,7 @@ async function saveFormationPassword(){
   const val = document.getElementById('ad-formation-pass').value.trim();
   DATA.formationPassword = val || null;
   await storageSet('formation-password', DATA.formationPassword);
-  formationUnlocked = false;
+  formationUnlockedFor = null;
   renderArticles();
   alert(DATA.formationPassword ? "Mot de passe enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
 }
@@ -4644,10 +4660,11 @@ async function publishArticle(){
   const passField = document.getElementById('ad-art-formation-pass');
   if(passField){
     const passVal = passField.value.trim();
-    if(passVal !== (DATA.formationPassword || '')){
-      DATA.formationPassword = passVal || null;
-      await storageSet('formation-password', DATA.formationPassword);
-      formationUnlocked = false;
+    if(passVal !== (formationPwGet() || '')){
+      const prm = (currentRole && currentRole.promotionId) ? DATA.promotions[currentRole.promotionId] : null;
+      if(prm){ prm.formationPassword = passVal || null; await storageSet('promotions', DATA.promotions); }
+      else { DATA.formationPassword = passVal || null; await storageSet('formation-password', DATA.formationPassword); }
+      formationUnlockedFor = null;
     }
   }
 

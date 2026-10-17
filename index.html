@@ -2330,7 +2330,7 @@ function renderBureau(){
   if(promo){
     grid.innerHTML = (promo.bureau||[]).map((m,i) => bureauCardHTML(m, i, promo.id+'_'+m.num)).join("")
       || '<p class="form-note">Aucun membre de bureau enregistré pour cette promotion pour le moment.</p>';
-    if(subtitle) subtitle.textContent = `Un bureau issu du parcours de sélection de la promotion, constitué le ${fmtLongDate(promo.dateDebut || Date.now())}.`;
+    if(subtitle) subtitle.textContent = `Un bureau issu du parcours de sélection de la promotion, élu le ${fmtLongDate(promo.dateDebut || Date.now())}.`;
   } else {
     grid.innerHTML = getBureauList().map((m,i) => bureauCardHTML(m, i, m.num)).join("");
     if(subtitle) subtitle.textContent = "Élu lors de la séance fondatrice du 16 octobre 2025.";
@@ -2364,12 +2364,13 @@ function fmtLongDate(ts){
 async function createSuccessor(parentId){
   parentId = parentId || '__main__';
   if(childPromoOf(parentId)){ alert("Une seule promotion suivante peut être créée."); return; }
+  const inp = document.getElementById('ad-suite-date') || document.getElementById('ad-promo-date');
+  if(!inp || !inp.value){ alert("Indiquez la date de l'élection du bureau."); return; }
   const parent = parentId === '__main__' ? null : DATA.promotions[parentId];
   const num = parent ? promoDepth(parent) + 1 : 2;
-  if(!confirm(`Créer la ${num}è Promotion ? Son nom et sa date de création sont automatiques, et une seule promotion suivante est possible.`)) return;
-  const now = Date.now();
+  const when = new Date(inp.value + 'T00:00:00').getTime();
   const newId = 'promo_' + uid();
-  DATA.promotions[newId] = { id:newId, nom:num + 'è Promotion', annee:String(new Date(now).getFullYear()), ordre:promotionsSorted().length, dateDebut:now,
+  DATA.promotions[newId] = { id:newId, nom:num + 'è Promotion', annee:String(new Date(when).getFullYear()), ordre:promotionsSorted().length, dateDebut:when,
     parentId, groupLink:'', pwHash:null, fraisAdhesion:null, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
   await storageSet('promotions', DATA.promotions);
   renderBureau(); renderFees(); renderAdminContent();
@@ -2393,7 +2394,8 @@ function renderPromotionsAdmin(promos, locked){
   const canCreate = !childPromoOf('__main__');
   return `
     ${editingP ? `<div class="check-step" style="margin-bottom:20px;">
-      <p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} » (nom et date automatiques, non modifiables)</p>
+      <p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} » (le nom est automatique)</p>
+      <label>Date de l'élection du bureau</label><input id="ad-promo-date" type="date" value="${editingP.dateDebut ? (d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))(new Date(editingP.dateDebut)) : ''}">
       <label>Lien du groupe WhatsApp (optionnel)</label><input id="ad-promo-group" placeholder="https://chat.whatsapp.com/..." value="${(editingP.groupLink||'').replace(/"/g,'&quot;')}">
       <label>Frais d'adhésion spécifiques (F CFA, optionnel)</label>
       <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
@@ -2401,56 +2403,93 @@ function renderPromotionsAdmin(promos, locked){
         <button class="btn-primary" onclick="savePromotion('${editingP.id}')">Enregistrer les modifications</button>
         <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>
       </div></div>` : `<div class="check-step" style="margin-bottom:20px;">
-      ${canCreate ? `<p class="form-note">La promotion fondatrice peut créer <b>une seule</b> promotion suivante. Son nom (« 2è Promotion ») et sa date de création sont définis automatiquement.</p>
+      ${canCreate ? `<p class="form-note">La promotion fondatrice peut créer <b>une seule</b> promotion suivante. Son nom est automatique ; indiquez seulement la date de son élection.</p>
+      <label>Date de l'élection du bureau</label><input id="ad-promo-date" type="date">
       <button class="btn-primary" onclick="createSuccessor('__main__')">Créer la 2è Promotion</button>`
       : `<p class="form-note">La promotion suivante est déjà créée. Chaque promotion ne peut en créer qu'une seule : la suivante sera créée par le bureau de cette promotion.</p>`}
     </div>`}
     <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
 }
 
-// Onglet « Promotion suivante » (bureau d'une promotion) : créer l'unique successeur,
-// gérer SES membres et SES mots de passe — et rien d'autre.
-function renderSuiteAdmin(){
-  const me = currentRole && currentRole.promotionId;
-  const child = me ? childPromoOf(me) : null;
-  if(!child){
-    return `<div class="check-step"><p class="form-note">Votre promotion peut créer <b>une seule</b> promotion suivante. Son nom et sa date de création sont automatiques.</p>
-      <button class="btn-primary" onclick="createSuccessor('${me}')">Créer la promotion suivante</button></div>`;
-  }
-  managingPromotionId = child.id;
+// ---- Mots de passe visibles par les promotions ----
+// Chaque promotion voit sa propre ligne (lecture seule) et celle de la promotion
+// qu'elle a créée (modifiable par elle seule). Les mots de passe en clair sont
+// stockés chiffrés : sous le mot de passe général de la promotion (pwSelf) et
+// sous celui de sa promotion créatrice (pwUp).
+let sessionSecret = null;
+async function sealMap(secret, map){
+  const salt = b64.enc(crypto.getRandomValues(new Uint8Array(16)));
+  const k = await deriveWrapKey(secret, salt);
+  return Object.assign({ salt }, await aesEnc(k, new TextEncoder().encode(JSON.stringify(map))));
+}
+async function openMap(secret, blob){
+  if(!secret || !blob || !blob.salt || !vaultAvailable()) return null;
+  try{ const k = await deriveWrapKey(secret, blob.salt); return JSON.parse(new TextDecoder().decode(await aesDec(k, blob))); }catch(e){ return null; }
+}
+function pwRowHTML(promo, map, editable){
+  const COLS = ['VP','SG','TG','CRE','OG','CDM'];
+  const th = 'text-align:center; padding:6px 3px; font-size:0.68rem; color:var(--muted-2); border-bottom:1px solid var(--line); white-space:nowrap;';
+  const td = 'padding:6px 3px; border-bottom:1px solid var(--line); text-align:center; vertical-align:middle;';
   const esc = v => String(v).replace(/"/g,'&quot;');
-  const line = (kind, num, label, isSet) => `<div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;"><span style="min-width:120px; font-size:0.82rem;">${label}</span>
-    <input class="pw-child" data-kind="${kind}" data-num="${esc(num)}" autocomplete="off" placeholder="${isSet ? 'Défini (retapez pour changer)' : 'Aucun'}" style="flex:1; min-width:0; padding:6px 8px; border:1px solid var(--line); border-radius:6px;"></div>`;
-  const rows = [line('promo', '', 'Accès général', !!child.pwHash)].concat((child.bureau||[]).filter(m => roleCode(m.abbr) !== 'PR')
-    .map(m => line('member', m.num, `${m.abbr || '?'} — ${m.nom}`, !!m.pwHash))).join("");
-  return `
-    <p class="form-note" style="margin-bottom:12px;"><b>${child.nom}</b> — créée le ${fmtLongDate(child.dateDebut)}</p>
-    <div class="check-step" style="margin-bottom:20px;"><label>Mots de passe de ${child.nom}</label>${rows}
-      <button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>
-      <p class="form-note" style="margin-top:6px;">Le Président utilise l'« Accès général ».</p></div>
-    ${renderPromotionsAdmin(promotionsSorted(), true)}`;
+  const dash = '<span style="color:var(--muted-2);">—</span>';
+  const inp = (key, isSet) => `<input class="pw-child" data-pid="${esc(promo.id)}" data-key="${esc(key)}" value="${esc((map && map[key]) || '')}" ${editable ? '' : 'readonly'} autocomplete="off" placeholder="${isSet ? 'Défini' : 'Aucun'}" style="width:92px; padding:5px 4px; border:1px solid var(--line); border-radius:6px; font-size:0.78rem; ${editable ? '' : 'background:var(--bg-2,#f3f3f3);'}">`;
+  const bureau = (promo.bureau||[]).filter(m => roleCode(m.abbr) !== 'PR');
+  const used = new Set();
+  const cols = COLS.map(c => {
+    const m = bureau.find(x => roleCode(x.abbr) === c && !used.has(x.num));
+    if(!m) return `<td style="${td}">${dash}</td>`;
+    used.add(m.num); return `<td style="${td}">${inp(m.num, !!m.pwHash)}</td>`;
+  }).join("");
+  const autres = bureau.filter(x => !used.has(x.num)).map(m => `<div style="display:flex; align-items:center; gap:4px; margin-bottom:3px;"><span style="font-size:0.68rem; color:var(--muted-2); min-width:30px; text-align:right;">${m.abbr || '?'}</span>${inp(m.num, !!m.pwHash)}</div>`).join("") || dash;
+  return { head: `<tr><th style="${th} text-align:left;">Promo</th><th style="${th}">Accès général</th>${COLS.map(c => `<th style="${th}">${c}</th>`).join("")}<th style="${th}">Autres</th></tr>`,
+    row: `<tr><td style="${td} text-align:left; font-weight:700; white-space:nowrap;">${promo.nom}${editable ? '' : ' <span style="font-weight:400; color:var(--muted-2);">(la vôtre)</span>'}</td><td style="${td}">${inp('c', !!promo.pwHash)}</td>${cols}<td style="${td}">${autres}</td></tr>` };
+}
+async function renderPromoAcces(el){
+  const me = DATA.promotions[currentRole.promotionId];
+  if(!me){ el.innerHTML = ''; return; }
+  const child = childPromoOf(me.id);
+  const myMap = await openMap(sessionSecret, me.pwSelf);
+  const childMap = child ? await openMap(sessionSecret, child.pwUp) : null;
+  const mine = pwRowHTML(me, myMap, false);
+  const kid = child ? pwRowHTML(child, childMap, true) : null;
+  const nextNum = promoDepth(me) + 1;
+  el.innerHTML = `
+    <div style="overflow-x:auto; margin-bottom:14px;"><table style="width:100%; border-collapse:collapse;"><thead>${mine.head}</thead>
+      <tbody>${mine.row}${kid ? kid.row : ''}</tbody></table></div>
+    <p class="form-note" style="margin-bottom:12px;">Votre ligne est en lecture seule : ses mots de passe sont définis par la promotion qui vous a créés. ${kid ? "La ligne de la " + child.nom + " est modifiable par vous seul." : ''}</p>
+    ${kid ? `<button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>
+      <p class="form-note" style="margin-top:6px;">Commencez par l'Accès général. Le Président utilise l'Accès général.</p>`
+    : `<div class="check-step"><p class="form-note">Votre promotion peut créer <b>une seule</b> promotion suivante. Son nom est automatique ; indiquez seulement la date de son élection.</p>
+      <label>Date de l'élection du bureau</label><input id="ad-suite-date" type="date">
+      <button class="btn-primary" onclick="createSuccessor('${me.id}')">Créer la ${nextNum}è Promotion</button></div>`}`;
 }
 async function saveChildPasswords(childId){
   const me = currentRole && currentRole.promotionId;
   const child = DATA.promotions[childId];
-  if(!child || !me || (child.parentId || '__main__') !== me){ alert("Vous ne pouvez gérer que les mots de passe de votre promotion suivante."); return; }
-  const inputs = Array.from(document.querySelectorAll('.pw-child')).filter(i => i.value.trim());
-  if(!inputs.length){ alert("Aucun nouveau mot de passe saisi."); return; }
+  if(!child || !me || (child.parentId || '__main__') !== me){ alert("Vous ne pouvez gérer que les mots de passe de la promotion que vous avez créée."); return; }
+  const inputs = Array.from(document.querySelectorAll('.pw-child')).filter(i => i.dataset.pid === childId && i.value.trim() && !i.readOnly);
+  if(!inputs.length){ alert("Aucun mot de passe saisi."); return; }
   if(inputs.find(i => i.value.trim().length < 8)){ alert("Chaque mot de passe doit contenir au moins 8 caractères."); return; }
-  const edited = new Set(inputs.map(i => i.dataset.kind + '|' + i.dataset.num));
+  const edited = new Set(inputs.map(i => i.dataset.key));
   const used = new Set();
   CONFIG.adminRoles.forEach(r => used.add(roleHash(r)));
   Object.values(DATA.promotions).forEach(p => {
-    if(p.pwHash && !(p.id === childId && edited.has('promo|'))) used.add(p.pwHash);
-    (p.bureau||[]).forEach(m => { if(m.pwHash && !(p.id === childId && edited.has('member|' + m.num))) used.add(m.pwHash); });
+    if(p.pwHash && !(p.id === childId && edited.has('c'))) used.add(p.pwHash);
+    (p.bureau||[]).forEach(m => { if(m.pwHash && !(p.id === childId && edited.has(m.num))) used.add(m.pwHash); });
   });
+  const map = Object.assign({}, await openMap(sessionSecret, child.pwUp) || {});
+  const seen = new Set();
   for(const i of inputs){
-    const h = pwHash(i.value.trim());
-    if(used.has(h)){ alert("Un de ces mots de passe est déjà utilisé par un autre accès — chaque accès doit avoir son propre mot de passe."); return; }
-    used.add(h);
-    if(i.dataset.kind === 'promo') child.pwHash = h;
-    else { const m = (child.bureau||[]).find(x => x.num === i.dataset.num); if(m) m.pwHash = h; }
+    const pw = i.value.trim(), h = pwHash(pw);
+    if(used.has(h) || seen.has(h)){ alert("Un de ces mots de passe est déjà utilisé par un autre accès — chaque accès doit avoir son propre mot de passe."); return; }
+    seen.add(h); used.add(h);
+    if(i.dataset.key === 'c') child.pwHash = h;
+    else { const m = (child.bureau||[]).find(x => x.num === i.dataset.key); if(m) m.pwHash = h; }
+    map[i.dataset.key] = pw;
   }
+  if(!map.c){ alert("Définissez d'abord l'Accès général de cette promotion."); return; }
+  child.pwSelf = await sealMap(map.c, map);
+  if(sessionSecret) child.pwUp = await sealMap(sessionSecret, map);
   await storageSet('promotions', DATA.promotions);
   renderAdminContent();
   alert("Mots de passe enregistrés.");
@@ -2530,6 +2569,19 @@ async function savePasswordsTable(){
     }
     if(vaultKey){ DATA.pwVault[id] = await aesEnc(vaultKey, new TextEncoder().encode(pw)); vaultPlain[id] = pw; touchedVault = true; }
   }
+  if(touchedPromos && vaultKey){
+    const ids = new Set(computed.filter(([i]) => i.dataset.kind !== 'role').map(([i]) => i.dataset.pid));
+    for(const pid of ids){
+      const promo = DATA.promotions[pid]; if(!promo) continue;
+      const map = {}; const c = vaultPlain['promo|' + pid + '|']; if(c) map.c = c;
+      (promo.bureau||[]).forEach(m => { const v = vaultPlain['member|' + pid + '|' + m.num]; if(v) map[m.num] = v; });
+      if(!map.c) continue;
+      promo.pwSelf = await sealMap(map.c, map);
+      const par = promo.parentId && promo.parentId !== '__main__' ? DATA.promotions[promo.parentId] : null;
+      const pc = par ? vaultPlain['promo|' + par.id + '|'] : null;
+      if(pc) promo.pwUp = await sealMap(pc, map);
+    }
+  }
   if(touchedRoles) await storageSet('role-passwords', DATA.rolePasswords);
   if(touchedPromos) await storageSet('promotions', DATA.promotions);
   if(touchedVault) await storageSet('pw-vault', DATA.pwVault);
@@ -2552,9 +2604,10 @@ async function savePromotion(id){
   if(!id || !DATA.promotions[id]) return;
   const fraisVal = document.getElementById('ad-promo-frais').value.trim();
   const groupLink = document.getElementById('ad-promo-group').value.trim();
+  const dv = document.getElementById('ad-promo-date').value;
   const fraisAdhesion = fraisVal === '' ? null : Number(fraisVal);
   if(fraisVal !== '' && (isNaN(fraisAdhesion) || fraisAdhesion < 0)){ alert("Le montant des frais d'adhésion doit être un nombre valide."); return; }
-  DATA.promotions[id] = Object.assign({}, DATA.promotions[id], { groupLink, fraisAdhesion });
+  DATA.promotions[id] = Object.assign({}, DATA.promotions[id], Object.assign({ groupLink, fraisAdhesion }, dv ? { dateDebut:new Date(dv + 'T00:00:00').getTime(), annee:String(new Date(dv).getFullYear()) } : {}));
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
   renderBureau(); renderFees(); renderAdminContent();
@@ -3594,7 +3647,7 @@ function openAdminEntry(){
 // Catégories ouvertes au bureau d'une promotion connecté avec SON propre mot
 // de passe : uniquement ce qui concerne sa promotion (jamais les autres
 // promotions, ni la promotion fondatrice).
-const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES.concat(['suite']);
+const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES.concat(['acces']);
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
   if(!val){ alert("Mot de passe incorrect."); return; }
@@ -3614,6 +3667,7 @@ function tryUnlock(){
       // 2) mot de passe commun du bureau
       if(promo.pwHash && promo.pwHash === h){
         match = { role:`Bureau — ${promo.nom}`, categories:PROMOTION_BUREAU_CATEGORIES, promotionId:promo.id };
+        sessionSecret = val;
         break;
       }
     }
@@ -3646,7 +3700,6 @@ const ADMIN_CATEGORIES = [
   {id:'outils', label:'Logiciels (carrousel)'},
   {id:'membres', label:'Membres du groupe'},
   {id:'promotions', label:'Promotions'},
-  {id:'suite', label:'Promotion suivante'},
   {id:'acces', label:'Mots de passe'},
   {id:'projets', label:'Projets'},
   {id:'cycles', label:'Cycles & lauréats'},
@@ -3659,7 +3712,7 @@ const ADMIN_CATEGORIES = [
 function isOwner(){ return !!currentRole && currentRole.role === CONFIG.ownerRole; }
 function visibleCategories(){
   const all = currentRole.categories.includes('*') ? ADMIN_CATEGORIES : ADMIN_CATEGORIES.filter(c => currentRole.categories.includes(c.id));
-  return all.filter(c => (c.id !== 'acces' || isOwner()) && (c.id !== 'suite' || (currentRole.promotionId && currentRole.categories.includes('suite'))));
+  return all.filter(c => (c.id !== 'acces' || isOwner() || (currentRole.promotionId && currentRole.categories.includes('acces'))));
 }
 
 function openAdminDashboard(){
@@ -3679,7 +3732,7 @@ function openAdminDashboard(){
 }
 function switchAdminTab(id){ adminTab = id; openAdminDashboard(); }
 function adminLogout(){
-  vaultClear();
+  vaultClear(); sessionSecret = null;
   const wasPromotionScoped = !!(currentRole && currentRole.promotionId);
   currentRole = null;
   adminUnlocked = false;
@@ -4020,7 +4073,7 @@ function renderAdminContent(){
       <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>
       ${permsMatrixHTML()}`;
   }
-  if(adminTab === 'suite' && currentRole && currentRole.promotionId){ el.innerHTML = renderSuiteAdmin(); }
+  if(adminTab === 'acces' && !isOwner() && currentRole && currentRole.promotionId){ renderPromoAcces(el); }
   if(adminTab === 'promotions'){
     const promos = promotionsSorted();
     el.innerHTML = renderPromotionsAdmin(promos);

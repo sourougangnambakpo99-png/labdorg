@@ -2107,8 +2107,9 @@ function memberFormHTML(px, editingM, cat, lockCat, saveCall, cancelCall){
           <option value="membre" ${cat==='membre'?'selected':''}>Membre LABDien</option>
           <option value="bureau" ${cat==='bureau'?'selected':''}>Membre du bureau</option>
         </select>
-        <label>Poste (si bureau)</label><input id="ad-${px}-role" placeholder="Ex : Chargé des médias" value="${editingM?(editingM.role||''):''}">
-        <label>Abréviation (si bureau)</label><input id="ad-${px}-abbr" placeholder="Ex : CDM" value="${editingM?(editingM.abbr||''):''}">
+        <label>Poste (si bureau)</label><input id="ad-${px}-role" placeholder="Ex : Secrétaire Générale" value="${editingM?(editingM.role||''):''}">
+        <label>Abréviation (si bureau)</label><input id="ad-${px}-abbr" placeholder="PR, VP, SG, OG, TG ou CRE" value="${editingM?(editingM.abbr||''):''}">
+        <p class="form-note" style="margin:-4px 0 8px;">Abréviations : PR (Président) · VP (Vice-Président) · SG (Secrétaire Générale) · OG (Organisateur Général) · TG (Trésorier Général) · CRE (Chargé des Relations Extérieures)</p>
         <label>Email (optionnel)</label><input id="ad-${px}-email" type="email" placeholder="prenom@gmail.com" value="${editingM?(editingM.email||''):''}">
         <label>Téléphone (optionnel)</label><input id="ad-${px}-phone" placeholder="+229..." value="${editingM?(editingM.phone||''):''}">
         <div class="row">
@@ -2119,7 +2120,11 @@ function memberFormHTML(px, editingM, cat, lockCat, saveCall, cancelCall){
 }
 function memberListHTML(bureau, membres, editFn, removeFn){
   const head = t => `<div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:${t==='Bureau'?'0':'18px'} 0 4px;">${t}</div>`;
-  const row = (m, withAbbr) => `<div class="admin-list-row"><span>${m.nom}</span><span class="meta">${withAbbr ? (m.abbr||'')+' ' : ''}<button class="link-btn" style="color:var(--teal-dark);" onclick="${editFn}('${m.num}')">Modifier</button><button class="link-btn" onclick="${removeFn}('${m.num}')">Retirer</button></span></div>`;
+  const row = (m, withAbbr) => {
+    const slot = String(m.num).startsWith('SL-');
+    const empty = slot && !m.nom;
+    return `<div class="admin-list-row"><span>${empty ? `<em style="color:var(--muted-2);">${m.role || m.abbr} — à renseigner</em>` : m.nom}</span><span class="meta">${withAbbr ? (m.abbr||'')+' ' : ''}<button class="link-btn" style="color:var(--teal-dark);" onclick="${editFn}('${m.num}')">${empty ? 'Renseigner' : 'Modifier'}</button>${empty ? '' : `<button class="link-btn" onclick="${removeFn}('${m.num}')">Retirer</button>`}</span></div>`;
+  };
   return head('Bureau') + `<div>${bureau.map(m => row(m,true)).join("")}</div>` + head('Membres') + `<div>${membres.map(m => row(m,false)).join("")}</div>`;
 }
 let editingMemberNum = null;
@@ -2328,7 +2333,8 @@ function renderBureau(){
   const grid = document.getElementById('bureauGrid');
   const subtitle = document.getElementById('bureauSubtitle');
   if(promo){
-    grid.innerHTML = (promo.bureau||[]).map((m,i) => bureauCardHTML(m, i, promo.id+'_'+m.num)).join("")
+    ensureBureauSlots(promo);
+    grid.innerHTML = (promo.bureau||[]).filter(m => m.nom).map((m,i) => bureauCardHTML(m, i, promo.id+'_'+m.num)).join("")
       || '<p class="form-note">Aucun membre de bureau enregistré pour cette promotion pour le moment.</p>';
     if(subtitle) subtitle.textContent = `Un bureau issu du parcours de sélection de la promotion, élu le ${fmtLongDate(promo.dateDebut || Date.now())}.`;
   } else {
@@ -2361,6 +2367,22 @@ function promoDepth(p){
 function fmtLongDate(ts){
   try{ return new Date(ts).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }); }catch(e){ return ''; }
 }
+const BUREAU_SLOTS = [
+  {code:'PR', role:'Président'}, {code:'VP', role:'Vice-Président'}, {code:'SG', role:'Secrétaire Générale'},
+  {code:'OG', role:'Organisateur Général'}, {code:'TG', role:'Trésorier Général'}, {code:'CRE', role:'Chargé des Relations Extérieures'}
+];
+// Chaque promotion reçoit d'office les six postes, dans l'ordre PR, VP, SG, OG, TG, CRE.
+// Un poste non renseigné (nom vide) n'apparaît pas sur le site.
+function ensureBureauSlots(promo){
+  if(!promo) return;
+  if(!promo.bureau) promo.bureau = [];
+  BUREAU_SLOTS.forEach(sl => {
+    if(!promo.bureau.some(m => roleCode(m.abbr) === sl.code)) promo.bureau.push({ num:'SL-' + sl.code, nom:'', role:sl.role, abbr:sl.code, phone:'', email:'' });
+  });
+  const rank = m => { const i = BUREAU_SLOTS.findIndex(x => x.code === roleCode(m.abbr)); return i < 0 ? 99 : i; };
+  promo.bureau = promo.bureau.map((m,i) => [m,i]).sort((a,b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(x => x[0]);
+}
+function ensureAllSlots(){ Object.values(DATA.promotions || {}).forEach(ensureBureauSlots); }
 async function createSuccessor(parentId){
   parentId = parentId || '__main__';
   if(childPromoOf(parentId)){ alert("Une seule promotion suivante peut être créée."); return; }
@@ -2372,6 +2394,7 @@ async function createSuccessor(parentId){
   const newId = 'promo_' + uid();
   DATA.promotions[newId] = { id:newId, nom:num + 'è Promotion', annee:String(new Date(when).getFullYear()), ordre:promotionsSorted().length, dateDebut:when,
     parentId, groupLink:'', pwHash:null, fraisAdhesion:null, mensuelle:null, mensuelleOld:null, bureau:[], membres:[] };
+  ensureBureauSlots(DATA.promotions[newId]);
   await storageSet('promotions', DATA.promotions);
   renderBureau(); renderFees(); renderAdminContent();
 }
@@ -2408,7 +2431,7 @@ function renderPromotionsAdmin(promos, locked){
       <button class="btn-primary" onclick="createSuccessor('__main__')">Créer la 2è Promotion</button>`
       : `<p class="form-note">La promotion suivante est déjà créée. Chaque promotion ne peut en créer qu'une seule : la suivante sera créée par le bureau de cette promotion.</p>`}
     </div>`}
-    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
+    <div>${promos.map(p => `<div class="admin-list-row"><span>${p.nom}${p.annee?' — '+p.annee:''}</span><span class="meta">${(p.bureau||[]).filter(m => m.nom).length + (p.membres||[]).length} membre(s) <button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId='${p.id}'; renderAdminContent();">Gérer les membres</button><button class="link-btn" style="color:var(--teal-dark);" onclick="editingPromotionId='${p.id}'; renderAdminContent();">Modifier</button><button class="link-btn" onclick="deletePromotion('${p.id}')">Supprimer</button></span></div>`).join("") || '<p class="form-note">Aucune promotion pour le moment.</p>'}</div>`;
 }
 
 // ---- Mots de passe visibles par les promotions ----
@@ -2643,7 +2666,9 @@ async function savePromotionMember(promoId){
     if(idx > -1) arr[idx] = Object.assign({}, arr[idx], data);
     editingPromotionMemberNum = null;
   } else {
-    (cat === 'bureau' ? promo.bureau : promo.membres).push(Object.assign({ num:'PM-'+uid() }, data));
+    const slot = cat === 'bureau' ? promo.bureau.find(m => !m.nom && roleCode(m.abbr) === roleCode(abbr)) : null;
+    if(slot) Object.assign(slot, data);
+    else (cat === 'bureau' ? promo.bureau : promo.membres).push(Object.assign({ num:'PM-'+uid() }, data));
   }
   await storageSet('promotions', DATA.promotions);
   renderBureau();
@@ -2655,7 +2680,8 @@ async function removePromotionMember(promoId, num){
   if(!promo) return;
   if(!confirm("Retirer cette personne de cette promotion ?")) return;
   const wasBureau = (promo.bureau||[]).some(m => m.num === num);
-  promo.bureau = (promo.bureau||[]).filter(m => m.num !== num);
+  if(String(num).startsWith('SL-')){ const sl = promo.bureau.find(m => m.num === num); if(sl) Object.assign(sl, { nom:'', phone:'', email:'' }); }
+  else promo.bureau = (promo.bureau||[]).filter(m => m.num !== num);
   promo.membres = (promo.membres||[]).filter(m => m.num !== num);
   await storageSet('promotions', DATA.promotions);
   await mapDeleteItem(wasBureau ? 'bureau-photos' : 'member-photos', promoId+'_'+num);
@@ -3850,6 +3876,7 @@ function candidatureRowHTML(c, archived){
 function renderAdminContent(){
   const el = document.getElementById('adminContent');
   if(!el) return;
+  ensureAllSlots();
   if(adminTab === 'articles'){
     // Un rôle peut être cantonné à un seul type d'article (ex: CRE → "formation" uniquement).
     // Il ne voit alors, ne crée alors et ne modifie alors que ce type ; les autres types
@@ -4765,7 +4792,7 @@ function renderStats(){
   // Les quatre chiffres suivent la promotion affichée (sélecteur de la nav).
   const sPromo = activePromotion();
   const membresCount = sPromo
-    ? (sPromo.bureau||[]).length + (sPromo.membres||[]).length
+    ? (sPromo.bureau||[]).filter(m => m.nom).length + (sPromo.membres||[]).length
     : getBureauList().length + getMembresList().length;
   const projetsCount = sPromo
     ? (DATA.projets||[]).filter(p => p.promotionId === sPromo.id).length

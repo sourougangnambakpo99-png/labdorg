@@ -890,7 +890,7 @@
           <div class="amount" id="feeMensuelleAmount">500 <span>F CFA / mois</span></div>
           <p>Versée chaque mois par tous les membres. Elle finance directement les activités du groupe — matériel, événements, projets communs.</p>
         </div>
-        <div class="fee-card card">
+        <div class="fee-card card" id="feeAdhesionCard">
           <div class="k">Frais d'adhésion</div>
           <div class="amount" id="feeAdhesionAmount">2 675 <span>F CFA · unique</span></div>
           <p>À verser au Trésorier Général lors de l'adhésion.</p>
@@ -2423,8 +2423,6 @@ function renderPromotionsAdmin(promos, locked){
       <p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.nom} »</p>
       <label>Date de l'élection du bureau</label><input id="ad-promo-date" type="date" value="${editingP.dateDebut ? (d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))(new Date(editingP.dateDebut)) : ''}">
       <label>Lien du groupe WhatsApp (optionnel)</label><input id="ad-promo-group" placeholder="https://chat.whatsapp.com/..." value="${(editingP.groupLink||'').replace(/"/g,'&quot;')}">
-      <label>Frais d'adhésion spécifiques (F CFA, optionnel)</label>
-      <input id="ad-promo-frais" type="number" placeholder="Laisser vide pour garder le montant commun" value="${editingP.fraisAdhesion!=null ? editingP.fraisAdhesion : ''}">
       <div class="row">
         <button class="btn-primary" onclick="savePromotion('${editingP.id}')">Enregistrer les modifications</button>
         <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingPromotionId=null; renderAdminContent();">Annuler</button>
@@ -2635,12 +2633,9 @@ async function removeAccess(pid, num){
 }
 async function savePromotion(id){
   if(!id || !DATA.promotions[id]) return;
-  const fraisVal = document.getElementById('ad-promo-frais').value.trim();
   const groupLink = document.getElementById('ad-promo-group').value.trim();
   const dv = document.getElementById('ad-promo-date').value;
-  const fraisAdhesion = fraisVal === '' ? null : Number(fraisVal);
-  if(fraisVal !== '' && (isNaN(fraisAdhesion) || fraisAdhesion < 0)){ alert("Le montant des frais d'adhésion doit être un nombre valide."); return; }
-  DATA.promotions[id] = Object.assign({}, DATA.promotions[id], Object.assign({ groupLink, fraisAdhesion }, dv ? { dateDebut:new Date(dv + 'T00:00:00').getTime(), annee:String(new Date(dv).getFullYear()) } : {}));
+  DATA.promotions[id] = Object.assign({}, DATA.promotions[id], Object.assign({ groupLink }, dv ? { dateDebut:new Date(dv + 'T00:00:00').getTime(), annee:String(new Date(dv).getFullYear()) } : {}));
   await storageSet('promotions', DATA.promotions);
   editingPromotionId = null;
   renderBureau(); renderFees(); renderAdminContent();
@@ -4197,9 +4192,13 @@ function renderAdminContent(){
       ${promoT ? `
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
         <label>Montants (mis à jour partout sur le site dès l'enregistrement)</label>
+        <label style="font-weight:400; font-size:0.8rem;">Frais d'adhésion (F CFA)</label>
+        <input id="ad-pfee-adhesion" type="number" min="0" value="${promoT.fraisAdhesion||''}">
+        <label style="font-weight:400; font-size:0.8rem;">Ancien montant adhésion à afficher barré (optionnel)</label>
+        <input id="ad-pfee-adhesion-old" type="number" min="0" placeholder="Laisser vide si pas de changement récent" value="${promoT.adhesionOld||''}">
         <label style="font-weight:400; font-size:0.8rem;">Cotisation mensuelle (F CFA)</label>
-        <input id="ad-pfee-mensuelle" type="number" min="0" placeholder="Ex : 500" value="${promoT.mensuelle||''}">
-        <label style="font-weight:400; font-size:0.8rem;">Ancien montant à afficher barré (optionnel)</label>
+        <input id="ad-pfee-mensuelle" type="number" min="0" value="${promoT.mensuelle||''}">
+        <label style="font-weight:400; font-size:0.8rem;">Ancien montant mensuel à afficher barré (optionnel)</label>
         <input id="ad-pfee-mensuelle-old" type="number" min="0" placeholder="Laisser vide si pas de changement récent" value="${promoT.mensuelleOld||''}">
         <button class="btn-primary" onclick="savePromoMensuelle()">Enregistrer les montants</button>
       </div>
@@ -4553,7 +4552,7 @@ function feeAmountHTML(current, old, unitLabel){
 // commun. La cotisation mensuelle, elle, reste commune à tout LABD.
 function effectiveFraisAdhesion(){
   const promo = activePromotion();
-  return (promo && promo.fraisAdhesion != null) ? promo.fraisAdhesion : DATA.fees.adhesion;
+  return promo ? (promo.fraisAdhesion || null) : DATA.fees.adhesion;
 }
 function renderFees(){
   const f = DATA.fees;
@@ -4573,10 +4572,13 @@ function renderFees(){
       ? feeAmountHTML(promo.mensuelle, promo.mensuelleOld || null, 'F CFA / mois')
       : feeAmountHTML(f.mensuelle, f.mensuelleOld, 'F CFA / mois');
   }
-  if(adhesionEl) adhesionEl.innerHTML = (promo && promo.fraisAdhesion != null)
-    ? feeAmountHTML(adhesionAmount, null, 'F CFA · unique')
+  const adhesionCard = document.getElementById('feeAdhesionCard');
+  const showAdhesion = !promo || (promo.fraisAdhesion > 0);
+  if(adhesionCard) adhesionCard.style.display = showAdhesion ? '' : 'none';
+  if(adhesionEl && showAdhesion) adhesionEl.innerHTML = promo
+    ? feeAmountHTML(adhesionAmount, promo.adhesionOld || null, 'F CFA · unique')
     : feeAmountHTML(f.adhesion, f.adhesionOld, 'F CFA · unique');
-  if(chkLabel) chkLabel.textContent = `Je confirme avoir versé ${fmtFcfa(adhesionAmount)} F CFA au Trésorier Général`;
+  if(chkLabel) chkLabel.textContent = adhesionAmount ? `Je confirme avoir versé ${fmtFcfa(adhesionAmount)} F CFA au Trésorier Général` : `Je confirme avoir versé les frais d'adhésion au Trésorier Général`;
   if(promoNote){
     if(promo){
       promoNote.style.display = '';
@@ -4592,7 +4594,11 @@ async function savePromoMensuelle(){
   if(!promo) return;
   const v = document.getElementById('ad-pfee-mensuelle').value.trim();
   const old = document.getElementById('ad-pfee-mensuelle-old').value.trim();
-  if(v !== '' && (isNaN(Number(v)) || Number(v) < 0)){ alert("Le montant doit être un nombre valide."); return; }
+  const av = document.getElementById('ad-pfee-adhesion').value.trim();
+  const aold = document.getElementById('ad-pfee-adhesion-old').value.trim();
+  if([v,old,av,aold].some(x => x !== '' && (isNaN(Number(x)) || Number(x) < 0))){ alert("Les montants doivent être des nombres valides."); return; }
+  promo.fraisAdhesion = av === '' ? null : parseInt(av, 10);
+  promo.adhesionOld = (av !== '' && aold !== '') ? parseInt(aold, 10) : null;
   promo.mensuelle = v === '' ? null : parseInt(v, 10);
   promo.mensuelleOld = (v !== '' && old !== '') ? parseInt(old, 10) : null;
   await storageSet('promotions', DATA.promotions);

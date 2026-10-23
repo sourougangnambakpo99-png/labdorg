@@ -352,14 +352,15 @@
 
 
   .history-teaser{margin-top:24px; max-width:620px; padding:22px 24px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s; background:linear-gradient(135deg, var(--teal-soft), var(--paper-2)); flex-wrap:wrap;}
-  #histoire .history-teaser{max-width:760px; min-height:190px; padding:34px 32px; color:#fff; border:none; flex-wrap:wrap;
-    background:linear-gradient(100deg, rgba(11,28,51,0.88) 0%, rgba(11,28,51,0.62) 50%, rgba(11,28,51,0.2) 100%), var(--hist-img, none) center 40%/cover no-repeat, var(--navy);}
+  #histoire .history-teaser{max-width:760px; min-height:290px; padding:34px 32px; color:#fff; border:none; flex-wrap:wrap;
+    background:linear-gradient(100deg, rgba(11,28,51,0.88) 0%, rgba(11,28,51,0.62) 50%, rgba(11,28,51,0.2) 100%), var(--hist-img, none) center 60%/cover no-repeat, var(--navy);}
   #histoire .history-teaser .history-teaser-title{color:#fff; font-size:1.3rem;}
   #histoire .history-teaser .history-teaser-sub{color:rgba(255,255,255,0.85);}
   #histoire .history-teaser .history-teaser-cta{color:#7fe3ec;}
   #histoire .history-teaser .history-teaser-icon{background:var(--teal);}
-  .history-modal-hero{margin:-30px -30px 20px; padding:64px 30px 22px; border-radius:14px 14px 0 0; color:#fff;
-    background:linear-gradient(180deg, rgba(11,28,51,0.25), rgba(11,28,51,0.9)), var(--hist-img, none) center/cover no-repeat, var(--navy);}
+  @media(max-width:600px){ .history-modal-hero{min-height:245px !important; padding-top:100px !important;} }
+  .history-modal-hero{margin:-30px -30px 20px; padding:150px 30px 22px; min-height:410px; display:flex; flex-direction:column; justify-content:flex-end; border-radius:14px 14px 0 0; color:#fff;
+    background:linear-gradient(180deg, rgba(11,28,51,0) 35%, rgba(11,28,51,0.88)), var(--hist-img, none) center 62%/cover no-repeat, var(--navy);}
   .history-modal-hero small{display:block; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:#7fe3ec; font-weight:700; margin-bottom:6px;}
   .history-modal-hero h3{color:#fff; margin:0; font-size:1.6rem;}
   .history-teaser:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(11,28,51,0.12);}
@@ -602,7 +603,6 @@
 </head>
 <body>
 
-<div id="scrollProgress"></div>
 
 <div id="siteLoader">
   <div class="loader-spinner"></div>
@@ -620,6 +620,7 @@
 
 <div id="modalOverlay"><div class="modal-box" id="modalContent"></div></div>
 
+<div id="scrollProgress"></div>
 <header class="nav">
   <div class="nav-inner">
     <div class="brand-block">
@@ -2356,6 +2357,8 @@ function renderPromotionSwitches(){
   }
 }
 function switchPromotion(id){
+  // Une fois la promotion choisie, on ferme le menu et on revient à l'accueil.
+  try{ const mm=document.getElementById('mobileMenu'), bb=document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded','false'); window.scrollTo({top:0, behavior:'smooth'}); }catch(e){}
   activePromotionId = id;
   cyclesOffset = 0; activeCycleIndex = null; // les index de cycles ne sont pas partagés entre promotions
   projectsWindow.realise = {size:2, offset:0}; projectsWindow.exercice = {size:2, offset:0};

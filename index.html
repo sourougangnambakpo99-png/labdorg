@@ -353,16 +353,30 @@
 
   .history-teaser{margin-top:24px; max-width:620px; padding:22px 24px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s; background:linear-gradient(135deg, var(--teal-soft), var(--paper-2)); flex-wrap:wrap;}
   #histoire .history-teaser{max-width:760px; min-height:290px; padding:34px 32px; color:#fff; border:none; flex-wrap:wrap;
-    background:linear-gradient(100deg, rgba(11,28,51,0.88) 0%, rgba(11,28,51,0.62) 50%, rgba(11,28,51,0.2) 100%), var(--hist-img, none) center 60%/cover no-repeat, var(--navy);}
+    background:var(--navy); overflow:hidden; isolation:isolate;}
+  #histoire .history-teaser::after{content:""; position:absolute; inset:0; z-index:-1; background:linear-gradient(100deg, rgba(11,28,51,0.88) 0%, rgba(11,28,51,0.62) 50%, rgba(11,28,51,0.2) 100%);}
+  #histoire .history-teaser::before, .history-modal-hero::before{content:""; position:absolute; inset:0; z-index:-2; background:var(--hist-img, none) center 60%/cover no-repeat; transform-origin:60% 55%; animation:histDrift 24s ease-in-out infinite alternate; will-change:transform;}
+  @keyframes histDrift{from{transform:scale(1.03) translate3d(0,0,0);} to{transform:scale(1.17) translate3d(-2.5%,-1.5%,0);}}
+  @media(prefers-reduced-motion:reduce){ #histoire .history-teaser::before, .history-modal-hero::before{animation:none;} }
   #histoire .history-teaser .history-teaser-title{color:#fff; font-size:1.3rem;}
   #histoire .history-teaser .history-teaser-sub{color:rgba(255,255,255,0.85);}
   #histoire .history-teaser .history-teaser-cta{color:#7fe3ec;}
   #histoire .history-teaser .history-teaser-icon{background:var(--teal);}
-  @media(max-width:600px){ .history-modal-hero{min-height:245px !important; padding-top:100px !important;} }
-  .history-modal-hero{margin:-30px -30px 20px; padding:150px 30px 22px; min-height:410px; display:flex; flex-direction:column; justify-content:flex-end; border-radius:14px 14px 0 0; color:#fff;
-    background:linear-gradient(180deg, rgba(11,28,51,0) 35%, rgba(11,28,51,0.88)), var(--hist-img, none) center 62%/cover no-repeat, var(--navy);}
+  @media(max-width:600px){ .history-modal-hero{min-height:290px !important; padding-top:100px !important;} }
+  .history-modal-hero{position:relative; margin:-30px -30px 20px; padding:150px 30px 22px; min-height:410px; display:flex; flex-direction:column; justify-content:flex-end; border-radius:14px 14px 0 0; color:#fff;
+    background:var(--navy); overflow:hidden; isolation:isolate;}
+  .history-modal-hero::after{content:""; position:absolute; inset:0; z-index:-1; background:linear-gradient(180deg, rgba(11,28,51,0) 20%, rgba(11,28,51,0.92));}
   .history-modal-hero small{display:block; font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:#7fe3ec; font-weight:700; margin-bottom:6px;}
   .history-modal-hero h3{color:#fff; margin:0; font-size:1.6rem;}
+  /* Légende posée sur la photo du couloir (masquée si une autre photo est choisie dans l'admin) */
+  .hist-caption{position:absolute; top:14px; left:14px; z-index:2; display:flex; flex-direction:column; gap:1px; max-width:78%; padding:7px 13px; border-radius:12px; color:#fff; background:rgba(11,28,51,0.55); border:1px solid rgba(127,227,236,0.45); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); pointer-events:none;}
+  .hist-caption b{font-family:'Space Grotesk', sans-serif; font-size:0.86rem; font-weight:700; letter-spacing:0.01em;}
+  .hist-caption span{font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:#7fe3ec; font-weight:700;}
+  #histoire .history-teaser{position:relative;}
+  #histoire .history-teaser .hist-caption{left:auto; right:14px; align-items:flex-end; text-align:right;}
+  .hist-eyebrow{font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; color:#7fe3ec; margin-bottom:6px;}
+  .history-modal-hero .hist-place{margin:6px 0 0; color:rgba(255,255,255,0.88); font-size:0.9rem;}
+  .hist-custom .hist-eyebrow, .hist-custom .hist-place{display:none;}
   .history-teaser:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(11,28,51,0.12);}
   .history-teaser-icon{flex:0 0 auto; width:44px; height:44px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center;}
   .history-teaser-title{font-family:'Space Grotesk', sans-serif; font-size:1.08rem; font-weight:700; color:var(--ink); margin-bottom:6px;}
@@ -462,14 +476,14 @@
   .gallery-tile{aspect-ratio:4/3; border-radius:var(--radius); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted-2); background:var(--paper-2); overflow:hidden; position:relative; border:1px solid var(--line);}
   .gallery-tile img, .gallery-tile video{width:100%; height:100%; object-fit:cover;}
   .gallery-tile span{font-size:0.72rem; text-align:center; padding:0 10px;}
-  .gallery-tile .cap{position:absolute; bottom:0; left:0; right:0; background:rgba(11,28,51,0.72); color:#fff; font-size:0.72rem; padding:7px 9px;}
+  .gallery-tile .cap{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, rgba(11,28,51,0), rgba(11,28,51,0.82) 55%); color:#fff; font-size:0.72rem; line-height:1.3; padding:16px 9px 0; border-bottom:7px solid transparent; background-clip:padding-box; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; pointer-events:none;}
   .gallery-tile{cursor:pointer;}
   .gallery-tile .tile-admin{position:absolute; top:34px; right:8px; display:none; gap:6px; z-index:2;}
   .admin-on .gallery-tile .tile-admin{display:flex;}
   .tile-admin button{width:24px; height:24px; border-radius:50%; background:rgba(11,28,51,0.8); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:0.68rem;}
   .tile-admin button.del{background:#c0392b;}
-  .mute-toggle{position:absolute; bottom:14px; left:8px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
-  .play-toggle{position:absolute; bottom:14px; left:40px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
+  .mute-toggle{position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
+  .play-toggle{position:absolute; top:8px; left:40px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
   .tile-progress{position:absolute; bottom:0; left:0; right:0; height:4px; background:rgba(255,255,255,0.25); z-index:2;}
   .tile-progress-fill{height:100%; width:0%; background:var(--teal, #2f9e8f); transition:width 0.1s linear;}
   .watermark{position:absolute; top:8px; right:10px; display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; color:rgba(255,255,255,0.9); text-shadow:0 1px 3px rgba(0,0,0,0.6); pointer-events:none;}
@@ -577,7 +591,9 @@
   .modal-box h3{font-family:'Space Grotesk', sans-serif; margin-bottom:14px;}
   .modal-box p{font-size:0.9rem; color:var(--muted); margin-bottom:14px;}
   .modal-box .row{display:flex; gap:10px; margin-top:16px;}
-  .reglement-text ol{padding-left:20px; display:flex; flex-direction:column; gap:12px;}
+  .reglement-text .reg-title{font-family:'Space Grotesk', sans-serif; font-size:0.78rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--teal-dark); margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line);}
+  .reglement-text .reg-title:first-child{margin-top:4px;}
+  .reglement-text ol{list-style:none; padding-left:0; display:flex; flex-direction:column; gap:12px;}
   .reglement-text li{font-size:0.9rem; color:var(--muted);}
   .reglement-text li strong{color:var(--ink);}
 
@@ -799,6 +815,7 @@
       <div class="history-teaser card" onclick="openHistoireModal()">
         <div class="history-teaser-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/></svg></div>
         <div>
+          <div class="hist-eyebrow">Ici est né LABD · Couloir B-2610, EPAC</div>
           <div class="history-teaser-title" id="histoireTeaserTitle">D'une idée à un groupe : comment tout a commencé</div>
           <p class="history-teaser-sub" id="histoireTeaserSub">Une rencontre, une soirée de discussions, et six postes attribués par acclamation. Découvrez le récit complet de la fondation de LABD.</p>
         </div>
@@ -1291,20 +1308,29 @@ const CONFIG = {
   ],
 
   reglement: [
-    { art:"00-801", texte:"Toute absence non justifiée à une réunion organisée par le groupe LABD, 2 fois de suite, sera sanctionnée par un renvoi définitif." },
+    { titre:"Présence et assiduité" },
+    { art:"00-801", texte:"Toute absence non justifiée à une réunion organisée par le groupe LABD, deux fois de suite, sera sanctionnée par un renvoi définitif." },
+    { art:"00-803", texte:"Toujours se munir de ses équipements de travail, son ordinateur, pour la vérification et le suivi des activités données. Toute absence d'équipement sera suivie de sanction sévère." },
+    { titre:"Travail, délais et résultats" },
     { art:"00-802", texte:"Tout nouveau dans ce groupe doit finir son premier projet au moins à 80% après vérification par l'organe de contrôle." },
-    { art:"00-803", texte:"Toujours se munir de ses équipements de travail (son ordinateur) pour la vérification et le suivi des activités ; toute absence d'équipement sera précédée de sanction sévère." },
     { art:"00-804", texte:"La durée prévue pour le travail ou la tâche assignée est d'une semaine." },
     { art:"00-805", texte:"Un nouveau membre ou un membre ancien qui obtient 40% sur tout le travail sans motif important, deux fois de suite, sera aussi sanctionné d'un renvoi." },
-    { art:"00-806", texte:"Les membres qui seront retirés du groupe ne pourront réintégrer qu'après avoir payé à nouveau les frais d'adhésion." },
-    { art:"00-807", texte:"Tout exercice non fait ou non achevé sera sanctionné par une pénalité." },
-    { art:"00-806", texte:"Tout adhérent au groupe LABD doit avoir la capacité de travailler sous pression ; un grand principe du fonctionnement du génie civil." },
-    { art:"00-808", texte:"Toute pénalité non réglée dans un délai de 7 jours entraîne la suspension du membre concerné, jusqu'au paiement intégral de ce qui lui est dû." },
-    { art:"00-809", texte:"Le groupe ne recherche pas la quantité, mais s'entoure de personnes sérieuses et véritablement engagées." },
+    { art:"00-807", texte:"Tout exercice non fait ou non achevé sera sanctionné par une pénalité de 300 F." },
+    { art:"00-814", texte:"Tout adhérent au groupe LABD doit avoir la capacité de travailler sous pression, un grand principe du fonctionnement du génie civil." },
+    { art:"00-815", texte:"Il n'y aura pas d'excuse pour les projets. Un membre qui se verra empêché de faire le projet paiera la pénalité de 300 F pour projet non fait, sachant que deux projets non faits successivement équivalent à un renvoi." },
+    { titre:"Pénalités et paiements" },
+    { art:"00-808", texte:"Toute pénalité non réglée dans un délai de 7 jours entraîne la suspension du membre concerné. Il ne pourra être réintégré au groupe qu'après paiement intégral de ce qui lui est dû." },
     { art:"00-810", texte:"Les pénalités doivent être payées au plus tard 2 jours après la fixation, sinon l'intéressé paiera 100 F par jour de retard." },
     { art:"00-811", texte:"Tout membre qui ne finit pas sa correction au deuxième contrôle paiera 300 F." },
-    { art:"00-812", texte:"Des primes d'encouragement, de 200 F à 500 F selon l'envergure du projet, seront octroyées à ceux qui auront terminé à 100% leur projet de façon consécutive sur 3 séances." },
-    { art:"00-813", texte:"Des visites ou petites fêtes seront organisées par l'OG pour vivre des moments de convivialité et de partage, après un projet d'envergure fini à 100%." }
+    { titre:"Renvoi et réintégration" },
+    { art:"00-806", texte:"Les membres qui seront retirés du groupe ne pourront réintégrer qu'après avoir payé à nouveau les frais d'adhésion." },
+    { titre:"Pause des activités" },
+    { art:"00-816", texte:"Tout membre peut demander une pause dans les activités en écrivant une lettre de demande de pause manuscrite adressée au CRE, avec 500 F de frais de dossier. Le nombre maximal de pauses qu'un LABDien peut avoir est de deux par an, soit une par semestre." },
+    { titre:"Primes et convivialité" },
+    { art:"00-812", texte:"Des primes d'encouragement, de 200 F à 500 F selon l'envergure du projet, seront octroyées aux meilleurs qui auront terminé à 100% leur projet de façon consécutive sur 3 séances." },
+    { art:"00-813", texte:"Il y aura des visites ou de petites fêtes organisées par l'OG pour vivre des moments de convivialité et de partage, après un projet d'envergure fini à 100%." },
+    { titre:"Esprit du groupe" },
+    { art:"00-809", texte:"Le groupe ne recherche pas la quantité, mais s'entoure de personnes sérieuses et véritablement engagées." }
   ],
 
   // Contenus d'exemple — affichés uniquement tant qu'aucun contenu réel n'a été publié par l'admin.
@@ -1544,7 +1570,7 @@ function mdLiteToHtml(text){
 
 function openHistoireModal(){
   openModal(`
-    <div class="history-modal-hero"><small>Depuis le 16.10.2025</small><h3>Notre histoire</h3></div>
+    <div class="history-modal-hero"><small>Depuis le 16.10.2025</small><h3>Notre histoire</h3><p class="hist-place">Le couloir où tout a commencé : ici est né LABD, devant la salle B-2610 de l'EPAC.</p></div>
     <div class="history-modal-body">${mdLiteToHtml(DATA.histoireText || DEFAULT_HISTOIRE)}</div>
     <div class="row" style="margin-top:16px;">
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
@@ -1953,17 +1979,30 @@ modalOverlay.addEventListener('click', e => { if(e.target === modalOverlay) clos
 function reglementItems(){
   if(DATA.reglementText && DATA.reglementText.trim()){
     return DATA.reglementText.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-      const m = line.match(/^([\d-]+)\s*[—-]\s*(.+)$/);
+      const t = line.match(/^#{1,3}\s*(.+)$/);
+      if(t) return { titre:t[1] };
+      const m = line.match(/^([\d-]+)\s*[:—-]\s*(.+)$/);
       return m ? { art:m[1], texte:m[2] } : { art:'', texte:line };
     });
   }
   return CONFIG.reglement;
 }
+function reglementHTML(){
+  let html = '', open = false;
+  const close = () => { if(open){ html += '</ol>'; open = false; } };
+  reglementItems().forEach(r => {
+    if(r.titre){ close(); html += `<h4 class="reg-title">${r.titre}</h4>`; return; }
+    if(!open){ html += '<ol>'; open = true; }
+    html += `<li>${r.art?`<strong>Art. ${r.art}.</strong> `:''}${r.texte}</li>`;
+  });
+  close();
+  return html;
+}
 function openReglementModal(){
   openModal(`
     <h3>Règlement intérieur</h3>
     <div class="reglement-text">
-      <ol>${reglementItems().map(r => `<li>${r.art?`<strong>Art. ${r.art}.</strong> `:''}${r.texte}</li>`).join("")}</ol>
+      ${reglementHTML()}
     </div>
     <div class="row"><button class="btn-primary" onclick="closeModal(); document.getElementById('chk-reglement').disabled=false;">J'ai lu, fermer</button></div>
   `, true);
@@ -3119,6 +3158,7 @@ function applyHistoirePhoto(){
   // Fond de « Notre histoire » : la photo choisie dans l'admin, sinon la photo d'origine du couloir B-2610.
   const src = DATA.histoirePhoto || DEFAULT_HISTOIRE_IMG;
   document.documentElement.style.setProperty('--hist-img', 'url(' + JSON.stringify(src) + ')');
+  document.documentElement.classList.toggle('hist-custom', !!DATA.histoirePhoto);
 }
 async function saveHistoirePhoto(){
   const input = document.getElementById('ad-histoire-photo');
@@ -3241,6 +3281,17 @@ function galleryTileHTML({photo, video, poster, legende, key, id, editable, seed
     <div class="cap">${legende||''}</div>
   </div>`;
 }
+function lbTogglePlay(vid){
+  const st = vid.parentElement.querySelector('.lb-state');
+  if(vid.paused){ vid.play().catch(()=>{}); if(st) st.style.display = 'none'; }
+  else { vid.pause(); if(st) st.style.display = 'flex'; }
+}
+function lbToggleMute(btn){
+  const vid = btn.parentElement.querySelector('video');
+  if(!vid) return;
+  vid.muted = !vid.muted;
+  btn.textContent = vid.muted ? 'Activer le son' : 'Couper le son';
+}
 function openLightbox(key){
   let src, video, legende;
   if(key === 'logo'){
@@ -3257,12 +3308,16 @@ function openLightbox(key){
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
         ? `<iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
-        : `<video src="${video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
+        : `<div class="lb-video" style="position:relative; width:100%; background:#000; border-radius:8px; overflow:hidden;">
+            <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
+            <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
+            <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
+          </div>`)
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" src="${src}" style="width:100%; border-radius:8px; display:block;">`;
   const dlId = 'wm-dl-' + uid();
   openModal(`
     <div style="text-align:center;">
-      <div style="position:relative; display:inline-block; max-width:100%;">
+      <div style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${!isLogoView ? lightboxWatermarkHTML() : ''}
       </div>
@@ -4130,8 +4185,8 @@ function renderAdminContent(){
         <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHistoire()">Revenir au texte d'origine</button>
       </div>
       <div class="check-step" style="margin-top:24px; padding-top:18px; border-top:1px dashed var(--line);">
-        <label>Règlement intérieur (un article par ligne, format : <code>numéro — texte</code>)</label>
-        <textarea id="ad-reglement-text" rows="10" style="width:100%; font-family:inherit; font-size:0.85rem; padding:12px; border:1px solid var(--line); border-radius:8px;">${DATA.reglementText || CONFIG.reglement.map(r => `${r.art} — ${r.texte}`).join('\n')}</textarea>
+        <label>Règlement intérieur (un article par ligne, format : <code>numéro : texte</code>, et <code>## Titre</code> pour une rubrique)</label>
+        <textarea id="ad-reglement-text" rows="20" style="width:100%; font-family:inherit; font-size:0.85rem; padding:12px; border:1px solid var(--line); border-radius:8px;">${DATA.reglementText || CONFIG.reglement.map(r => r.titre ? `## ${r.titre}` : `${r.art} : ${r.texte}`).join('\n')}</textarea>
         <div class="row" style="margin-top:10px;">
           <button class="btn-primary" onclick="saveReglement()">Enregistrer le règlement</button>
           <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetReglement()">Revenir au règlement d'origine</button>

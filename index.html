@@ -374,8 +374,9 @@
   .hist-caption span{font-size:0.68rem; letter-spacing:0.08em; text-transform:uppercase; color:#7fe3ec; font-weight:700;}
   #histoire .history-teaser{position:relative;}
   #histoire .history-teaser .hist-caption{left:auto; right:14px; align-items:flex-end; text-align:right;}
-  .hist-eyebrow{font-size:0.7rem; letter-spacing:0.12em; text-transform:uppercase; font-weight:700; color:#7fe3ec; margin-bottom:6px;}
-  .history-modal-hero .hist-place{margin:6px 0 0; color:rgba(255,255,255,0.88); font-size:0.9rem;}
+  .hist-eyebrow{display:inline-block; font-size:0.78rem; letter-spacing:0.1em; text-transform:uppercase; font-weight:800; color:#fff; background:var(--teal); padding:5px 12px; border-radius:999px; margin-bottom:10px; box-shadow:0 4px 14px rgba(0,0,0,0.3);}
+  .history-modal-hero .hist-place{margin:12px 0 0; padding:8px 0 8px 14px; border-left:4px solid #2fd3df; color:#fff; font-family:'Space Grotesk', sans-serif; font-size:1.15rem; font-weight:700; line-height:1.3; text-shadow:0 2px 12px rgba(0,0,0,0.55);}
+  .history-modal-hero .hist-place em{font-style:normal; color:#7fe3ec;}
   .hist-custom .hist-eyebrow, .hist-custom .hist-place{display:none;}
   .history-teaser:hover{transform:translateY(-2px); box-shadow:0 10px 26px rgba(11,28,51,0.12);}
   .history-teaser-icon{flex:0 0 auto; width:44px; height:44px; border-radius:50%; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center;}
@@ -596,6 +597,7 @@
   .reglement-text ol{list-style:none; padding-left:0; display:flex; flex-direction:column; gap:12px;}
   .reglement-text li{font-size:0.9rem; color:var(--muted);}
   .reglement-text li strong{color:var(--ink);}
+  .reglement-text .reg-num{display:inline; font-size:0.66rem; font-weight:700; letter-spacing:0.04em; color:var(--teal-dark); background:var(--paper-2, #eef4f6); border-radius:4px; padding:1px 5px; margin-right:6px; vertical-align:1px; white-space:nowrap;}
 
   /* ---------- ADMIN DASHBOARD ---------- */
   .admin-badge{display:inline-flex; align-items:center; gap:6px; background:var(--teal-soft); color:var(--teal-dark); font-size:0.78rem; padding:5px 10px; border-radius:14px; margin-bottom:16px;}
@@ -1200,9 +1202,25 @@ const tileObserver = ('IntersectionObserver' in window) ? new IntersectionObserv
   });
 }, { threshold: 0.3 }) : null;
 function observeTileVideos(){
-  if(!tileObserver) return;
-  document.querySelectorAll('.tile-video').forEach(v => tileObserver.observe(v));
+  document.querySelectorAll('.tile-video').forEach(v => {
+    // Le attribut « muted » posé via innerHTML n'est pas toujours pris en compte : sans cela,
+    // le navigateur bloque la lecture automatique. On force donc le mode silencieux.
+    v.muted = true; v.defaultMuted = true; v.setAttribute('playsinline', '');
+    if(v.dataset.obs === '1') return;
+    v.dataset.obs = '1';
+    if(tileObserver) tileObserver.observe(v);
+    else v.play().catch(()=>{});
+  });
 }
+// Filet de sécurité : si une miniature visible est à l'arrêt sans que l'utilisateur l'ait mise en pause, on relance.
+setInterval(() => {
+  document.querySelectorAll('.tile-video').forEach(v => {
+    if(v.paused && v.dataset.userPaused !== '1'){
+      const r = v.getBoundingClientRect();
+      if(r.bottom > 0 && r.top < window.innerHeight && !document.querySelector('.lb-video')){ v.muted = true; v.play().catch(()=>{}); }
+    }
+  });
+}, 1500);
 
 /* ==========================================================
    CONFIG — contenu de base
@@ -1570,7 +1588,7 @@ function mdLiteToHtml(text){
 
 function openHistoireModal(){
   openModal(`
-    <div class="history-modal-hero"><small>Depuis le 16.10.2025</small><h3>Notre histoire</h3><p class="hist-place">Le couloir où tout a commencé : ici est né LABD, devant la salle B-2610 de l'EPAC.</p></div>
+    <div class="history-modal-hero"><small>Depuis le 16.10.2025</small><h3>Notre histoire</h3><p class="hist-place"><em>Le couloir où tout a commencé.</em> Ici est né LABD, devant la salle B-2610 de l'EPAC.</p></div>
     <div class="history-modal-body">${mdLiteToHtml(DATA.histoireText || DEFAULT_HISTOIRE)}</div>
     <div class="row" style="margin-top:16px;">
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
@@ -1684,7 +1702,7 @@ async function testBureauMails(promoId){
   if(!mails.length){ alert("Aucune adresse mail n'est renseignée dans le bureau de cette promotion."); return; }
   const lignes = [];
   for(const m of mails){
-    const r = await emailJsSend([m], 'LABD ' + mailPromo(promo) + ' : test des notifications', { 'Message':'Test : si vous lisez ceci, les notifications du site arrivent bien à cette adresse.' });
+    const r = await emailJsSend([m], 'TEST DES NOTIFICATIONS', { 'Message':'Test : si vous lisez ceci, les notifications du site arrivent bien à cette adresse.' });
     lignes.push((r.ok ? '✅ ' : '❌ ') + m + (r.ok ? ' : message envoyé' : ' : échec (' + r.msg + ')'));
   }
   alert(lignes.join('\n') + "\n\nSi un message n'apparaît pas dans la boîte de réception, vérifier les courriers indésirables.");
@@ -1993,7 +2011,7 @@ function reglementHTML(){
   reglementItems().forEach(r => {
     if(r.titre){ close(); html += `<h4 class="reg-title">${r.titre}</h4>`; return; }
     if(!open){ html += '<ol>'; open = true; }
-    html += `<li>${r.art?`<strong>Art. ${r.art}.</strong> `:''}${r.texte}</li>`;
+    html += `<li>${r.art?`<span class="reg-num">${r.art}</span>`:''}${r.texte}</li>`;
   });
   close();
   return html;
@@ -3757,7 +3775,7 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
   const candPromoLabel = promoLabel(candPromo);
   const candMails = bureauEmails(candPromo);
   await notifyMail(
-    `LABD ${mailPromo(candPromo)} : nouvelle candidature à valider`,
+    'NOUVELLE CANDIDATURE À VALIDER',
     [candMails.tg, candMails.pr, candMails.vp],
     { 'Nom complet': nom, 'Contact': contact, 'Promotion visée': mailPromo(candPromo), 'Règlement approuvé': 'Oui' }
   );
@@ -3806,9 +3824,9 @@ document.getElementById('avisForm').addEventListener('submit', async e => {
   // Avis : tout le bureau de la promotion concernée est notifié.
   const avisPromo = activePromotion();
   const avisMails = bureauEmails(avisPromo).all;
-  await notifyMail(`LABD ${mailPromo(avisPromo)} : avis ou proposition reçu`,
+  await notifyMail('AVIS OU PROPOSITION REÇU',
     avisMails.length ? avisMails : CONFIG.notifyEmails,
-    { 'Nom': nom || 'Anonyme', 'Message': msg });
+    { 'Nom': nom || 'Anonyme', 'Promotion': mailPromo(avisPromo), 'Message': msg });
   DATA.commentaires.unshift({ id:uid(), nom: nom || 'Anonyme', message:msg, date:Date.now(), promotionId: activePromotionId === '__main__' ? null : activePromotionId });
   await storageSet('commentaires', DATA.commentaires);
   document.getElementById('avisForm').style.display = 'none';
@@ -4485,9 +4503,9 @@ async function toggleCandidaturePaye(id){
     const vPromo = c.promotionId ? DATA.promotions[c.promotionId] : null;
     const vMails = bureauEmails(vPromo);
     notifyMail(
-      `LABD ${mailPromo(vPromo)} : dossier enregistré, accessible au CRE`,
+      'DOSSIER ENREGISTRÉ, ACCESSIBLE AU CRE',
       [vMails.cae, vMails.pr, vMails.vp, vMails.sg],
-      { 'Nom complet': c.nom, 'Contact': c.contact, 'Statut': 'Paiement confirmé par le TG, dossier accessible au CRE' }
+      { 'Nom complet': c.nom, 'Contact': c.contact, 'Promotion': mailPromo(vPromo), 'Statut': 'Paiement confirmé par le TG, dossier accessible au CRE' }
     );
   }
 }

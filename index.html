@@ -946,7 +946,7 @@
               <input type="checkbox" id="chk-paiement">
               <label for="chk-paiement" id="chkPaiementLabel">Je confirme avoir versé 2 675 F CFA au Trésorier Général</label>
             </div>
-            <p class="form-note">Numéro Mobile Money du TG (HEVOU Bénitez) : <strong>+229 01 46 30 00 66</strong>. Cette case reste décochée tant que le versement n'est pas fait — le dossier n'est enregistré qu'après.</p>
+            <p class="form-note" id="payNote">Numéro Mobile Money du TG (HEVOU Bénitez) : <strong>+229 01 46 30 00 66</strong>. Cette case reste décochée tant que le versement n'est pas fait — le dossier n'est enregistré qu'après.</p>
           </div>
 
           <button type="submit" class="btn-primary" id="submitCandidature" disabled>Enregistrer mon dossier</button>
@@ -1616,18 +1616,50 @@ function fileToDataUrl(file){
   });
 }
 
-// Envoie une notification mail ciblée (formsubmit.co) sans bloquer l'UI en cas d'échec réseau.
-async function notifyMail(subject, ccList, fields){
-  const list = Array.from(new Set((ccList || []).filter(Boolean)));
-  if(!list.length) return;
-  const fd = new FormData();
-  fd.append('_subject', subject);
-  fd.append('_captcha', 'false');
-  if(list.length > 1) fd.append('_cc', list.slice(1).join(','));
-  Object.entries(fields || {}).forEach(([k,v]) => fd.append(k, v));
+// Envoi des notifications par EmailJS (aucune activation par adresse : le site peut écrire à
+// n'importe quel responsable, y compris ceux des promotions futures). Le mail part du compte Gmail
+// connecté à EmailJS. Ne bloque jamais l'interface en cas d'échec ; retourne { ok, erreurs }.
+const EMAILJS_CFG = { service:'service_07165ol', template:'template_1tns93r', key:'gAt1mdTfoFHGdmGB1' };
+function mailEsc(v){ return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+async function emailJsSend(toList, subject, fields){
+  const message = Object.entries(fields || {}).map(([k,v]) => '<b>' + mailEsc(k) + '</b> : ' + mailEsc(v)).join('<br>');
   try{
-    await fetch('https://formsubmit.co/' + encodeURIComponent(list[0]), { method:'POST', body:fd, headers:{ 'Accept':'application/json' } });
-  }catch(err){ console.error('notifyMail', err); }
+    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ service_id:EMAILJS_CFG.service, template_id:EMAILJS_CFG.template, user_id:EMAILJS_CFG.key,
+        template_params:{ to_email: toList.join(','), subject, message } })
+    });
+    const txt = await res.text();
+    return { ok: res.ok, msg: txt };
+  }catch(err){ return { ok:false, msg:String(err) }; }
+}
+async function notifyMail(subject, ccList, fields){
+  let list = Array.from(new Set((ccList || []).filter(Boolean)));
+  if(!list.length) list = Array.from(new Set(CONFIG.notifyEmails.filter(Boolean))); // filet de sécurité
+  const erreurs = [];
+  // 1) un seul envoi à tous ; 2) si refus, un envoi par adresse.
+  let r = await emailJsSend(list, subject, fields);
+  if(r.ok) return { ok:true, erreurs };
+  erreurs.push(r.msg);
+  let anyOk = false;
+  for(const m of list){
+    const r2 = await emailJsSend([m], subject, fields);
+    if(r2.ok) anyOk = true; else erreurs.push(m + ' : ' + r2.msg);
+  }
+  if(!anyOk) console.error('notifyMail : aucun envoi confirmé', erreurs);
+  return { ok:anyOk, erreurs };
+}
+// Test des mails d'une promotion : envoie un message à CHAQUE adresse du bureau et affiche le résultat.
+async function testBureauMails(promoId){
+  const promo = promoId === '__main__' ? null : DATA.promotions[promoId];
+  const mails = bureauEmails(promo).all;
+  if(!mails.length){ alert("Aucune adresse mail n'est renseignée dans le bureau de cette promotion."); return; }
+  const lignes = [];
+  for(const m of mails){
+    const r = await emailJsSend([m], 'Test des notifications — LABD (' + promoLabel(promo) + ')', { 'Message':'Test : si vous lisez ceci, les notifications du site arrivent bien à cette adresse.' });
+    lignes.push((r.ok ? '✅ ' : '❌ ') + m + (r.ok ? ' : message envoyé' : ' : échec (' + r.msg + ')'));
+  }
+  alert(lignes.join('\n') + "\n\nSi un message n'apparaît pas dans la boîte de réception, vérifier les courriers indésirables.");
 }
 
 async function pdfFirstPageThumbnail(dataUrl){
@@ -2455,6 +2487,7 @@ function renderPromotionsAdmin(promos, locked){
       ${locked ? '' : `<p style="margin-bottom:14px;"><button class="link-btn" style="color:var(--teal-dark);" onclick="managingPromotionId=null; editingPromotionMemberNum=null; renderAdminContent();">← Retour aux promotions</button></p>`}
       <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte, visible tant que l'admin est actif).</p>
       ${memberFormHTML('pm', editingM, editingCat, !!editingM, `savePromotionMember('${managing.id}')`, "editingPromotionMemberNum=null; renderAdminContent();")}
+      <div class="check-step" style="margin-top:18px;"><p class="form-note">Ce bouton envoie un mail de test à chaque adresse du bureau pour vérifier qu'il arrive bien.</p><button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="testBureauMails('${managing.id}')">Tester les mails du bureau</button></div>
       ${memberListHTML(managing.bureau||[], managing.membres||[], 'editPromotionMember', 'removePromotionMemberOf')}`;
   }
 
@@ -3871,14 +3904,14 @@ function candidatureMessage(c){
   const clean = t => String(t || '').replace(/\*/g, '').trim();
   return [
     `━━━━━━━━━━━━━━━━━━`,
-    `📋 *NOUVEAU DOSSIER DE CANDIDATURE*`,
+    `*NOUVEAU DOSSIER DE CANDIDATURE*`,
     `*LABD* · ${clean(promoLabel(promo))}`,
     `━━━━━━━━━━━━━━━━━━`,
     ``,
-    `👤 *Candidat(e)*`,
+    `*Candidat(e)*`,
     `${clean(c.nom)}`,
     ``,
-    `📞 *Contact*`,
+    `*Contact*`,
     `${clean(c.contact)}`
   ].join('\n');
 }
@@ -4145,6 +4178,7 @@ function renderAdminContent(){
     el.innerHTML = `
       <p class="form-note" style="margin-bottom:14px;">Changez la photo directement depuis la section Bureau du site (icône sur chaque carte, visible tant que l'admin est actif).</p>
       ${memberFormHTML('mb', editingM, editingMCat, !!(editingM && !isExtra), 'saveMember()', "editingMemberNum=null; renderAdminContent();")}
+      <div class="check-step" style="margin-top:18px;"><p class="form-note">Ce bouton envoie un mail de test à chaque adresse du bureau pour vérifier qu'il arrive bien.</p><button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="testBureauMails('__main__')">Tester les mails du bureau</button></div>
       ${memberListHTML(allBureau, allMembres, 'editMember', 'removeMember')}`;
   }
   if(adminTab === 'acces' && isOwner()){
@@ -4653,6 +4687,16 @@ function renderFees(){
   if(adhesionEl && showAdhesion) adhesionEl.innerHTML = promo
     ? feeAmountHTML(adhesionAmount, promo.adhesionOld || null, 'F CFA · unique')
     : feeAmountHTML(f.adhesion, f.adhesionOld, 'F CFA · unique');
+  // Le numéro Mobile Money affiché est celui du Trésorier Général de la promotion visée.
+  const payNote = document.getElementById('payNote');
+  if(payNote){
+    const tgM = (promo ? (promo.bureau || []) : getBureauList()).find(m => roleCode(m.abbr) === 'TG' && m.nom);
+    const esc = t => String(t || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const tail = " Cette case reste décochée tant que le versement n'est pas fait — le dossier n'est enregistré qu'après.";
+    payNote.innerHTML = (tgM && tgM.phone)
+      ? `Numéro Mobile Money du TG (${esc(tgM.nom)}) : <strong>${esc(tgM.phone)}</strong>.` + tail
+      : `Le numéro Mobile Money du Trésorier Général de cette promotion sera communiqué par le bureau.` + tail;
+  }
   if(chkLabel) chkLabel.textContent = adhesionAmount ? `Je confirme avoir versé ${fmtFcfa(adhesionAmount)} F CFA au Trésorier Général` : `Je confirme avoir versé les frais d'adhésion au Trésorier Général`;
   if(promoNote){
     if(promo){
@@ -4750,7 +4794,7 @@ async function publishArticle(){
   }
 
   renderArticles(); renderAdminContent();
-  if(shareOnWhatsapp) shareWhatsApp(`📢 LABD — ${titre}\n${description}`);
+  if(shareOnWhatsapp) shareWhatsApp(`LABD — ${titre}\n${description}`);
 }
 function editArticle(id){
   editingArticleId = id;

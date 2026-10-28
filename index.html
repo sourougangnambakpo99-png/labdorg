@@ -418,9 +418,15 @@
   .avatar-wrap{position:relative; width:54px; height:54px; flex-shrink:0;}
   .avatar{width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.92rem; color:#fff; object-fit:cover;}
   .avatar-upload{position:absolute; bottom:-2px; right:-2px; width:20px; height:20px; border-radius:50%; background:var(--teal); color:#fff; display:none; align-items:center; justify-content:center; border:2px solid var(--paper); cursor:pointer;}
-  .admin-on .avatar-upload{display:flex;}
+  .av-all .avatar-upload:not(.lau){display:flex;}
+  .admin-on .avatar-upload.own{display:flex;}
+  .perm-cycles .avatar-upload.lau{display:flex;}
+  .member-on #membersWrap .own{display:flex;}
+  .member-on #membersWrap .bureau-card.mine{outline:2px solid var(--teal); outline-offset:2px;}
   .avatar-remove{position:absolute; top:-2px; right:-2px; width:18px; height:18px; border-radius:50%; background:#c0392b; color:#fff; display:none; align-items:center; justify-content:center; border:2px solid var(--paper); cursor:pointer; font-size:0.7rem; line-height:1; font-weight:700;}
-  .admin-on .avatar-remove{display:flex;}
+  .av-all .avatar-remove:not(.lau){display:flex;}
+  .admin-on .avatar-remove.own{display:flex;}
+  .perm-cycles .avatar-remove.lau{display:flex;}
   .bureau-card .name{font-family:'Space Grotesk', sans-serif; font-size:1rem;}
   .role-badge{display:inline-flex; align-items:center; gap:6px; font-family:'IBM Plex Mono', monospace; font-size:0.66rem; letter-spacing:0.05em; color:var(--teal-dark); background:var(--teal-soft); padding:3px 8px; border-radius:5px; width:fit-content;}
   .bureau-card .phone{display:flex; align-items:center; gap:7px; font-size:0.85rem; color:var(--muted); margin-top:2px;}
@@ -480,7 +486,7 @@
   .gallery-tile .cap{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, rgba(11,28,51,0), rgba(11,28,51,0.82) 55%); color:#fff; font-size:0.72rem; line-height:1.3; padding:16px 9px 0; border-bottom:7px solid transparent; background-clip:padding-box; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; pointer-events:none;}
   .gallery-tile{cursor:pointer;}
   .gallery-tile .tile-admin{position:absolute; top:34px; right:8px; display:none; gap:6px; z-index:2;}
-  .admin-on .gallery-tile .tile-admin{display:flex;}
+  .perm-photos .gallery-tile .tile-admin{display:flex;}
   .tile-admin button{width:24px; height:24px; border-radius:50%; background:rgba(11,28,51,0.8); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:0.68rem;}
   .tile-admin button.del{background:#c0392b;}
   .mute-toggle{position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
@@ -495,7 +501,7 @@
   .gallery-add{display:none; align-items:center; justify-content:center; flex-direction:column; gap:8px; border:2px dashed var(--line); color:var(--muted); cursor:pointer; background:var(--paper-2);}
   .gallery-add:hover{border-color:var(--teal); color:var(--teal-dark);}
   .gallery-add span{font-size:0.78rem; text-align:center; padding:0 12px;}
-  .admin-on .gallery-add{display:flex;}
+  .perm-photos .gallery-add{display:flex;}
 
   /* ---------- ACTIVITES LABDIENNES ---------- */
   .activites-columns{display:grid; grid-template-columns:1fr; gap:40px; align-items:start;}
@@ -589,6 +595,20 @@
   #modalOverlay.open{display:flex;}
   .modal-box{background:var(--paper); border-radius:14px; padding:30px; max-width:420px; width:100%; max-height:86vh; overflow-y:auto;}
   .modal-box.wide{max-width:900px;}
+  .modal-box.lb{padding:14px;}
+  .modal-box.lb .lb-img{max-height:74vh; object-fit:contain; background:#0b1c33;}
+  .modal-box.lb .watermark-large{top:10px; right:10px; min-width:0; gap:8px;}
+  .modal-box.lb .watermark-large img{width:34px; height:34px;}
+  .modal-box.lb .watermark-large .wm-text{font-size:1.05rem;}
+  @media(max-width:600px){
+    #modalOverlay{padding:8px;}
+    .modal-box.lb{padding:8px; max-height:94vh;}
+    .modal-box.lb .lb-img{max-height:70vh;}
+    .modal-box.lb .watermark-large{top:6px; right:6px; gap:5px;}
+    .modal-box.lb .watermark-large img{width:20px; height:20px;}
+    .modal-box.lb .watermark-large .wm-text{font-size:0.72rem;}
+    .modal-box.lb > p{margin:10px 4px 4px; font-size:0.88rem;}
+  }
   .modal-box h3{font-family:'Space Grotesk', sans-serif; margin-bottom:14px;}
   .modal-box p{font-size:0.9rem; color:var(--muted); margin-bottom:14px;}
   .modal-box .row{display:flex; gap:10px; margin-top:16px;}
@@ -597,7 +617,7 @@
   .reglement-text ol{list-style:none; padding-left:0; display:flex; flex-direction:column; gap:12px;}
   .reglement-text li{font-size:0.92rem; color:#111;}
   .reglement-text li strong{color:var(--ink);}
-  .reglement-text .reg-num{display:inline; font-size:0.86rem; font-weight:800; letter-spacing:0.03em; color:#000; background:#ffe566; border-radius:4px; padding:1px 7px; margin-right:7px; vertical-align:0; white-space:nowrap;}
+  .reglement-text .reg-num{display:inline; font-size:0.86rem; font-weight:800; letter-spacing:0.03em; color:var(--navy); background:#7fe3ec; border-radius:4px; padding:1px 7px; margin-right:7px; vertical-align:0; white-space:nowrap;}
 
   /* ---------- ADMIN DASHBOARD ---------- */
   .admin-badge{display:inline-flex; align-items:center; gap:6px; background:var(--teal-soft); color:var(--teal-dark); font-size:0.78rem; padding:5px 10px; border-radius:14px; margin-bottom:16px;}
@@ -650,7 +670,7 @@
     <nav class="links">
       <a href="#vision">Vision</a>
       <a href="#histoire">Histoire</a>
-      <a href="#bureau">Bureau</a>
+      <a href="#bureau">Membres du groupe</a>
       <a href="#projets">Projets</a>
       <a href="#cycles">Classements</a>
       <a href="#galerie">Galerie</a>
@@ -677,7 +697,7 @@
     <a href="#vision">Vision</a>
     <a href="#objectif">Objectif</a>
     <a href="#histoire">Histoire</a>
-    <a href="#bureau">Bureau</a>
+    <a href="#bureau">Membres du groupe</a>
     <a href="#cycles">Classements</a>
     <a href="#galerie">Galerie</a>
     <a href="#actualites">Actualités</a>
@@ -1029,7 +1049,7 @@
         </div>
       </div>
       <div class="footer-links">
-        <div class="col"><h5>Groupe</h5><a href="#vision">Vision</a><a href="#histoire">Histoire</a><a href="#bureau">Bureau</a></div>
+        <div class="col"><h5>Groupe</h5><a href="#vision">Vision</a><a href="#histoire">Histoire</a><a href="#bureau">Membres du groupe</a></div>
         <div class="col"><h5>Activité</h5><a href="#cycles">Classements</a><a href="#actualites">Actualités</a><a href="#galerie">Galerie</a><a href="#projets">Projets</a></div>
         <div class="col"><h5>Rejoindre</h5><a href="#cotisations">Cotisations</a><a href="#adhesion">Adhésion</a><a href="#avis">Avis</a></div>
       </div>
@@ -1876,7 +1896,7 @@ async function loadData(){
     projets, medias, candidatures, commentaires, settings, outils, outilsSeedDone,
     groupLogo, seedHidden, cyclesExtra, histoireText, heroPhoto, heroPhotoFocal,
     logoHiddenGallery, formationPassword, fees, reglementText, histoireTeaser, heroText,
-    promotions, rolePasswords, rolePerms, vault, pwVault, histoirePhoto, histoirePhotoFocal
+    promotions, rolePasswords, rolePerms, vault, pwVault, histoirePhoto, histoirePhotoFocal, memberCodes
   ] = await Promise.all([
     loadPhotoMap('bureau-photos', 'bureau-photos'),
     loadPhotoMap('member-photos', 'member-photos'),
@@ -1914,6 +1934,7 @@ async function loadData(){
     storageGet('pw-vault', {}),
     storageGet('histoire-photo', null),
     storageGet('histoire-photo-focal', '50% 50%')
+    ,storageGet('member-codes', {})
   ]);
   DATA.histoirePhoto = histoirePhoto; DATA.histoirePhotoFocal = histoirePhotoFocal;
 
@@ -1950,6 +1971,7 @@ async function loadData(){
   DATA.rolePerms = rolePerms || {};
   DATA.vault = vault || null;
   DATA.pwVault = pwVault || {};
+  DATA.memberCodes = memberCodes || {};
   await migratePasswords();
 
   if(!outilsSeedDone || !DATA.outils || !DATA.outils.length){
@@ -2266,7 +2288,13 @@ function editMember(num){
   editingMemberNum = num;
   renderAdminContent();
 }
+async function announceNewCode(x){
+  const code = await issueMemberCode(x.promoId, x.num);
+  renderAdminContent();
+  alert("Code personnel de " + x.nom + " : " + code + "\n\nTransmettez-le à cette personne : il lui permet de changer sa photo de profil. Il reste visible dans l'onglet Mots de passe.");
+}
 async function saveMember(){
+  let newCode = null;
   const nom = document.getElementById('ad-mb-nom').value.trim();
   const cat = document.getElementById('ad-mb-cat').value;
   const role = document.getElementById('ad-mb-role').value.trim();
@@ -2289,13 +2317,16 @@ async function saveMember(){
     const num = 'EXTRA-' + uid();
     DATA.membresExtra.push({ num, nom, cat, role, abbr, phone, email });
     await storageSet('membres-extra', DATA.membresExtra);
+    if(cat === 'membre') newCode = { promoId:'__main__', num, nom };
   }
   renderBureau(); renderCycles(); renderAdminContent();
+  if(newCode) announceNewCode(newCode);
 }
 async function removeMember(num){
   if(!confirm("Retirer définitivement ce membre du site ?")) return;
   if(!DATA.membresRemoved.includes(num)) DATA.membresRemoved.push(num);
   await storageSet('membres-removed', DATA.membresRemoved);
+  await dropMemberCode('__main__', num);
   if(editingMemberNum === num) editingMemberNum = null;
   renderBureau(); renderAdminContent();
 }
@@ -2399,6 +2430,25 @@ function bureauEmails(promo){
 }
 function emailsForPromotion(promo){ return bureauEmails(promo); }
 function promoLabel(promo){ return promo ? `${promo.nom}${promo.annee ? ' '+promo.annee : ''}` : 'Promotion fondatrice'; }
+function isOwnBureauCard(photoKey){
+  if(!adminUnlocked || !currentRole) return false;
+  if(currentRole.memberNum && currentRole.promotionId) return photoKey === currentRole.promotionId + '_' + currentRole.memberNum;
+  if(!currentRole.promotionId){
+    const code = codeOfRoleName(currentRole.role);
+    if(code){ const m = getBureauList().find(x => x.num === photoKey); return !!m && roleCode(m.abbr) === code; }
+  }
+  return false;
+}
+function applyAdminUiClasses(){
+  const b = document.body.classList;
+  ['av-all','perm-photos','perm-cycles'].forEach(c => b.remove(c));
+  if(!adminUnlocked || !currentRole) return;
+  const cats = currentRole.categories || [];
+  const all = cats.includes('*');
+  if(all || (currentRole.promotionId && !currentRole.memberNum)) b.add('av-all');
+  if(all || cats.includes('photos')) b.add('perm-photos');
+  if(all || cats.includes('cycles')) b.add('perm-cycles');
+}
 function bureauCardHTML(m, i, photoKey){
   const photo = effectivePhoto(DATA.bureauPhotos, photoKey, m.photo);
   return `
@@ -2406,11 +2456,11 @@ function bureauCardHTML(m, i, photoKey){
       <div class="bureau-top">
         <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
           ${avatarHTML(m.nom, i, photo)}
-          <label class="avatar-upload" title="Changer la photo" onclick="event.stopPropagation();">
+          <label class="avatar-upload${isOwnBureauCard(photoKey) ? ' own' : ''}" title="Changer la photo" onclick="event.stopPropagation();">
             ${ICONS.upload}
             <input type="file" accept="image/*" style="display:none" onchange="handleBureauPhoto(event,'${photoKey}')">
           </label>
-          ${photo ? `<button class="avatar-remove" title="Revenir aux initiales" onclick="event.stopPropagation(); removeBureauPhoto('${photoKey}')">✕</button>` : ''}
+          ${photo ? `<button class="avatar-remove${isOwnBureauCard(photoKey) ? ' own' : ''}" title="Revenir aux initiales" onclick="event.stopPropagation(); removeBureauPhoto('${photoKey}')">✕</button>` : ''}
         </div>
         <div>
           <span class="role-badge">${m.abbr ? `${m.abbr} · ${m.role||''}` : (m.role||'Bureau')}</span>
@@ -2440,7 +2490,7 @@ function renderPromotionSwitches(){
       sel.value = validId;
       // Un bureau de promotion connecté reste cantonné à sa propre promotion :
       // le sélecteur public est désactivé tant que cette session admin dure.
-      sel.disabled = !!(currentRole && currentRole.promotionId);
+      sel.disabled = !!((currentRole && currentRole.promotionId) || memberSession);
     });
   } else {
     wraps.forEach(w => w.classList.remove('is-visible'));
@@ -2449,7 +2499,7 @@ function renderPromotionSwitches(){
 }
 function switchPromotion(id){
   // Une fois la promotion choisie, on ferme le menu et on revient à l'accueil.
-  try{ const mm=document.getElementById('mobileMenu'), bb=document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded','false'); window.scrollTo({top:0, behavior:'smooth'}); }catch(e){}
+  try{ const mm=document.getElementById('mobileMenu'), bb=document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded','false'); (()=>{ const t=document.getElementById('bureau'); if(t){ const y=t.getBoundingClientRect().top + window.scrollY - 76; window.scrollTo({top:Math.max(0,y), behavior:'smooth'}); } })(); }catch(e){}
   activePromotionId = id;
   cyclesOffset = 0; activeCycleIndex = null; // les index de cycles ne sont pas partagés entre promotions
   projectsWindow.realise = {size:2, offset:0}; projectsWindow.exercice = {size:2, offset:0};
@@ -2575,6 +2625,114 @@ function renderPromotionsAdmin(promos, locked){
 // stockés chiffrés : sous le mot de passe général de la promotion (pwSelf) et
 // sous celui de sa promotion créatrice (pwUp).
 let sessionSecret = null;
+// Session « membre » : code personnel, uniquement pour changer sa propre photo de profil.
+let memberSession = null;
+// ---- Codes personnels des membres ----
+// Chaque membre reçoit un code unique, généré par le site (jamais le même pour deux personnes).
+// Il lui permet de changer SA photo de profil, et seulement la sienne. Le site ne garde que l'empreinte
+// du code pour la connexion ; la valeur lisible est conservée chiffrée pour l'Accès général
+// (coffre) et pour la promotion concernée et sa promotion créatrice (blocs de mots de passe).
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function normCode(v){ return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function genCode(){
+  const a = crypto.getRandomValues(new Uint8Array(10));
+  let s = ''; a.forEach(b => { s += CODE_ALPHABET[b % 32]; });
+  return s.slice(0, 5) + '-' + s.slice(5);
+}
+function memberKeyOf(promoId, num){ return promoId === '__main__' ? num : promoId + '_' + num; }
+function allMembersWithKeys(){
+  const out = getMembresList().map(m => ({ promoId:'__main__', key:m.num, num:m.num, nom:m.nom }));
+  promotionsSorted().forEach(p => (p.membres || []).forEach(m => out.push({ promoId:p.id, key:p.id + '_' + m.num, num:m.num, nom:m.nom })));
+  return out;
+}
+async function storeCodePlain(promoId, num, code){
+  const key = memberKeyOf(promoId, num);
+  if(vaultKey){
+    DATA.pwVault['mcode|' + key] = await aesEnc(vaultKey, new TextEncoder().encode(code));
+    vaultPlain['mcode|' + key] = code;
+    await storageSet('pw-vault', DATA.pwVault);
+  }
+  if(currentRole && currentRole.promotionId && sessionSecret && promoId !== '__main__'){
+    const promo = DATA.promotions[promoId];
+    if(promo){
+      if(promoId === currentRole.promotionId){
+        const map = await openMap(sessionSecret, promo.pwSelf);
+        if(map){ map['mc:' + num] = code; promo.pwSelf = await sealMap(sessionSecret, map); }
+      } else if((promo.parentId || '__main__') === currentRole.promotionId){
+        const map = await openMap(sessionSecret, promo.pwUp);
+        if(map){
+          map['mc:' + num] = code; promo.pwUp = await sealMap(sessionSecret, map);
+          if(map.c) promo.pwSelf = await sealMap(map.c, map);
+        }
+      }
+      await storageSet('promotions', DATA.promotions);
+    }
+  }
+}
+async function issueMemberCode(promoId, num){
+  DATA.memberCodes = DATA.memberCodes || {};
+  const taken = new Set(Object.values(DATA.memberCodes));
+  let code, h;
+  do { code = genCode(); h = pwHash(normCode(code)); } while(taken.has(h));
+  DATA.memberCodes[memberKeyOf(promoId, num)] = h;
+  await storageSet('member-codes', DATA.memberCodes);
+  await storeCodePlain(promoId, num, code);
+  return code;
+}
+async function readCodePlain(promoId, num){
+  const key = memberKeyOf(promoId, num);
+  if(vaultPlain['mcode|' + key]) return vaultPlain['mcode|' + key];
+  if(currentRole && currentRole.promotionId && sessionSecret && promoId !== '__main__'){
+    const promo = DATA.promotions[promoId];
+    if(promo){
+      let map = null;
+      if(promoId === currentRole.promotionId) map = await openMap(sessionSecret, promo.pwSelf);
+      else if((promo.parentId || '__main__') === currentRole.promotionId) map = await openMap(sessionSecret, promo.pwUp);
+      if(map && map['mc:' + num]) return map['mc:' + num];
+    }
+  }
+  return '';
+}
+async function dropMemberCode(promoId, num){
+  const key = memberKeyOf(promoId, num);
+  if(DATA.memberCodes && DATA.memberCodes[key]){ delete DATA.memberCodes[key]; await storageSet('member-codes', DATA.memberCodes); }
+  if(DATA.pwVault && DATA.pwVault['mcode|' + key]){ delete DATA.pwVault['mcode|' + key]; delete vaultPlain['mcode|' + key]; await storageSet('pw-vault', DATA.pwVault); }
+}
+async function regenCode(promoId, num, nom){
+  if(!confirm("Créer un nouveau code pour " + nom + " ? L'ancien ne fonctionnera plus.")) return;
+  const code = await issueMemberCode(promoId, num);
+  renderAdminContent();
+  alert("Nouveau code de " + nom + " : " + code + "\n\nTransmettez-le à cette personne.");
+}
+async function genMissingCodes(scope){
+  const list = allMembersWithKeys().filter(x => !(DATA.memberCodes || {})[x.key] && (scope === 'all' ? true : scope.includes(x.promoId)));
+  if(!list.length){ alert("Tous les membres ont déjà un code."); return; }
+  const lines = [];
+  for(const x of list){ const c = await issueMemberCode(x.promoId, x.num); lines.push(x.nom + " : " + c); }
+  renderAdminContent();
+  alert("Codes créés :\n\n" + lines.join("\n"));
+}
+async function codesSectionHTML(scopeIds, titleNote){
+  const rows = [];
+  for(const x of allMembersWithKeys().filter(x => scopeIds.includes(x.promoId))){
+    const has = !!(DATA.memberCodes || {})[x.key];
+    const plain = has ? await readCodePlain(x.promoId, x.num) : '';
+    const promoName = x.promoId === '__main__' ? 'Fondatrice' : (DATA.promotions[x.promoId] || {}).nom;
+    const safeNom = String(x.nom).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    rows.push(`<tr><td style="padding:5px 4px; border-bottom:1px solid var(--line); font-size:0.82rem;">${x.nom}<span style="color:var(--muted-2); font-size:0.7rem;"> ${promoName}</span></td>
+      <td style="padding:5px 4px; border-bottom:1px solid var(--line); text-align:center; font-family:'IBM Plex Mono', monospace; font-size:0.82rem; font-weight:700;">${plain || (has ? '<span style="color:var(--muted-2); font-weight:400;">Défini</span>' : '<span style="color:var(--muted-2); font-weight:400;">Aucun</span>')}</td>
+      <td style="padding:5px 4px; border-bottom:1px solid var(--line); text-align:right;"><button class="link-btn" onclick="regenCode('${x.promoId}','${x.num}','${safeNom}')">${has ? 'Nouveau code' : 'Créer le code'}</button></td></tr>`);
+  }
+  if(!rows.length) return `<p class="form-note">Aucun membre pour le moment.</p>`;
+  const scopeArg = JSON.stringify(scopeIds).replace(/"/g, '&quot;');
+  return `<div style="margin-top:22px; border-top:1px solid var(--line); padding-top:14px;">
+    <p style="font-weight:700; font-size:0.9rem; margin-bottom:4px;">Codes personnels des membres</p>
+    <p class="form-note" style="margin-bottom:10px;">${titleNote || "Chaque membre a un code unique, créé automatiquement à son ajout. Il lui permet de changer sa photo de profil, et seulement la sienne."}</p>
+    <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><tbody>${rows.join('')}</tbody></table></div>
+    <button class="btn-ghost" style="margin-top:10px; border-color:var(--line); color:var(--ink);" onclick="genMissingCodes(${scopeArg})">Créer les codes manquants</button>
+  </div>`;
+}
+
 async function sealMap(secret, map){
   const salt = b64.enc(crypto.getRandomValues(new Uint8Array(16)));
   const k = await deriveWrapKey(secret, salt);
@@ -2613,7 +2771,8 @@ async function renderPromoAcces(el){
   el.innerHTML = `
     <div style="overflow-x:auto; margin-bottom:14px;"><table style="width:100%; border-collapse:collapse;"><thead>${mine.head}</thead>
       <tbody>${mine.row}${kid ? kid.row : ''}</tbody></table></div>
-    ${kid ? `<button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>` : ''}`;
+    ${kid ? `<button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>` : ''}
+    ${await codesSectionHTML([me.id].concat(child ? [child.id] : []))}`;
 }
 // Onglet « Promotions » d'une promotion : créer l'unique promotion suivante.
 function renderPromoPromotions(el){
@@ -2740,6 +2899,7 @@ async function savePasswordsTable(){
       const promo = DATA.promotions[pid]; if(!promo) continue;
       const map = {}; const c = vaultPlain['promo|' + pid + '|']; if(c) map.c = c;
       (promo.bureau||[]).forEach(m => { const v = vaultPlain['member|' + pid + '|' + m.num]; if(v) map[m.num] = v; });
+      (promo.membres||[]).forEach(m => { const v = vaultPlain['mcode|' + pid + '_' + m.num]; if(v) map['mc:' + m.num] = v; });
       if(!map.c) continue;
       promo.pwSelf = await sealMap(map.c, map);
       const par = promo.parentId && promo.parentId !== '__main__' ? DATA.promotions[promo.parentId] : null;
@@ -2786,6 +2946,7 @@ async function deletePromotion(id){
 function editPromotionMember(num){ editingPromotionMemberNum = num; renderAdminContent(); }
 function removePromotionMemberOf(num){ return removePromotionMember(managingPromotionId, num); }
 async function savePromotionMember(promoId){
+  let newCode = null;
   const promo = DATA.promotions[promoId];
   if(!promo) return;
   const nom = document.getElementById('ad-pm-nom').value.trim();
@@ -2807,12 +2968,17 @@ async function savePromotionMember(promoId){
   } else {
     const slot = cat === 'bureau' ? promo.bureau.find(m => !m.nom && roleCode(m.abbr) === roleCode(abbr)) : null;
     if(slot) Object.assign(slot, data);
-    else (cat === 'bureau' ? promo.bureau : promo.membres).push(Object.assign({ num:'PM-'+uid() }, data));
+    else {
+      const newNum = 'PM-' + uid();
+      (cat === 'bureau' ? promo.bureau : promo.membres).push(Object.assign({ num:newNum }, data));
+      if(cat !== 'bureau') newCode = { promoId, num:newNum, nom };
+    }
   }
   await storageSet('promotions', DATA.promotions);
   renderBureau();
   renderContact();
   renderAdminContent();
+  if(newCode) announceNewCode(newCode);
 }
 async function removePromotionMember(promoId, num){
   const promo = DATA.promotions[promoId];
@@ -2824,6 +2990,7 @@ async function removePromotionMember(promoId, num){
   promo.membres = (promo.membres||[]).filter(m => m.num !== num);
   await storageSet('promotions', DATA.promotions);
   await mapDeleteItem(wasBureau ? 'bureau-photos' : 'member-photos', promoId+'_'+num);
+  if(!wasBureau) await dropMemberCode(promoId, num);
   renderBureau();
   renderContact();
   renderAdminContent();
@@ -2847,16 +3014,17 @@ function renderMembers(){
     <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); margin-bottom:20px;" onclick="membersOpen=false; renderMembers();">Masquer les membres</button>
     <div class="grid-3">${list.map((m,i) => {
       const photo = effectivePhoto(DATA.memberPhotos, keyOf(m), m.photo);
+      const mine = !!(memberSession && memberSession.key === keyOf(m));
       return `
-      <div class="bureau-card card">
+      <div class="bureau-card card${mine ? ' mine' : ''}">
         <div class="bureau-top">
           <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
             ${avatarHTML(m.nom, i, photo)}
-            <label class="avatar-upload" title="Changer la photo" onclick="event.stopPropagation();">
+            <label class="avatar-upload${mine ? ' own' : ''}" title="Changer la photo" onclick="event.stopPropagation();">
               ${ICONS.upload}
               <input type="file" accept="image/*" style="display:none" onchange="handleMemberPhoto(event,'${keyOf(m)}')">
             </label>
-            ${photo ? `<button class="avatar-remove" title="Revenir aux initiales" onclick="event.stopPropagation(); removeMemberPhoto('${keyOf(m)}')">✕</button>` : ''}
+            ${photo ? `<button class="avatar-remove${mine ? ' own' : ''}" title="Revenir aux initiales" onclick="event.stopPropagation(); removeMemberPhoto('${keyOf(m)}')">✕</button>` : ''}
           </div>
           <div>
             <span class="role-badge">${m.role ? (m.abbr ? `${m.abbr} · ${m.role}` : m.role) : 'Membre'}</span>
@@ -2868,28 +3036,32 @@ function renderMembers(){
     }).join("")}</div>`;
 }
 
+function canEditBureauPhoto(key){ return document.body.classList.contains('av-all') || isOwnBureauCard(key); }
 async function handleBureauPhoto(evt, num){
   const file = evt.target.files[0];
-  if(!file) return;
+  if(!file || !canEditBureauPhoto(num)) return;
   const dataUrl = await uploadImage(file, 800);
   DATA.bureauPhotos[num] = dataUrl;
   await mapSetItem('bureau-photos', num, dataUrl);
   renderBureau();
 }
 async function removeBureauPhoto(num){
+  if(!canEditBureauPhoto(num)) return;
   DATA.bureauPhotos[num] = null;
   await mapDeleteItem('bureau-photos', num);
   renderBureau();
 }
+function canEditMemberPhoto(key){ return adminUnlocked || !!(memberSession && memberSession.key === key); }
 async function handleMemberPhoto(evt, num){
   const file = evt.target.files[0];
-  if(!file) return;
+  if(!file || !canEditMemberPhoto(num)) return;
   const dataUrl = await uploadImage(file, 800);
   DATA.memberPhotos[num] = dataUrl;
   await mapSetItem('member-photos', num, dataUrl);
   renderMembers();
 }
 async function removeMemberPhoto(num){
+  if(!canEditMemberPhoto(num)) return;
   DATA.memberPhotos[num] = null;
   await mapDeleteItem('member-photos', num);
   renderMembers();
@@ -2992,11 +3164,11 @@ function renderCycles(){
             ${photo ? `<img class="laureate-photo" src="${photo}" alt="${l.nom}" style="object-position:${DATA.laureatFocal[key]||'50% 50%'}; cursor:pointer;" loading="lazy" onclick="${photoClick}">` : `<div class="laureate-photo laureate-photo-fallback" style="cursor:pointer;" onclick="${photoClick}">${initials(l.nom)}</div>`}
             ${photo ? miniWatermarkHTML() : ''}
             <span class="rang">#${l.rang}</span>
-            <label class="avatar-upload" title="Changer la photo">
+            <label class="avatar-upload lau" title="Changer la photo">
               ${ICONS.upload}
               <input type="file" accept="image/*" style="display:none" onchange="handleLaureatePhoto(event,'${key}')">
             </label>
-            ${customPhoto ? `<button class="avatar-remove" title="Retirer la photo" onclick="removeLaureatePhoto('${key}')">✕</button>` : ''}
+            ${customPhoto ? `<button class="avatar-remove lau" title="Retirer la photo" onclick="removeLaureatePhoto('${key}')">✕</button>` : ''}
           </div>
           <div class="laureate-body">
             <div class="nom">${l.nom}</div>
@@ -3268,6 +3440,7 @@ async function deleteSeedPhoto(i){
   renderAdminContent();
 }
 function openMediaUploadModal(){
+  if(!document.body.classList.contains('perm-photos')) return;
   openModal(`
     <h3>Ajouter un média</h3>
     <div class="check-step" style="margin-bottom:6px;">
@@ -3331,7 +3504,7 @@ function openLightbox(key){
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
             <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
           </div>`)
-    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" src="${src}" style="width:100%; border-radius:8px; display:block;">`;
+    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" style="width:100%; border-radius:8px; display:block;">`;
   const dlId = 'wm-dl-' + uid();
   openModal(`
     <div style="text-align:center;">
@@ -3346,6 +3519,7 @@ function openLightbox(key){
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
+  modalContent.classList.add('lb');
   if(!video && !isLogoView) prepareWatermarkedDownload(dlId, src);
 }
 let editingMediaId = null;
@@ -3841,12 +4015,41 @@ let currentRole = null; // { role, categories }
 let adminTab = 'articles';
 const adminFab = document.getElementById('adminFab');
 
+function startMemberSession(who){
+  closeModal();
+  memberSession = { promotionId: who.promoId, key: who.key, nom: who.nom };
+  document.body.classList.add('member-on');
+  membersOpen = true;
+  switchPromotion(who.promoId);
+  renderPromotionSwitches();
+  renderMembers();
+  setTimeout(() => { const c = document.querySelector('#membersWrap .bureau-card.mine'); const w = c || document.getElementById('membersWrap'); if(w) w.scrollIntoView({ behavior:'smooth', block:'center' }); }, 400);
+  alert("Bienvenue " + who.nom + ". Touchez la petite icône sur votre photo pour la changer.");
+}
+function openMemberPanel(){
+  openModal(`
+    <h3>Espace membre</h3>
+    <p>${memberSession.nom}, vous pouvez changer votre photo de profil dans la liste des membres : touchez la petite icône sur votre photo.</p>
+    <div class="row">
+      <button class="btn-primary" onclick="closeModal()">Compris</button>
+      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="memberLogout()">Se déconnecter</button>
+    </div>
+  `);
+}
+function memberLogout(){
+  memberSession = null;
+  document.body.classList.remove('member-on');
+  closeModal();
+  renderPromotionSwitches();
+  renderMembers();
+}
 function openAdminEntry(){
   if(adminUnlocked){ openAdminDashboard(); return; }
+  if(memberSession){ openMemberPanel(); return; }
   openModal(`
     <h3>Espace admin</h3>
     <p>Chaque responsable a son propre mot de passe : le contenu visible s'adapte à sa fonction.</p>
-    <input type="password" id="adminPass" placeholder="Mot de passe" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;">
+    <input type="password" id="adminPass" placeholder="Mot de passe ou code membre" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;">
     <div class="row">
       <button class="btn-primary" onclick="tryUnlock()">Déverrouiller</button>
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Annuler</button>
@@ -3881,13 +4084,22 @@ function tryUnlock(){
       }
     }
   }
+  if(!match){
+    const hn = pwHash(normCode(val));
+    const codes = DATA.memberCodes || {};
+    const who = allMembersWithKeys().find(x => codes[x.key] && codes[x.key] === hn);
+    if(who){ startMemberSession(who); return; }
+  }
   if(match && !match.categories.length){ alert("Aucune partie à gérer n'est attribuée à ce poste pour le moment."); return; }
   if(match){
     adminUnlocked = true;
+    memberSession = null; document.body.classList.remove('member-on');
     currentRole = match;
     if(isOwner()) unlockVault(val);
     adminTab = match.categories.includes('*') ? 'articles' : match.categories[0];
     document.body.classList.add('admin-on');
+    applyAdminUiClasses();
+    renderBureau();
     if(match.promotionId){
       // Le bureau d'une promotion reste cantonné à sa promotion pendant toute
       // sa session admin : le sélecteur public se verrouille dessus.
@@ -3947,6 +4159,7 @@ function adminLogout(){
   adminUnlocked = false;
   managingPromotionId = null;
   document.body.classList.remove('admin-on');
+  applyAdminUiClasses();
   closeModal();
   if(wasPromotionScoped){
     activePromotionId = '__main__'; // revenir à la vue par défaut (promotion fondatrice) en quittant
@@ -4294,6 +4507,7 @@ function renderAdminContent(){
         <tbody>${foundingRow}${promoRows}</tbody></table></div>
       <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>
       ${permsMatrixHTML()}`;
+    codesSectionHTML(['__main__'].concat(childPromoOf('__main__') ? [childPromoOf('__main__').id] : [])).then(h => { if(adminTab === 'acces' && el.isConnected) el.insertAdjacentHTML('beforeend', h); });
   }
   if(adminTab === 'acces' && !isOwner() && currentRole && currentRole.promotionId){ renderPromoAcces(el); }
   if(adminTab === 'promotions' && currentRole && currentRole.promotionId){ renderPromoPromotions(el); }

@@ -595,6 +595,19 @@
   #modalOverlay.open{display:flex;}
   .modal-box{background:var(--paper); border-radius:14px; padding:30px; max-width:420px; width:100%; max-height:86vh; overflow-y:auto;}
   .modal-box.wide{max-width:900px;}
+  #fsViewer{position:fixed; inset:0; z-index:9000; background:#000; display:flex; flex-direction:column;}
+  #fsViewer .fs-top{position:absolute; top:0; left:0; right:0; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0));}
+  #fsViewer .fs-top{justify-content:flex-end;}
+  #fsViewer .fs-media{position:relative; display:inline-flex; max-width:100%; max-height:100%;}
+  #fsViewer .fs-media.fs-iframe{width:100%; height:70vh;}
+  #fsViewer .fs-mark{position:absolute; top:10px; right:10px; display:flex; align-items:center; gap:7px; pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:0.95rem; text-shadow:0 1px 6px rgba(0,0,0,0.7);}
+  #fsViewer .fs-mark img{width:28px; height:28px; border-radius:50%; object-fit:cover; box-shadow:0 2px 8px rgba(0,0,0,0.45);}
+  #fsViewer .fs-close{width:40px; height:40px; border-radius:50%; border:0; background:rgba(255,255,255,0.18); color:#fff; font-size:1.1rem; cursor:pointer;}
+  #fsViewer .fs-stage{flex:1; display:flex; align-items:center; justify-content:center; min-height:0; touch-action:pinch-zoom;}
+  #fsViewer .fs-stage .fs-media > img, #fsViewer .fs-stage .fs-media > video{max-width:100vw; max-height:100vh; width:auto; height:auto; object-fit:contain; display:block;}
+  #fsViewer .fs-stage video{cursor:pointer;}
+  #fsViewer .fs-cap{position:absolute; left:0; right:0; bottom:0; padding:26px 16px 18px; color:#fff; font-size:0.9rem; background:linear-gradient(0deg, rgba(0,0,0,0.7), rgba(0,0,0,0)); pointer-events:none;}
+  #fsViewer .fs-sound{position:absolute; right:14px; bottom:70px; z-index:2; background:rgba(255,255,255,0.2); color:#fff; border:0; border-radius:20px; padding:8px 14px; font-size:0.82rem; cursor:pointer;}
   .modal-box.lb{padding:14px;}
   .modal-box.lb .lb-img{max-height:74vh; object-fit:contain; background:#0b1c33;}
   .modal-box.lb .watermark-large{top:10px; right:10px; min-width:0; gap:8px;}
@@ -2003,12 +2016,86 @@ function getContactPhone(){ return DATA.settings.secretariatPhone || CONFIG.cont
 ========================================================== */
 const modalOverlay = document.getElementById('modalOverlay');
 const modalContent = document.getElementById('modalContent');
+
+/* ---------- Plein écran (comme Facebook ou WhatsApp) ---------- */
+let fsOn = false, fsHistory = false, fsBackPending = false;
+function fsMark(logo){ return `<div class="fs-mark"><img src="${logo}" alt="Logo LABD"><span>LABD Org</span></div>`; }
+function openFullMedia(){
+  const c = lbCurrent; if(!c || fsOn) return;
+  const lbVid = document.querySelector('.lb-video video');
+  const t0 = lbVid ? lbVid.currentTime : 0;
+  if(lbVid) lbVid.pause();
+  const logo = DATA.groupLogo || 'images/visuel_labd_01.jpg';
+  const o = document.createElement('div');
+  o.id = 'fsViewer';
+  o.innerHTML = `
+    <div class="fs-top">
+      <button type="button" class="fs-close" aria-label="Fermer" onclick="closeFullMedia()">&#10005;</button>
+    </div>
+    <div class="fs-stage">${c.video
+      ? (isExternalVideoUrl(c.video)
+          ? `<div class="fs-media fs-iframe"><iframe src="${youtubeEmbedSrc(c.video)}" style="width:100%; height:100%; border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>${c.isLogo ? '' : fsMark(logo)}</div>`
+          : `<div class="fs-media"><video src="${c.video}" muted loop autoplay playsinline onclick="fsTogglePlay(this)"></video>${fsMark(logo)}</div>`)
+      : `<div class="fs-media"><img src="${c.src}" alt="">${c.isLogo ? '' : fsMark(logo)}</div>`}</div>
+    ${c.video && !isExternalVideoUrl(c.video) ? `<button type="button" class="fs-sound" onclick="fsToggleMute(this)">Activer le son</button>` : ''}
+    ${c.legende ? `<div class="fs-cap">${c.legende}</div>` : ''}`;
+  document.body.appendChild(o);
+  document.body.style.overflow = 'hidden';
+  const v = o.querySelector('video');
+  if(v){ v.addEventListener('loadedmetadata', () => { try{ v.currentTime = t0; }catch(e){} }, { once:true }); v.play().catch(()=>{}); }
+  fsOn = true;
+  try{ history.pushState({ labdFs:1 }, ''); fsHistory = true; }catch(e){}
+  try{ if(o.requestFullscreen) o.requestFullscreen().catch(()=>{}); }catch(e){}
+}
+function fsTogglePlay(v){ if(v.paused) v.play().catch(()=>{}); else v.pause(); }
+function fsToggleMute(btn){
+  const v = document.querySelector('#fsViewer video'); if(!v) return;
+  v.muted = !v.muted; btn.textContent = v.muted ? 'Activer le son' : 'Couper le son';
+}
+function closeFullMediaNow(){
+  const o = document.getElementById('fsViewer');
+  if(o){ o.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); }); o.remove(); }
+  document.body.style.overflow = '';
+  if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
+  fsOn = false;
+  const lbVid = document.querySelector('.lb-video video'); if(lbVid) lbVid.play().catch(()=>{});
+}
+function closeFullMedia(){
+  closeFullMediaNow();
+  if(fsHistory){
+    fsHistory = false; fsBackPending = true;
+    setTimeout(() => { fsBackPending = false; }, 700);
+    try{ history.back(); }catch(e){ fsBackPending = false; }
+  }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && fsOn) closeFullMedia(); });
+
+// Le bouton « retour » (téléphone ou navigateur) ferme la fenêtre ouverte et ramène à la page précédente,
+// au lieu de quitter le site.
+let modalHistoryOn = false, modalBackPending = false;
 function openModal(html, wide){
   modalContent.className = 'modal-box' + (wide ? ' wide' : '');
   modalContent.innerHTML = html;
   modalOverlay.classList.add('open');
+  if(!modalHistoryOn && !modalBackPending){
+    try{ history.pushState({ labdModal:1 }, ''); modalHistoryOn = true; }catch(e){}
+  }
 }
+window.addEventListener('popstate', () => {
+  if(fsBackPending){ fsBackPending = false; return; }
+  if(fsOn){ fsHistory = false; closeFullMediaNow(); return; }
+  if(modalBackPending){ modalBackPending = false; return; }
+  if(modalHistoryOn){ modalHistoryOn = false; closeModalNow(); }
+});
 function closeModal(){
+  closeModalNow();
+  if(modalHistoryOn){
+    modalHistoryOn = false; modalBackPending = true;
+    setTimeout(() => { modalBackPending = false; }, 700);
+    try{ history.back(); }catch(e){ modalBackPending = false; }
+  }
+}
+function closeModalNow(){
   modalOverlay.classList.remove('open');
   // Arrête toute vidéo lue dans la fenêtre (sinon elle continue de jouer en arrière-plan, invisible).
   modalContent.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
@@ -2497,9 +2584,43 @@ function renderPromotionSwitches(){
     activePromotionId = '__main__';
   }
 }
-function switchPromotion(id){
-  // Une fois la promotion choisie, on ferme le menu et on revient à l'accueil.
-  try{ const mm=document.getElementById('mobileMenu'), bb=document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded','false'); (()=>{ const t=document.getElementById('bureau'); if(t){ const y=t.getBoundingClientRect().top + window.scrollY - 76; window.scrollTo({top:Math.max(0,y), behavior:'smooth'}); } })(); }catch(e){}
+// Garde en mémoire l'endroit exact de la page (section visible + décalage) pour y revenir après un changement de promotion.
+function captureScrollAnchor(){
+  const secs = Array.from(document.querySelectorAll('section[id], footer[id], main > div[id]'));
+  let cur = null;
+  secs.forEach(el => { const r = el.getBoundingClientRect(); if(r.top <= 120 && r.bottom > 120) cur = el; });
+  if(!cur) return { y: window.scrollY };
+  return { id: cur.id, off: 120 - cur.getBoundingClientRect().top };
+}
+function restoreScrollAnchor(a){
+  if(!a) return;
+  let y = a.y;
+  if(a.id){
+    const el = document.getElementById(a.id);
+    if(el){
+      const h = el.getBoundingClientRect().height;
+      const off = Math.min(Math.max(0, a.off), Math.max(0, h - 260)); // la section peut avoir changé de longueur
+      y = el.getBoundingClientRect().top + window.scrollY - 120 + off;
+    }
+  }
+  window.scrollTo({ top: Math.max(0, y), behavior: 'instant' });
+}
+// Très court écran de chargement, comme à l'ouverture du site.
+function showQuickLoader(){
+  if(document.getElementById('siteLoader')) return null;
+  const l = document.createElement('div');
+  l.id = 'siteLoader';
+  l.style.transition = 'opacity 0.22s ease, visibility 0.22s ease';
+  l.innerHTML = '<div class="loader-spinner"></div><div class="loader-text">LABD : chargement...</div>';
+  document.body.appendChild(l);
+  return l;
+}
+function hideQuickLoader(l){
+  if(!l) return;
+  l.classList.add('hide');
+  setTimeout(() => l.remove(), 300);
+}
+function doSwitchPromotion(id){
   activePromotionId = id;
   cyclesOffset = 0; activeCycleIndex = null; // les index de cycles ne sont pas partagés entre promotions
   projectsWindow.realise = {size:2, offset:0}; projectsWindow.exercice = {size:2, offset:0};
@@ -2512,6 +2633,16 @@ function switchPromotion(id){
   renderProjects();
   renderGallery();
   renderContact();
+}
+function switchPromotion(id){
+  const anchor = captureScrollAnchor();
+  try{ const mm=document.getElementById('mobileMenu'), bb=document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded','false'); }catch(e){}
+  const loader = showQuickLoader();
+  setTimeout(() => {
+    doSwitchPromotion(id);
+    restoreScrollAnchor(anchor);
+    setTimeout(() => { restoreScrollAnchor(anchor); hideQuickLoader(loader); }, 380);
+  }, 60);
 }
 function renderBureau(){
   renderPromotionSwitches();
@@ -2637,7 +2768,7 @@ function normCode(v){ return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g,
 function genCode(){
   const a = crypto.getRandomValues(new Uint8Array(10));
   let s = ''; a.forEach(b => { s += CODE_ALPHABET[b % 32]; });
-  return s.slice(0, 5) + '-' + s.slice(5);
+  return 'LABD-' + s.slice(0, 5) + '-' + s.slice(5);
 }
 function memberKeyOf(promoId, num){ return promoId === '__main__' ? num : promoId + '_' + num; }
 function allMembersWithKeys(){
@@ -2712,6 +2843,7 @@ async function genMissingCodes(scope){
   renderAdminContent();
   alert("Codes créés :\n\n" + lines.join("\n"));
 }
+let openCodes = false;
 async function codesSectionHTML(scopeIds, titleNote){
   const rows = [];
   for(const x of allMembersWithKeys().filter(x => scopeIds.includes(x.promoId))){
@@ -2725,12 +2857,12 @@ async function codesSectionHTML(scopeIds, titleNote){
   }
   if(!rows.length) return `<p class="form-note">Aucun membre pour le moment.</p>`;
   const scopeArg = JSON.stringify(scopeIds).replace(/"/g, '&quot;');
-  return `<div style="margin-top:22px; border-top:1px solid var(--line); padding-top:14px;">
-    <p style="font-weight:700; font-size:0.9rem; margin-bottom:4px;">Codes personnels des membres</p>
+  return `<details ${openCodes ? 'open' : ''} ontoggle="openCodes = this.open" style="margin-top:22px; border-top:1px solid var(--line); padding-top:14px;">
+    <summary style="cursor:pointer; font-weight:700; font-size:0.9rem; margin-bottom:8px;">Codes personnels des membres (${rows.length})</summary>
     <p class="form-note" style="margin-bottom:10px;">${titleNote || "Chaque membre a un code unique, créé automatiquement à son ajout. Il lui permet de changer sa photo de profil, et seulement la sienne."}</p>
     <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse;"><tbody>${rows.join('')}</tbody></table></div>
     <button class="btn-ghost" style="margin-top:10px; border-color:var(--line); color:var(--ink);" onclick="genMissingCodes(${scopeArg})">Créer les codes manquants</button>
-  </div>`;
+  </details>`;
 }
 
 async function sealMap(secret, map){
@@ -2836,12 +2968,13 @@ function permsMatrixHTML(){
         <tbody>${rows}</tbody></table></div>
       <div class="row" style="gap:10px; align-items:center;">
         <button class="btn-primary" onclick="savePerms()">Enregistrer les accès</button>
-        <button class="link-btn" onclick="resetPerms()">Rétablir les accès d'origine</button>
+        <button class="link-btn" onclick="resetPerms()">Revenir à la version précédente</button>
       </div>
     </details>`;
 }
 async function savePerms(){
   if(!isOwner()) return;
+  await savePrev('role-perms', JSON.parse(JSON.stringify(DATA.rolePerms || {})));
   PERM_CODES.forEach(code => {
     DATA.rolePerms[code] = Array.from(document.querySelectorAll(`.perm-box[data-code="${code}"]`)).filter(b => b.checked).map(b => b.dataset.sec);
   });
@@ -2849,11 +2982,20 @@ async function savePerms(){
   renderAdminContent();
   alert("Accès enregistrés. Ils s'appliquent à la prochaine connexion de chaque personne.");
 }
+// ---- Version précédente ----
+// Chaque modification garde l'état d'AVANT ; le bouton « Revenir à la version précédente » le restaure
+// (et garde l'état qu'on vient de quitter, pour pouvoir y retourner).
+async function savePrev(key, value){ await storageSet('prev-' + key, { v: (value === undefined ? null : value), t: Date.now() }); }
+async function loadPrev(key){ const r = await storageGet('prev-' + key, null); return (r && typeof r === 'object' && 'v' in r) ? r : null; }
 async function resetPerms(){
   if(!isOwner()) return;
-  if(!confirm("Rétablir les accès d'origine de tous les postes ?")) return;
-  DATA.rolePerms = {};
+  const prev = await loadPrev('role-perms');
+  if(!prev){ alert("Aucune version précédente à retrouver."); return; }
+  if(!confirm("Revenir aux accès précédents ?")) return;
+  const cur = JSON.parse(JSON.stringify(DATA.rolePerms || {}));
+  DATA.rolePerms = prev.v || {};
   await storageSet('role-perms', DATA.rolePerms);
+  await savePrev('role-perms', cur);
   renderAdminContent();
 }
 async function savePasswordsTable(){
@@ -3325,15 +3467,20 @@ async function saveHeroText(){
   const eyebrow = document.getElementById('ad-hero-eyebrow').value.trim();
   const headline = document.getElementById('ad-hero-headline').value.trim();
   const sub = document.getElementById('ad-hero-sub').value.trim();
+  await savePrev('hero-text', DATA.heroText);
   DATA.heroText = { eyebrow, headline, sub };
   await storageSet('hero-text', DATA.heroText);
   applyHeroText();
   alert("Texte du bandeau enregistré.");
 }
 async function resetHeroText(){
-  if(!confirm("Revenir au texte d'origine ?")) return;
-  DATA.heroText = null;
-  await storageSet('hero-text', null);
+  const prev = await loadPrev('hero-text');
+  if(!prev){ alert("Aucune version précédente à retrouver."); return; }
+  if(!confirm("Revenir au texte précédent ?")) return;
+  const cur = DATA.heroText;
+  DATA.heroText = prev.v;
+  await storageSet('hero-text', DATA.heroText);
+  await savePrev('hero-text', cur);
   applyHeroText();
   renderAdminContent();
 }
@@ -3353,6 +3500,7 @@ function applyHistoirePhoto(){
 async function saveHistoirePhoto(){
   const input = document.getElementById('ad-histoire-photo');
   if(!input || !input.files[0]) return;
+  await savePrev('histoire-photo', { photo: DATA.histoirePhoto, focal: DATA.histoirePhotoFocal });
   DATA.histoirePhoto = await uploadImage(input.files[0], 1600);
   DATA.histoirePhotoFocal = getFocal('ad-histoire-photo');
   await storageSet('histoire-photo', DATA.histoirePhoto);
@@ -3360,14 +3508,20 @@ async function saveHistoirePhoto(){
   applyHistoirePhoto(); renderAdminContent();
 }
 async function removeHistoirePhoto(){
-  DATA.histoirePhoto = null; DATA.histoirePhotoFocal = '50% 50%';
-  await storageSet('histoire-photo', null);
-  await storageSet('histoire-photo-focal', '50% 50%');
+  const prev = await loadPrev('histoire-photo');
+  if(!prev){ alert("Aucune photo précédente à retrouver."); return; }
+  const cur = { photo: DATA.histoirePhoto, focal: DATA.histoirePhotoFocal };
+  DATA.histoirePhoto = (prev.v && prev.v.photo) || null;
+  DATA.histoirePhotoFocal = (prev.v && prev.v.focal) || '50% 50%';
+  await storageSet('histoire-photo', DATA.histoirePhoto);
+  await storageSet('histoire-photo-focal', DATA.histoirePhotoFocal);
+  await savePrev('histoire-photo', cur);
   applyHistoirePhoto(); renderAdminContent();
 }
 async function saveHeroPhoto(){
   const input = document.getElementById('ad-hero-photo');
   if(!input || !input.files[0]) return;
+  await savePrev('hero-photo', { photo: DATA.heroPhoto, focal: DATA.heroPhotoFocal });
   DATA.heroPhoto = await uploadImage(input.files[0], 1400);
   DATA.heroPhotoFocal = getFocal('ad-hero-photo');
   await storageSet('hero-photo', DATA.heroPhoto);
@@ -3377,10 +3531,14 @@ async function saveHeroPhoto(){
   renderAdminContent();
 }
 async function removeHeroPhoto(){
-  DATA.heroPhoto = null;
-  DATA.heroPhotoFocal = '50% 50%';
-  await storageSet('hero-photo', null);
-  await storageSet('hero-photo-focal', '50% 50%');
+  const prev = await loadPrev('hero-photo');
+  if(!prev){ alert("Aucune photo précédente à retrouver."); return; }
+  const cur = { photo: DATA.heroPhoto, focal: DATA.heroPhotoFocal };
+  DATA.heroPhoto = (prev.v && prev.v.photo) || null;
+  DATA.heroPhotoFocal = (prev.v && prev.v.focal) || '50% 50%';
+  await storageSet('hero-photo', DATA.heroPhoto);
+  await storageSet('hero-photo-focal', DATA.heroPhotoFocal);
+  await savePrev('hero-photo', cur);
   applyHeroPhoto();
   applyHistoirePhoto();
   renderAdminContent();
@@ -3472,6 +3630,7 @@ function galleryTileHTML({photo, video, poster, legende, key, id, editable, seed
     <div class="cap">${legende||''}</div>
   </div>`;
 }
+let lbCurrent = null;
 function lbTogglePlay(vid){
   const st = vid.parentElement.querySelector('.lb-state');
   if(vid.paused){ vid.play().catch(()=>{}); if(st) st.style.display = 'none'; }
@@ -3496,15 +3655,17 @@ function openLightbox(key){
     src = m.photo; video = m.video; legende = m.legende;
   }
   const isLogoView = key === 'logo';
+  lbCurrent = { src, video, legende, isLogo: isLogoView };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
         ? `<iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
         : `<div class="lb-video" style="position:relative; width:100%; background:#000; border-radius:8px; overflow:hidden;">
-            <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
+            <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="openFullMedia()" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:zoom-in;"></video>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
+            <button type="button" onclick="event.stopPropagation(); lbTogglePlay(this.parentElement.querySelector('video'))" style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Pause / lecture</button>
             <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
           </div>`)
-    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" style="width:100%; border-radius:8px; display:block;">`;
+    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="width:100%; border-radius:8px; display:block; cursor:zoom-in;">`;
   const dlId = 'wm-dl-' + uid();
   openModal(`
     <div style="text-align:center;">
@@ -4020,7 +4181,7 @@ function startMemberSession(who){
   memberSession = { promotionId: who.promoId, key: who.key, nom: who.nom };
   document.body.classList.add('member-on');
   membersOpen = true;
-  switchPromotion(who.promoId);
+  doSwitchPromotion(who.promoId);
   renderPromotionSwitches();
   renderMembers();
   setTimeout(() => { const c = document.querySelector('#membersWrap .bureau-card.mine'); const w = c || document.getElementById('membersWrap'); if(w) w.scrollIntoView({ behavior:'smooth', block:'center' }); }, 400);
@@ -4086,8 +4247,9 @@ function tryUnlock(){
   }
   if(!match){
     const hn = pwHash(normCode(val));
+    const hn2 = pwHash('LABD' + normCode(val)); // tolère un code saisi sans le préfixe LABD
     const codes = DATA.memberCodes || {};
-    const who = allMembersWithKeys().find(x => codes[x.key] && codes[x.key] === hn);
+    const who = allMembersWithKeys().find(x => codes[x.key] && (codes[x.key] === hn || codes[x.key] === hn2));
     if(who){ startMemberSession(who); return; }
   }
   if(match && !match.categories.length){ alert("Aucune partie à gérer n'est attribuée à ce poste pour le moment."); return; }
@@ -4351,7 +4513,7 @@ function renderAdminContent(){
         <textarea id="ad-hero-sub" rows="3">${ht.sub || "LABD réunit des étudiants en génie civil autour des logiciels de conception : Archicad, AutoCAD, Revit et Robot, avec un objectif clair : passer de l'apprentissage à la réalisation, jusqu'à devenir un bureau d'étude reconnu en Afrique de l'Ouest."}</textarea>
         <div class="row">
           <button class="btn-primary" onclick="saveHeroText()">Enregistrer le texte</button>
-          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHeroText()">Revenir au texte d'origine</button>
+          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHeroText()">Revenir à la version précédente</button>
         </div>
       </div>
       <div class="check-step" style="margin-bottom:22px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
@@ -4362,7 +4524,7 @@ function renderAdminContent(){
         <p class="frame-hint">Cliquez sur l'aperçu pour choisir la partie de l'image qui restera visible dans le bandeau.</p>
         <div class="row">
           <button class="btn-primary" onclick="saveHeroPhoto()">Enregistrer</button>
-          ${DATA.heroPhoto ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeHeroPhoto()">Retirer (revenir à la photo d'origine)</button>` : ''}
+          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeHeroPhoto()">Revenir à la photo précédente</button>
         </div>
       </div>
       <p class="form-note" style="margin-bottom:16px;">Ajoutez une image qui illustre chaque point de la vision. Cliquez sur l'aperçu pour choisir la partie qui restera visible dans la miniature.</p>
@@ -4393,7 +4555,7 @@ function renderAdminContent(){
         <div class="frame-picker" id="frame-ad-histoire-photo"></div>
         <div class="row">
           <button class="btn-primary" onclick="saveHistoirePhoto()">Enregistrer la photo</button>
-          ${DATA.histoirePhoto ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeHistoirePhoto()">Revenir à la photo d'origine</button>` : ''}
+          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeHistoirePhoto()">Revenir à la photo précédente</button>
         </div>
       </div>
       <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
@@ -4413,14 +4575,14 @@ function renderAdminContent(){
       <textarea id="ad-histoire-text" rows="14" style="width:100%; font-family:inherit; font-size:0.88rem; padding:12px; border:1px solid var(--line); border-radius:8px;">${DATA.histoireText || DEFAULT_HISTOIRE}</textarea>
       <div class="row" style="margin-top:12px;">
         <button class="btn-primary" onclick="saveHistoire()">Enregistrer</button>
-        <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHistoire()">Revenir au texte d'origine</button>
+        <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetHistoire()">Revenir à la version précédente</button>
       </div>
       <div class="check-step" style="margin-top:24px; padding-top:18px; border-top:1px dashed var(--line);">
         <label>Règlement intérieur (un article par ligne, format : <code>numéro : texte</code>, et <code>## Titre</code> pour une rubrique)</label>
         <textarea id="ad-reglement-text" rows="20" style="width:100%; font-family:inherit; font-size:0.85rem; padding:12px; border:1px solid var(--line); border-radius:8px;">${DATA.reglementText || CONFIG.reglement.map(r => r.titre ? `## ${r.titre}` : `${r.art} : ${r.texte}`).join('\n')}</textarea>
         <div class="row" style="margin-top:10px;">
           <button class="btn-primary" onclick="saveReglement()">Enregistrer le règlement</button>
-          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetReglement()">Revenir au règlement d'origine</button>
+          <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="resetReglement()">Revenir à la version précédente</button>
         </div>
       </div>`;
     setupFramePicker('ad-histoire-photo', 'frame-ad-histoire-photo');
@@ -4821,14 +4983,19 @@ function insertHistoireHeading(){
 async function saveHistoire(){
   const ta = document.getElementById('ad-histoire-text');
   if(!ta) return;
+  await savePrev('histoire-text', DATA.histoireText);
   DATA.histoireText = ta.value;
   await storageSet('histoire-text', DATA.histoireText);
   alert("Texte enregistré.");
 }
 async function resetHistoire(){
-  if(!confirm("Revenir au texte d'origine ? Vos modifications seront perdues.")) return;
-  DATA.histoireText = DEFAULT_HISTOIRE;
+  const prev = await loadPrev('histoire-text');
+  if(!prev){ alert("Aucune version précédente à retrouver."); return; }
+  if(!confirm("Revenir au texte précédent ?")) return;
+  const cur = DATA.histoireText;
+  DATA.histoireText = prev.v || DEFAULT_HISTOIRE;
   await storageSet('histoire-text', DATA.histoireText);
+  await savePrev('histoire-text', cur);
   renderAdminContent();
 }
 async function saveHistoireTeaser(){
@@ -4843,14 +5010,19 @@ async function saveHistoireTeaser(){
 async function saveReglement(){
   const ta = document.getElementById('ad-reglement-text');
   if(!ta) return;
+  await savePrev('reglement-text', DATA.reglementText);
   DATA.reglementText = ta.value;
   await storageSet('reglement-text', DATA.reglementText);
   alert("Règlement enregistré.");
 }
 async function resetReglement(){
-  if(!confirm("Revenir au règlement d'origine ? Vos modifications seront perdues.")) return;
-  DATA.reglementText = null;
-  await storageSet('reglement-text', null);
+  const prev = await loadPrev('reglement-text');
+  if(!prev){ alert("Aucune version précédente à retrouver."); return; }
+  if(!confirm("Revenir au règlement précédent ?")) return;
+  const cur = DATA.reglementText;
+  DATA.reglementText = prev.v;
+  await storageSet('reglement-text', DATA.reglementText);
+  await savePrev('reglement-text', cur);
   renderAdminContent();
 }
 

@@ -598,6 +598,15 @@
   #fsViewer{position:fixed; inset:0; z-index:9000; background:#000; display:flex; flex-direction:column;}
   #fsViewer .fs-top{position:absolute; top:0; left:0; right:0; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0));}
   #fsViewer .fs-top{justify-content:flex-end;}
+  #bdayBanner{display:flex; align-items:center; justify-content:center; gap:12px; padding:10px 16px; background:linear-gradient(90deg, #0b6e6d, #0ea5a4); color:#fff; font-size:0.92rem; text-align:center;}
+  #bdayBanner[hidden]{display:none;}
+  #bdayBanner button{background:transparent; border:0; color:#fff; font-size:1rem; cursor:pointer; opacity:0.85;}
+  .bday-box{margin:0 0 20px; border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--card, #fff);}
+  .bday-today{background:linear-gradient(90deg, rgba(14,165,164,0.16), rgba(14,165,164,0.04)); border-radius:8px; padding:10px 12px; margin-bottom:10px; font-size:0.95rem;}
+  .bday-title{font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin-bottom:6px;}
+  .bday-row{display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px dashed var(--line); font-size:0.9rem;}
+  .bday-row:last-child{border-bottom:0;}
+  .bday-date{color:var(--teal-dark); font-weight:600; white-space:nowrap;}
   #fsViewer .fs-media{position:relative; display:inline-flex; max-width:100%; max-height:100%;}
   #fsViewer .fs-media.fs-iframe{width:100%; height:70vh;}
   #fsViewer .fs-mark{position:absolute; top:calc(var(--fs-w, 360px) * 0.03); right:calc(var(--fs-w, 360px) * 0.03); display:flex; align-items:center; gap:calc(var(--fs-w, 360px) * 0.02); pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:calc(var(--fs-w, 360px) * 0.05); line-height:1; text-shadow:0 2px 10px rgba(0,0,0,0.75);}
@@ -725,6 +734,7 @@
 </header>
 
 <main id="top">
+  <div id="bdayBanner" hidden></div>
 
   <section class="hero">
     <div class="hero-photo"><img src="images/hero.jpg" alt="LABDiens en séance de travail" id="heroPhotoImg"></div>
@@ -2044,7 +2054,17 @@ function openFullMedia(){
   const v = o.querySelector('video');
   if(v){ v.addEventListener('loadedmetadata', () => { try{ v.currentTime = t0; }catch(e){} fsSizeMark(); }, { once:true }); v.play().catch(()=>{}); }
   const im = o.querySelector('.fs-stage img');
-  if(im){ if(im.complete) fsSizeMark(); else im.addEventListener('load', fsSizeMark, { once:true }); }
+  if(im){
+    if(im.complete) fsSizeMark(); else im.addEventListener('load', fsSizeMark, { once:true });
+    if(!c.isLogo){
+      // Même rendu que l'image téléchargée : logo incrusté dans la photo, image entière sans zoom.
+      watermarkImageDataUrl(c.src).then(u => {
+        if(!fsOn || u === c.src) return;
+        im.src = u;
+        const mk = o.querySelector('.fs-mark'); if(mk) mk.remove();
+      });
+    }
+  }
   const ifr = o.querySelector('.fs-stage iframe'); if(ifr) setTimeout(fsSizeMark, 50);
   setTimeout(fsSizeMark, 120);
   fsOn = true;
@@ -2366,11 +2386,119 @@ function memberFormHTML(px, editingM, cat, lockCat, saveCall, cancelCall){
         <label>Abréviation</label><input id="ad-${px}-abbr" ${ro} placeholder="Ex : SG" value="${editingM?(editingM.abbr||''):''}">` : `<input type="hidden" id="ad-${px}-role" value=""><input type="hidden" id="ad-${px}-abbr" value="">`}
         <label>Email</label><input id="ad-${px}-email" type="email" placeholder="Ex : nom.prenom@gmail.com" value="${editingM?(editingM.email||''):''}">
         <label>Téléphone</label><input id="ad-${px}-phone" placeholder="Ex : +229 01 23 45 67 89" value="${editingM?(editingM.phone||''):''}">
+        ${bdayFieldsHTML(px, editingM ? editingM.anniv : '')}
         <div class="row">
           <button class="btn-primary" onclick="${saveCall}">${editingM?'Enregistrer les modifications':'Ajouter'}</button>
           ${editingM ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="${cancelCall}">Annuler</button>` : ''}
         </div>
       </div>`;
+}
+/* ---------- Anniversaires (jour et mois seulement, gérés par promotion) ---------- */
+const MOIS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+function bdayFieldsHTML(px, val){
+  const [mm, dd] = (val || '').split('-').map(x => parseInt(x, 10));
+  const days = Array.from({length:31}, (_, i) => `<option value="${i+1}" ${dd===i+1?'selected':''}>${i+1}</option>`).join('');
+  const months = MOIS_FR.map((n, i) => `<option value="${i+1}" ${mm===i+1?'selected':''}>${n}</option>`).join('');
+  return `<label>Anniversaire (facultatif, sans l'année)</label>
+        <div style="display:flex; gap:8px;"><select id="ad-${px}-bj" style="flex:1;"><option value="">Jour</option>${days}</select><select id="ad-${px}-bm" style="flex:2;"><option value="">Mois</option>${months}</select></div>`;
+}
+function bdayRead(px){
+  const d = parseInt(document.getElementById(`ad-${px}-bj`)?.value, 10), m = parseInt(document.getElementById(`ad-${px}-bm`)?.value, 10);
+  if(!d || !m) return '';
+  return String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+}
+function bdayPeople(){
+  const promo = activePromotion();
+  const all = promo ? (promo.bureau || []).concat(promo.membres || []) : getBureauList().concat(getMembresList());
+  return all.filter(m => m.nom && /^\d\d-\d\d$/.test(m.anniv || ''));
+}
+function bdayLabel(a){ const [m, d] = a.split('-').map(Number); return (d === 1 ? '1er' : d) + ' ' + MOIS_FR[m-1]; }
+function bdayHTML(){
+  const ppl = bdayPeople(); if(!ppl.length) return '';
+  const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const withIn = ppl.map(m => {
+    const [mm, dd] = m.anniv.split('-').map(Number);
+    let d = new Date(now.getFullYear(), mm-1, dd); if(d < t0) d = new Date(now.getFullYear()+1, mm-1, dd);
+    return { m, days: Math.round((d - t0) / 86400000) };
+  }).sort((a, b) => a.days - b.days);
+  const today = withIn.filter(x => x.days === 0);
+  const next = withIn.filter(x => x.days > 0).slice(0, 5);
+  return `<div class="bday-box">
+    ${today.length ? `<div class="bday-today">&#127874; Aujourd'hui, joyeux anniversaire à <b>${today.map(x => x.m.nom).join(' et ')}</b> !</div>` : ''}
+    ${next.length ? `<div class="bday-title">Prochains anniversaires</div>${next.map(x => `<div class="bday-row"><span>${x.m.nom}</span><span class="bday-date">${bdayLabel(x.m.anniv)}${x.days === 1 ? ' · demain' : x.days <= 30 ? ' · dans ' + x.days + ' j' : ''}</span></div>`).join('')}` : ''}
+  </div>`;
+}
+// Tous les anniversaires du site, toutes promotions confondues (pour le bandeau et le rappel par mail).
+function bdayAllGroups(){
+  const out = [];
+  const add = (promo, list) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, promo, label:mailPromo(promo) }); });
+  add(null, getBureauList().concat(getMembresList()));
+  promotionsSorted().forEach(p => add(p, (p.bureau || []).concat(p.membres || [])));
+  return out;
+}
+function bdayOn(offset){
+  const d = new Date(); d.setDate(d.getDate() + offset);
+  const k = String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return bdayAllGroups().filter(x => x.anniv === k);
+}
+function renderBdayBanner(){
+  const el = document.getElementById('bdayBanner'); if(!el) return;
+  const t = bdayOn(0);
+  let closed = false; try{ closed = sessionStorage.getItem('bday-closed') === new Date().toDateString(); }catch(e){}
+  if(!t.length || closed){ el.hidden = true; el.innerHTML = ''; return; }
+  const names = t.map(x => x.nom + (promotionsSorted().length ? ' de ' + x.label : '')).join(', ');
+  el.hidden = false;
+  el.innerHTML = `<span>&#127874; Aujourd'hui, joyeux anniversaire à <b>${names}</b> !</span><button type="button" aria-label="Fermer" onclick="try{sessionStorage.setItem('bday-closed', new Date().toDateString());}catch(e){} renderBdayBanner()">&#10005;</button>`;
+}
+// Rappel par mail au bureau concerné : anniversaires de demain et d'aujourd'hui, une seule fois par jour (le premier visiteur du jour le déclenche).
+async function bdayMailCheck(){
+  try{
+    const today = new Date().toISOString().slice(0,10);
+    const st = await storageGet('bday-mail', {});
+    if(st && st.date === today) return;
+    const tomorrow = bdayOn(1), now = bdayOn(0);
+    if(!tomorrow.length && !now.length) return;
+    await storageSet('bday-mail', { date: today });
+    const groups = {};
+    now.forEach(x => { (groups[x.label] = groups[x.label] || { promo:x.promo, now:[], next:[] }).now.push(x.nom); });
+    tomorrow.forEach(x => { (groups[x.label] = groups[x.label] || { promo:x.promo, now:[], next:[] }).next.push(x.nom); });
+    for(const g of Object.values(groups)){
+      const to = bureauEmails(g.promo).all; if(!to.length) continue;
+      const f = {};
+      if(g.now.length) f['Anniversaire aujourd\'hui'] = g.now.join(', ');
+      if(g.next.length) f['Anniversaire demain'] = g.next.join(', ');
+      await emailJsSend(to, 'RAPPEL ANNIVERSAIRE', f);
+    }
+  }catch(e){ console.error('bdayMailCheck', e); }
+}
+async function saveAnniv(promoId, num, val){
+  if(promoId === '__main__'){
+    const ex = DATA.membresExtra.findIndex(m => m.num === num);
+    if(ex > -1){ DATA.membresExtra[ex].anniv = val; await storageSet('membres-extra', DATA.membresExtra); }
+    else { DATA.membresOverrides[num] = Object.assign({}, DATA.membresOverrides[num] || {}, { anniv: val }); await storageSet('membres-overrides', DATA.membresOverrides); }
+  } else {
+    const p = DATA.promotions[promoId]; if(!p) return;
+    const m = (p.membres || []).concat(p.bureau || []).find(x => x.num === num); if(!m) return;
+    m.anniv = val; await storageSet('promotions', DATA.promotions);
+  }
+}
+async function memberSaveBirthday(){
+  if(!memberSession) return;
+  const d = parseInt(document.getElementById('mb-bj').value, 10), m = parseInt(document.getElementById('mb-bm').value, 10);
+  const val = (d && m) ? String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0') : '';
+  const pid = memberSession.promotionId;
+  const num = pid === '__main__' ? memberSession.key : memberSession.key.slice(pid.length + 1);
+  await saveAnniv(pid, num, val);
+  renderMembers(); renderBdayBanner(); closeModal();
+  alert(val ? "Votre anniversaire est enregistré." : "Votre anniversaire a été retiré.");
+}
+function currentMemberAnniv(){
+  if(!memberSession) return '';
+  const pid = memberSession.promotionId;
+  const num = pid === '__main__' ? memberSession.key : memberSession.key.slice(pid.length + 1);
+  const p = pid === '__main__' ? null : DATA.promotions[pid];
+  const m = p ? (p.membres || []).concat(p.bureau || []).find(x => x.num === num) : getMembresList().find(x => x.num === num);
+  return (m && m.anniv) || '';
 }
 function memberListHTML(bureau, membres, editFn, removeFn){
   const head = t => `<div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:${t==='Bureau'?'0':'18px'} 0 4px;">${t}</div>`;
@@ -2399,21 +2527,22 @@ async function saveMember(){
   const abbr = document.getElementById('ad-mb-abbr').value.trim();
   const phone = document.getElementById('ad-mb-phone').value.trim();
   const email = document.getElementById('ad-mb-email').value.trim();
+  const anniv = bdayRead('mb');
   if(!nom){ alert("Le nom est requis."); return; }
   if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert("L'adresse email n'est pas valide."); return; }
   if(editingMemberNum){
     const extraIdx = DATA.membresExtra.findIndex(m => m.num === editingMemberNum);
     if(extraIdx > -1){
-      DATA.membresExtra[extraIdx] = Object.assign({}, DATA.membresExtra[extraIdx], { nom, cat, role, abbr, phone, email });
+      DATA.membresExtra[extraIdx] = Object.assign({}, DATA.membresExtra[extraIdx], { nom, cat, role, abbr, phone, email, anniv });
       await storageSet('membres-extra', DATA.membresExtra);
     } else {
-      DATA.membresOverrides[editingMemberNum] = { nom, role, abbr, phone, email };
+      DATA.membresOverrides[editingMemberNum] = { nom, role, abbr, phone, email, anniv };
       await storageSet('membres-overrides', DATA.membresOverrides);
     }
     editingMemberNum = null;
   } else {
     const num = 'EXTRA-' + uid();
-    DATA.membresExtra.push({ num, nom, cat, role, abbr, phone, email });
+    DATA.membresExtra.push({ num, nom, cat, role, abbr, phone, email, anniv });
     await storageSet('membres-extra', DATA.membresExtra);
     if(cat === 'membre') newCode = { promoId:'__main__', num, nom };
   }
@@ -2777,9 +2906,9 @@ let memberSession = null;
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function normCode(v){ return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
 function genCode(){
-  const a = crypto.getRandomValues(new Uint8Array(10));
+  const a = crypto.getRandomValues(new Uint8Array(5));
   let s = ''; a.forEach(b => { s += CODE_ALPHABET[b % 32]; });
-  return 'LABD-' + s.slice(0, 5) + '-' + s.slice(5);
+  return 'LABD-' + s;
 }
 function memberKeyOf(promoId, num){ return promoId === '__main__' ? num : promoId + '_' + num; }
 function allMembersWithKeys(){
@@ -3108,11 +3237,12 @@ async function savePromotionMember(promoId){
   const phone = document.getElementById('ad-pm-phone').value.trim();
   const cat = document.getElementById('ad-pm-cat').value;
   const email = document.getElementById('ad-pm-email').value.trim();
+  const anniv = bdayRead('pm');
   if(!nom){ alert("Le nom est requis."); return; }
   if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert("L'adresse email n'est pas valide."); return; }
   if(!promo.bureau) promo.bureau = [];
   if(!promo.membres) promo.membres = [];
-  const data = { nom, role, abbr, phone, email };
+  const data = { nom, role, abbr, phone, email, anniv };
   if(editingPromotionMemberNum){
     const arr = promo.bureau.some(m => m.num === editingPromotionMemberNum) ? promo.bureau : promo.membres;
     const idx = arr.findIndex(m => m.num === editingPromotionMemberNum);
@@ -3156,14 +3286,14 @@ function renderMembers(){
   const list = promo ? (promo.membres || []) : getMembresList();
   const keyOf = m => promo ? promo.id + '_' + m.num : m.num;
   if(promo && !list.length){
-    wrap.innerHTML = '<p class="form-note">Aucun membre enregistré pour cette promotion pour le moment.</p>';
+    wrap.innerHTML = bdayHTML() + '<p class="form-note">Aucun membre enregistré pour cette promotion pour le moment.</p>';
     return;
   }
   if(!membersOpen){
-    wrap.innerHTML = `<div class="discover-cta"><button class="btn-primary" onclick="membersOpen=true; renderMembers();">${ICONS.info} Découvrir tous les LABDiens (${list.length})</button></div>`;
+    wrap.innerHTML = bdayHTML() + `<div class="discover-cta"><button class="btn-primary" onclick="membersOpen=true; renderMembers();">${ICONS.info} Découvrir tous les LABDiens (${list.length})</button></div>`;
     return;
   }
-  wrap.innerHTML = `
+  wrap.innerHTML = bdayHTML() + `
     <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); margin-bottom:20px;" onclick="membersOpen=false; renderMembers();">Masquer les membres</button>
     <div class="grid-3">${list.map((m,i) => {
       const photo = effectivePhoto(DATA.memberPhotos, keyOf(m), m.photo);
@@ -3376,6 +3506,7 @@ function watermarkImageDataUrl(src){
   return new Promise((resolve) => {
     const logoSrc = DATA.groupLogo || 'images/visuel_labd_01.jpg';
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
       canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
@@ -3384,7 +3515,7 @@ function watermarkImageDataUrl(src){
       const logo = new Image();
       logo.onload = () => {
         // Logo rond, comme la miniature — juste plus grand (jusqu'à 120px de diamètre), en haut à droite.
-        const size = Math.min(canvas.width * 0.065, 44 * (canvas.width/900));
+        const size = Math.min(Math.max(canvas.width * 0.1, 56), canvas.width * 0.22);
         const margin = size * 0.35;
         ctx.save();
         ctx.globalAlpha = 0.95;
@@ -3410,6 +3541,34 @@ function watermarkImageDataUrl(src){
     img.src = src;
   });
 }
+// Vrai téléchargement : image avec logo incrusté, convertie en fichier puis enregistrée directement.
+function dataUrlToBlob(u){
+  const p = u.split(','); const mime = (p[0].match(/:(.*?);/) || [,'image/jpeg'])[1];
+  const bin = atob(p[1]); const arr = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type:mime });
+}
+async function downloadImage(src, name, btn){
+  const old = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = 'Téléchargement...'; }
+  try{
+    let out = await watermarkImageDataUrl(src);
+    let blob;
+    if(out.startsWith('data:')) blob = dataUrlToBlob(out);
+    else { const r = await fetch(out); blob = await r.blob(); }
+    const ext = blob.type.includes('png') ? 'png' : blob.type.includes('webp') ? 'webp' : 'jpg';
+    const fname = String(name || 'labd').replace(/[^\w-]+/g, '-') + '.' + ext;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+  }catch(e){
+    console.error('download', e);
+    try{ window.open(src, '_blank'); }catch(_){}
+  }
+  if(btn){ btn.disabled = false; btn.textContent = old; }
+}
 // Overlay visuel du logo affiché pendant la consultation en grand : même forme ronde que la miniature, juste plus grande.
 function lightboxWatermarkHTML(){
   return `<div class="watermark watermark-large"><img src="${DATA.groupLogo||'images/visuel_labd_01.jpg'}" alt="Logo LABD"><span class="wm-text">LABD Org</span></div>`;
@@ -3428,7 +3587,7 @@ async function prepareWatermarkedDownload(linkId, src){
 }
 
 function openImageLightbox(src, caption){
-  const dlId = 'wm-dl-' + uid();
+  window.dlSrc = src;
   openModal(`
     <div style="position:relative;">
       <img src="${src}" style="width:100%; border-radius:8px; display:block;">
@@ -3436,11 +3595,10 @@ function openImageLightbox(src, caption){
     </div>
     ${caption ? `<p style="margin-top:14px;">${caption}</p>` : ''}
     <div class="row" style="margin-top:14px;">
-      <a id="${dlId}" class="btn-primary" href="${src}" download="photo-labd">Télécharger</a>
+      <button type="button" class="btn-primary" onclick="downloadImage(window.dlSrc, 'photo-labd', this)">Télécharger</button>
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
-  prepareWatermarkedDownload(dlId, src);
 }
 
 let galleryPage = 0;
@@ -3689,7 +3847,6 @@ function openLightbox(key){
             <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
           </div>`)
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="width:100%; border-radius:8px; display:block; cursor:zoom-in;">${!isLogoView ? '<button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Plein écran</button>' : ''}`;
-  const dlId = 'wm-dl-' + uid();
   openModal(`
     <div style="text-align:center;">
       <div style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
@@ -3699,12 +3856,11 @@ function openLightbox(key){
     </div>
     <p style="margin-top:14px;">${legende||''}</p>
     <div class="row">
-      ${!video ? `<a id="${dlId}" class="btn-primary" href="${src}" download="labd-${key}">Télécharger</a>` : ''}
+      ${!video ? `<button type="button" class="btn-primary" onclick="downloadImage(lbCurrent.src, 'labd-${key}', this)">Télécharger</button>` : ''}
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
   modalContent.classList.add('lb');
-  if(!video && !isLogoView) prepareWatermarkedDownload(dlId, src);
 }
 let editingMediaId = null;
 function editMedia(id){ editingMediaId = id; renderAdminContent(); }
@@ -3878,7 +4034,7 @@ function openArticleLightbox(id){
         ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
         : `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
     : a.photo ? `<img src="${a.photo}" style="width:100%; border-radius:8px; display:block;">` : '';
-  const dlId = 'wm-dl-' + uid();
+  window.dlSrc = a.photo;
   openModal(`
     <div style="text-align:center;">
       <div style="position:relative; display:inline-block; max-width:100%;">
@@ -3890,11 +4046,10 @@ function openArticleLightbox(id){
     <div class="desc-text"><p>${formatDescription(a.description)}</p></div>
     <div class="row">
       ${a.lien ? `<a class="btn-primary" href="${a.lien}" target="_blank" rel="noopener">Ouvrir le lien</a>` : ''}
-      ${a.photo && !a.video ? `<a id="${dlId}" class="btn-primary" href="${a.photo}" download="labd-${a.id}">Télécharger</a>` : ''}
+      ${a.photo && !a.video ? `<button type="button" class="btn-primary" onclick="downloadImage(window.dlSrc, 'labd-${a.id}', this)">Télécharger</button>` : ''}
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
-  if(a.photo && !a.video) prepareWatermarkedDownload(dlId, a.photo);
 }
 
 const unlockedFiles = new Set();
@@ -4214,7 +4369,13 @@ function openMemberPanel(){
   openModal(`
     <h3>Espace membre</h3>
     <p>${memberSession.nom}, vous pouvez changer votre photo de profil dans la liste des membres : touchez la petite icône sur votre photo.</p>
+    <label style="display:block; margin-top:10px;">Votre anniversaire (facultatif, sans l'année)</label>
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      <select id="mb-bj" style="flex:1;"><option value="">Jour</option>${Array.from({length:31}, (_, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[1])||0,10)===i+1?'selected':''}>${i+1}</option>`).join('')}</select>
+      <select id="mb-bm" style="flex:2;"><option value="">Mois</option>${MOIS_FR.map((n, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[0])||0,10)===i+1?'selected':''}>${n}</option>`).join('')}</select>
+    </div>
     <div class="row">
+      <button class="btn-primary" onclick="memberSaveBirthday()">Enregistrer mon anniversaire</button>
       <button class="btn-primary" onclick="closeModal()">Compris</button>
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="memberLogout()">Se déconnecter</button>
     </div>
@@ -5468,6 +5629,7 @@ function animateStatNumber(el){
    INIT
 ========================================================== */
 function renderAll(){
+  renderBdayBanner();
   applyGroupLogo();
   applyFooterTagline();
   applyHeroPhoto();
@@ -5518,12 +5680,14 @@ async function init(){
     await loadData();
     renderAll();
     saveDataToCache();
+    // bdayMailCheck(); // remplacé par le rappel quotidien automatique sur GitHub (évite les doublons)
   } else {
     // Première visite sur cet appareil : pas de cache, chargement classique.
     await loadData();
     renderAll();
     if(loader){ loader.classList.add('hide'); setTimeout(() => loader.remove(), 500); }
     saveDataToCache();
+    // bdayMailCheck(); // remplacé par le rappel quotidien automatique sur GitHub (évite les doublons)
   }
 }
 init();

@@ -2414,6 +2414,7 @@ function bdayPeople(){
 }
 function bdayLabel(a){ const [m, d] = a.split('-').map(Number); return (d === 1 ? '1er' : d) + ' ' + MOIS_FR[m-1]; }
 function bdayHTML(){
+  return ''; // affichage des anniversaires désactivé
   const ppl = bdayPeople(); if(!ppl.length) return '';
   const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const withIn = ppl.map(m => {
@@ -2443,6 +2444,7 @@ function bdayOn(offset){
 }
 function renderBdayBanner(){
   const el = document.getElementById('bdayBanner'); if(!el) return;
+  el.hidden = true; el.innerHTML = ''; return; // bandeau désactivé
   const t = bdayOn(0);
   let closed = false; try{ closed = sessionStorage.getItem('bday-closed') === new Date().toDateString(); }catch(e){}
   if(!t.length || closed){ el.hidden = true; el.innerHTML = ''; return; }

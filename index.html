@@ -652,8 +652,9 @@
   .bd2-row small em{font-style:normal; font-weight:700; color:var(--teal-dark);}
   #fsViewer .fs-media{position:relative; display:inline-flex; max-width:100%; max-height:100%;}
   #fsViewer .fs-media.fs-iframe{width:100%; height:70vh;}
-  #fsViewer .fs-mark{position:absolute; top:calc(var(--fs-w, 360px) * 0.03); right:calc(var(--fs-w, 360px) * 0.03); display:flex; align-items:center; gap:calc(var(--fs-w, 360px) * 0.02); pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:calc(var(--fs-w, 360px) * 0.05); line-height:1; text-shadow:0 2px 10px rgba(0,0,0,0.75);}
-  #fsViewer .fs-mark img{width:calc(var(--fs-w, 360px) * 0.1); height:calc(var(--fs-w, 360px) * 0.1); min-width:40px; min-height:40px; border-radius:50%; object-fit:cover; box-shadow:0 3px 12px rgba(0,0,0,0.5);}
+  #fsViewer .fs-mark{position:absolute; top:10px; right:10px; display:flex; align-items:center; gap:8px; pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:1.05rem; line-height:1; text-shadow:0 2px 6px rgba(0,0,0,0.75);}
+  #fsViewer .fs-mark img{width:34px; height:34px; border-radius:50%; object-fit:cover; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
+  @media(max-width:600px){ #fsViewer .fs-mark{top:6px; right:6px; gap:5px; font-size:0.72rem;} #fsViewer .fs-mark img{width:20px; height:20px;} }
   #fsViewer .fs-close{width:40px; height:40px; border-radius:50%; border:0; background:rgba(255,255,255,0.18); color:#fff; font-size:1.1rem; cursor:pointer;}
   #fsViewer .fs-stage{flex:1; display:flex; align-items:center; justify-content:center; min-height:0; touch-action:pinch-zoom;}
   #fsViewer .fs-stage .fs-media > img, #fsViewer .fs-stage .fs-media > video{max-width:100vw; max-height:100vh; width:auto; height:auto; object-fit:contain; display:block;}
@@ -2107,20 +2108,11 @@ function openFullMedia(){
   const im = o.querySelector('.fs-stage img');
   if(im){
     if(im.complete) fsSizeMark(); else im.addEventListener('load', fsSizeMark, { once:true });
-    if(!c.isLogo){
-      // Même rendu que l'image téléchargée : logo incrusté dans la photo, image entière sans zoom.
-      watermarkImageDataUrl(c.src).then(u => {
-        if(!fsOn || u === c.src) return;
-        im.src = u;
-        const mk = o.querySelector('.fs-mark'); if(mk) mk.remove();
-      });
-    }
   }
   const ifr = o.querySelector('.fs-stage iframe'); if(ifr) setTimeout(fsSizeMark, 50);
   setTimeout(fsSizeMark, 120);
   fsOn = true;
   try{ history.pushState({ labdFs:1 }, ''); fsHistory = true; }catch(e){}
-  try{ if(o.requestFullscreen) o.requestFullscreen().catch(()=>{}); }catch(e){}
 }
 function fsSizeMark(){
   const m = document.querySelector('#fsViewer .fs-media'); if(!m) return;
@@ -2366,6 +2358,20 @@ async function removeVisionImage(i){
   renderVision(); renderAdminContent();
 }
 
+function openAvatarView(encodedNom){
+  const nom = decodeURIComponent(encodedNom), target = normName(nom), pPromo = activePromotion();
+  let photo = null;
+  if(pPromo){
+    let m = (pPromo.bureau||[]).find(b => normName(b.nom) === target);
+    if(m) photo = effectivePhoto(DATA.bureauPhotos, pPromo.id+'_'+m.num, m.photo);
+    else { m = (pPromo.membres||[]).find(b => normName(b.nom) === target); if(m) photo = effectivePhoto(DATA.memberPhotos, pPromo.id+'_'+m.num, m.photo); }
+  } else {
+    let m = getBureauList().find(b => normName(b.nom) === target);
+    if(m) photo = effectivePhoto(DATA.bureauPhotos, m.num, m.photo);
+    else { m = getMembresList().find(b => normName(b.nom) === target); if(m) photo = effectivePhoto(DATA.memberPhotos, m.num, m.photo); }
+  }
+  if(photo) openImageLightbox(photo, nom); else openProfileModal(encodedNom);
+}
 function openProfileModal(encodedNom){
   const nom = decodeURIComponent(encodedNom);
   const target = normName(nom);
@@ -2903,7 +2909,7 @@ function bureauCardHTML(m, i, photoKey){
   return `
     <div class="bureau-card card">
       <div class="bureau-top">
-        <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
+        <div class="avatar-wrap" style="cursor:pointer;" onclick="openAvatarView('${encodeURIComponent(m.nom)}')">
           ${avatarHTML(m.nom, i, photo)}
           <label class="avatar-upload${isOwnBureauCard(photoKey) ? ' own' : ''}" title="Changer la photo" onclick="event.stopPropagation();">
             ${ICONS.upload}
@@ -2913,7 +2919,7 @@ function bureauCardHTML(m, i, photoKey){
         </div>
         <div>
           <span class="role-badge">${m.abbr ? `${m.abbr} · ${m.role||''}` : (m.role||'Bureau')}</span>
-          <div class="name">${m.nom}</div>
+          <div class="name" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">${m.nom}</div>
         </div>
       </div>
       ${m.phone ? `<a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>` : ''}
@@ -3524,7 +3530,7 @@ function renderMembers(){
       return `
       <div class="bureau-card card${(mine || ownAdmin) ? ' mine' : ''}">
         <div class="bureau-top">
-          <div class="avatar-wrap" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">
+          <div class="avatar-wrap" style="cursor:pointer;" onclick="openAvatarView('${encodeURIComponent(m.nom)}')">
             ${avatarHTML(m.nom, i, photo)}
             <label class="avatar-upload${(mine || ownAdmin) ? ' own' : ''}" title="Changer la photo" onclick="event.stopPropagation();">
               ${ICONS.upload}
@@ -3534,7 +3540,7 @@ function renderMembers(){
           </div>
           <div>
             <span class="role-badge">${m.role ? (m.abbr ? `${m.abbr} · ${m.role}` : m.role) : 'Membre'}</span>
-            <div class="name">${m.nom}</div>
+            <div class="name" style="cursor:pointer;" onclick="openProfileModal('${encodeURIComponent(m.nom)}')">${m.nom}</div>
           </div>
         </div>
         ${m.phone ? `<a class="phone" href="${waHref(m.phone)}" target="_blank" rel="noopener">${ICONS.whatsapp}${m.phone}</a>` : ''}
@@ -3830,17 +3836,7 @@ async function prepareWatermarkedDownload(linkId, src){
 
 function openImageLightbox(src, caption){
   window.dlSrc = src;
-  openModal(`
-    <div style="position:relative;">
-      <img src="${src}" style="width:100%; border-radius:8px; display:block;">
-      ${lightboxWatermarkHTML()}
-    </div>
-    ${caption ? `<p style="margin-top:14px;">${caption}</p>` : ''}
-    <div class="row" style="margin-top:14px;">
-      <button type="button" class="btn-primary" onclick="downloadImage(window.dlSrc, 'photo-labd', this)">Télécharger</button>
-      <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
-    </div>
-  `, true);
+  openLightboxData(src, null, caption || '', false, 'photo-' + String(caption || '').replace(/[^a-z0-9]/gi, ''));
 }
 
 let galleryPage = 0;
@@ -4077,7 +4073,9 @@ function openLightbox(key){
     if(!m) return;
     src = m.photo; video = m.video; legende = m.legende;
   }
-  const isLogoView = key === 'logo';
+  openLightboxData(src, video, legende, key === 'logo', key);
+}
+function openLightboxData(src, video, legende, isLogoView, key){
   lbCurrent = { src, video, legende, isLogo: isLogoView };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
@@ -4088,7 +4086,7 @@ function openLightbox(key){
             <button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Plein écran</button>
             <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
           </div>`)
-    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:zoom-in;">${!isLogoView ? '<button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Voir en grand</button>' : ''}`;
+    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:zoom-in;">`;
   openModal(`
     <div style="text-align:center;">
       <div style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">

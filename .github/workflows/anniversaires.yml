@@ -9,6 +9,10 @@ on:
         description: "Mode test (affiche sans envoyer)"
         type: boolean
         default: true
+      test_group:
+        description: "Simuler l'anniversaire du groupe LABD (16 octobre)"
+        type: boolean
+        default: false
 
 jobs:
   rappel:
@@ -25,3 +29,4 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           INDEX_PATH: index.html
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.test && '1' || '0' }}
+          TEST_GROUP: ${{ github.event_name == 'workflow_dispatch' && inputs.test_group && '1' || '0' }}

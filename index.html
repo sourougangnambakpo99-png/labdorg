@@ -2613,7 +2613,7 @@ function bdayPoster(x){
     const nameLH = fs + 6, bar = 14;
     const footH = 28 + 52 + 12 + nameLines.length * nameLH + (abbrLine ? 54 : 0) + 22 + msg.length * 42 + 26 + bar;
     const photoH = H - footH;
-    // 2) Zone photo : fond flou + photo ENTIÈRE (rien n'est coupé, même pour un selfie).
+    // 2) Zone photo : fond flou sur les bords + photo ENTIÈRE (rien n'est coupé, même pour un selfie).
     const bg = ctx.createLinearGradient(0, 0, W, photoH); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, photoH);
     let hasPhoto = false;
@@ -2621,25 +2621,47 @@ function bdayPoster(x){
       try{
         const im = await loadImageForCanvas(x.photo);
         const iw = im.naturalWidth, ih = im.naturalHeight;
+        // fond : la même photo agrandie et floutée
         ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, photoH); ctx.clip();
         const kc = Math.max(W / iw, photoH / ih);
-        if('filter' in ctx){ ctx.filter = 'blur(30px)'; ctx.drawImage(im, (W - iw*kc) / 2 - 40, (photoH - ih*kc) / 2 - 40, iw*kc + 80, ih*kc + 80); ctx.filter = 'none'; }
-        else { ctx.drawImage(im, (W - iw*kc) / 2, (photoH - ih*kc) / 2, iw*kc, ih*kc); ctx.fillStyle = 'rgba(11,28,51,0.6)'; ctx.fillRect(0, 0, W, photoH); }
+        const dw = iw * kc, dh = ih * kc, dx = (W - dw) / 2, dy = (photoH - dh) / 2;
+        if('filter' in ctx){
+          ctx.filter = 'blur(38px)'; ctx.drawImage(im, dx - 60, dy - 60, dw + 120, dh + 120); ctx.filter = 'none';
+        } else {
+          // navigateurs sans filtre de flou : réduction puis agrandissement lissé
+          const sm = document.createElement('canvas'); sm.width = Math.max(8, Math.round(W / 36)); sm.height = Math.max(8, Math.round(photoH / 36));
+          const sc = sm.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(im, dx / 36, dy / 36, dw / 36, dh / 36);
+          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(sm, 0, 0, W, photoH);
+        }
+        ctx.fillStyle = 'rgba(11,28,51,0.22)'; ctx.fillRect(0, 0, W, photoH);
         ctx.restore();
-        const kf = Math.min(W / iw, photoH / ih);
-        ctx.drawImage(im, (W - iw*kf) / 2, (photoH - ih*kf) / 2, iw*kf, ih*kf);
+        // photo entière, en retrait : le flou reste visible tout autour (le logo est dans la bande du haut)
+        const mx = 56, mt = 164, mb = 44;
+        const kf = Math.min((W - 2*mx) / iw, (photoH - mt - mb) / ih);
+        const fw = iw * kf, fh = ih * kf, fx = (W - fw) / 2, fy = mt + (photoH - mt - mb - fh) / 2;
+        const rad = 26;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 8;
+        ctx.beginPath(); ctx.moveTo(fx + rad, fy); ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, rad); ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, rad); ctx.arcTo(fx, fy + fh, fx, fy, rad); ctx.arcTo(fx, fy, fx + fw, fy, rad); ctx.closePath();
+        ctx.fillStyle = '#000'; ctx.fill();
+        ctx.restore();
+        ctx.save();
+        ctx.beginPath(); ctx.moveTo(fx + rad, fy); ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, rad); ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, rad); ctx.arcTo(fx, fy + fh, fx, fy, rad); ctx.arcTo(fx, fy, fx + fw, fy, rad); ctx.closePath();
+        ctx.clip(); ctx.drawImage(im, fx, fy, fw, fh); ctx.restore();
+        ctx.save(); ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath(); ctx.moveTo(fx + rad, fy); ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, rad); ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, rad); ctx.arcTo(fx, fy + fh, fx, fy, rad); ctx.arcTo(fx, fy, fx + fw, fy, rad); ctx.closePath(); ctx.stroke(); ctx.restore();
         hasPhoto = true;
       }catch(e){ console.error('photo membre', e); }
     }
     if(!hasPhoto){
-      const r = Math.min(300, photoH * 0.32);
-      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, photoH/2, r, 0, Math.PI*2); ctx.fill();
+      const r = Math.min(300, photoH * 0.3);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, photoH/2 + 40, r, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(r*0.95)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(initials(x.nom), W/2, photoH/2 + 8);
+      ctx.fillText(initials(x.nom), W/2, photoH/2 + 48);
     }
     // 3) Logo en haut à droite, placé AVANT le texte « LABD Org »
-    let g = ctx.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 200);
+    let g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 170);
     const size = 120, mg = 32, cy = mg + size/2, gap = 16;
     ctx.font = '800 42px sans-serif';
     const tw = ctx.measureText('LABD Org').width;
@@ -2675,27 +2697,39 @@ function bdayPoster(x){
 async function bdayShare(i, btn){
   const x = bdayToday[i]; if(!x) return;
   const old = btn.innerHTML;
+  const say = (t, ms) => { btn.textContent = t; setTimeout(() => { btn.innerHTML = old; }, ms || 6000); };
   try{
     const blob = await bdayPoster(x);
     const fname = 'anniversaire-' + String(x.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.jpg';
     const file = new File([blob], fname, { type:'image/jpeg' });
-    // Téléphone : feuille de partage du système, avec l'image seule.
-    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || !!(navigator.userAgentData && navigator.userAgentData.mobile);
-    if(mobile && navigator.canShare && navigator.canShare({ files:[file] })){
+    // 1) Menu de partage du système (téléphone, et Windows/Mac quand le navigateur le permet) : l'image seule.
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
       try{ await navigator.share({ files:[file] }); return; }
       catch(e){ if(e && e.name === 'AbortError') return; }
     }
-    // Ordinateur : l'image est téléchargée, à publier ensuite dans WhatsApp.
+    // 2) Sinon : l'image est copiée et WhatsApp s'ouvre, il suffit de la coller (Ctrl+V) dans une discussion.
+    let copied = false;
+    try{
+      const bmp = await createImageBitmap(blob);
+      const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height; cv.getContext('2d').drawImage(bmp, 0, 0);
+      const png = await new Promise(r => cv.toBlob(r, 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+      copied = true;
+    }catch(e){ console.error('copie image', e); }
+    if(copied){
+      window.open('https://web.whatsapp.com/', '_blank', 'noopener');
+      say('Image copiée : collez-la dans WhatsApp (Ctrl+V)');
+      return;
+    }
+    // 3) Dernier recours : téléchargement.
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = fname; a.style.display = 'none';
     document.body.appendChild(a); a.click();
     setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
-    btn.textContent = 'Image téléchargée : publiez-la dans WhatsApp';
-    setTimeout(() => { btn.innerHTML = old; }, 6000);
+    say('Image téléchargée : ajoutez-la dans WhatsApp');
   }catch(e){
     console.error('partage anniversaire', e);
-    btn.textContent = "Partage impossible, réessayez";
-    setTimeout(() => { btn.innerHTML = old; }, 4000);
+    say('Partage impossible, réessayez', 4000);
   }
 }
 // Rappel par mail au bureau concerné : anniversaires de demain et d'aujourd'hui, une seule fois par jour (le premier visiteur du jour le déclenche).

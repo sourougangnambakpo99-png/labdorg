@@ -2529,8 +2529,10 @@ let bdayToday = [], bdayAutoOpened = false;
 const bdayPosterCache = {};
 // Appelée à chaque rafraîchissement du site : met à jour la bulle et ouvre la fenêtre à l'arrivée.
 function bdayRefresh(){
-  bdayToday = bdayOn(0).concat(bdayGroupToday());
-  if(!bdayToday.length){ const f = document.getElementById('bdayFab'); if(f) f.remove(); return; }
+  // On ne montre que les anniversaires de la promotion affichée (l'anniversaire du groupe LABD, lui, concerne tout le monde).
+  const act = activePromotion(), actId = act ? act.id : null;
+  bdayToday = bdayOn(0).filter(x => (x.promo ? x.promo.id : null) === actId).concat(bdayGroupToday());
+  if(!bdayToday.length){ const f = document.getElementById('bdayFab'); if(f) f.remove(); const m = document.getElementById('bdayModal'); if(m) m.remove(); return; }
   bdayUpdateFab();
   if(bdayAutoOpened) return;
   const key = new Date().toDateString();
@@ -2599,66 +2601,37 @@ function bdayPoster(x){
   const key = x.nom + '|' + x.anniv + '|' + (x.abbr || '') + '|' + (x.photo ? x.photo.length : 0);
   if(bdayPosterCache[key]) return bdayPosterCache[key];
   return bdayPosterCache[key] = (async () => {
-    const W = 1080, H = 1350;
-    const c = document.createElement('canvas'); c.width = W; c.height = H;
-    const ctx = c.getContext('2d');
-    // 1) Le texte est mesuré d'abord : il occupe un pied de page séparé, la photo garde tout le reste.
+    const W = 1080;
+    // 1) Pied de page (texte) : mesuré d'abord pour connaître sa hauteur.
+    const mc = document.createElement('canvas').getContext('2d');
     const abbrLine = (!x.group && x.abbr) ? x.abbr + ' LABD' : '';
-    let fs = 84; ctx.font = `800 ${fs}px sans-serif`;
-    while(fs > 40 && ctx.measureText(x.nom).width > W - 100){ fs -= 4; ctx.font = `800 ${fs}px sans-serif`; }
+    let fs = 84; mc.font = `800 ${fs}px sans-serif`;
+    while(fs > 40 && mc.measureText(x.nom).width > W - 100){ fs -= 4; mc.font = `800 ${fs}px sans-serif`; }
     let nameLines = [x.nom];
-    if(ctx.measureText(x.nom).width > W - 100) nameLines = bdayWrap(ctx, x.nom, W - 100).slice(0, 2);
-    ctx.font = '500 32px sans-serif';
-    const msg = bdayWrap(ctx, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 140);
+    if(mc.measureText(x.nom).width > W - 100) nameLines = bdayWrap(mc, x.nom, W - 100).slice(0, 2);
+    mc.font = '500 32px sans-serif';
+    const msg = bdayWrap(mc, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 140);
     const nameLH = fs + 6, bar = 14;
     const footH = 28 + 52 + 12 + nameLines.length * nameLH + (abbrLine ? 54 : 0) + 22 + msg.length * 42 + 26 + bar;
-    const photoH = H - footH;
-    // 2) Zone photo : fond flou sur les bords + photo ENTIÈRE (rien n'est coupé, même pour un selfie).
+    // 2) La photo occupe toute la largeur et toute la zone du haut : l'affiche s'adapte à sa forme
+    //    (un selfie en portrait donne une affiche plus haute, rien n'est coupé ni encadré).
+    let im = null;
+    if(x.photo){ try{ im = await loadImageForCanvas(x.photo); }catch(e){ console.error('photo membre', e); } }
+    const photoH = im ? Math.round(Math.min(1500, Math.max(760, W * im.naturalHeight / im.naturalWidth))) : 1000;
+    const H = photoH + footH;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
     const bg = ctx.createLinearGradient(0, 0, W, photoH); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, photoH);
-    let hasPhoto = false;
-    if(x.photo){
-      try{
-        const im = await loadImageForCanvas(x.photo);
-        const iw = im.naturalWidth, ih = im.naturalHeight;
-        // fond : la même photo agrandie et floutée
-        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, photoH); ctx.clip();
-        const kc = Math.max(W / iw, photoH / ih);
-        const dw = iw * kc, dh = ih * kc, dx = (W - dw) / 2, dy = (photoH - dh) / 2;
-        if('filter' in ctx){
-          ctx.filter = 'blur(38px)'; ctx.drawImage(im, dx - 60, dy - 60, dw + 120, dh + 120); ctx.filter = 'none';
-        } else {
-          // navigateurs sans filtre de flou : réduction puis agrandissement lissé
-          const sm = document.createElement('canvas'); sm.width = Math.max(8, Math.round(W / 36)); sm.height = Math.max(8, Math.round(photoH / 36));
-          const sc = sm.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(im, dx / 36, dy / 36, dw / 36, dh / 36);
-          ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(sm, 0, 0, W, photoH);
-        }
-        ctx.fillStyle = 'rgba(11,28,51,0.22)'; ctx.fillRect(0, 0, W, photoH);
-        ctx.restore();
-        // photo entière, sans cadre : ses bords se fondent dans le flou (aucune ligne de séparation)
-        const mx = 40, mt = 150, mb = 24;
-        const kf = Math.min((W - 2*mx) / iw, (photoH - mt - mb) / ih);
-        const fw = Math.round(iw * kf), fh = Math.round(ih * kf), fx = Math.round((W - fw) / 2), fy = Math.round(mt + (photoH - mt - mb - fh) / 2);
-        const off = document.createElement('canvas'); off.width = fw; off.height = fh;
-        const oc = off.getContext('2d');
-        oc.drawImage(im, 0, 0, fw, fh);
-        const f = Math.max(8, Math.min(44, fw * 0.08, fh * 0.08));
-        oc.globalCompositeOperation = 'destination-in';
-        let mk = oc.createLinearGradient(0, 0, fw, 0);
-        mk.addColorStop(0, 'rgba(0,0,0,0)'); mk.addColorStop(f / fw, 'rgba(0,0,0,1)'); mk.addColorStop(1 - f / fw, 'rgba(0,0,0,1)'); mk.addColorStop(1, 'rgba(0,0,0,0)');
-        oc.fillStyle = mk; oc.fillRect(0, 0, fw, fh);
-        mk = oc.createLinearGradient(0, 0, 0, fh);
-        mk.addColorStop(0, 'rgba(0,0,0,0)'); mk.addColorStop(f / fh, 'rgba(0,0,0,1)'); mk.addColorStop(1 - f / fh, 'rgba(0,0,0,1)'); mk.addColorStop(1, 'rgba(0,0,0,0)');
-        oc.fillStyle = mk; oc.fillRect(0, 0, fw, fh);
-        ctx.drawImage(off, fx, fy);
-        hasPhoto = true;
-      }catch(e){ console.error('photo membre', e); }
-    }
-    if(!hasPhoto){
-      const r = Math.min(300, photoH * 0.3);
-      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, photoH/2 + 40, r, 0, Math.PI*2); ctx.fill();
+    if(im){
+      const iw = im.naturalWidth, ih = im.naturalHeight;
+      const k = Math.max(W / iw, photoH / ih), dw = iw * k, dh = ih * k;
+      ctx.drawImage(im, (W - dw) / 2, dh > photoH ? -(dh - photoH) * 0.3 : 0, dw, dh);
+    } else {
+      const r = 300;
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, photoH/2, r, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(r*0.95)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(initials(x.nom), W/2, photoH/2 + 48);
+      ctx.fillText(initials(x.nom), W/2, photoH/2 + 8);
     }
     // 3) Logo en haut à droite, placé AVANT le texte « LABD Org »
     let g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -3056,6 +3029,7 @@ function doSwitchPromotion(id){
   renderProjects();
   renderGallery();
   renderContact();
+  bdayRefresh();
 }
 function switchPromotion(id){
   const anchor = captureScrollAnchor();

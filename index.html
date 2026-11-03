@@ -644,9 +644,6 @@
   /* ----- Encart des anniversaires dans la section Membres ----- */
   .bd2{margin:0 0 26px; border-radius:18px; overflow:hidden; border:1px solid var(--line); background:var(--card,#fff); box-shadow:0 8px 28px rgba(11,110,109,0.14);}
   .bd2-body{padding:16px 20px 20px;}
-  .bd2-today{display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:linear-gradient(90deg,rgba(245,158,11,0.22),rgba(14,165,164,0.12)); border:2px solid #f59e0b; border-radius:14px; padding:14px; margin-bottom:12px;}
-  .bd2-today .bd2-txt{flex:1; min-width:180px; font-size:1.05rem;}
-  .bd2-today .bd2-btn{background:#25D366; color:#fff; border:0; border-radius:999px; padding:10px 18px; font-weight:700; cursor:pointer;}
   .bd2-av{width:48px; height:48px; border-radius:50%; object-fit:cover; flex:none; background:#048b98; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;}
   .bd2-av.big{width:76px; height:76px; font-size:1.5rem; border:3px solid #fff; box-shadow:0 0 0 3px #f59e0b;}
   .bd2-sec{font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--teal-dark); margin:16px 0 8px;}
@@ -659,8 +656,8 @@
   .bd2-row small em{font-style:normal; font-weight:700; color:var(--teal-dark);}
   #fsViewer .fs-media{position:relative; display:inline-flex; max-width:100%; max-height:100%;}
   #fsViewer .fs-media.fs-iframe{width:100%; height:70vh;}
-  #fsViewer .fs-mark{position:absolute; top:max(8px, calc(var(--fs-w, 360px) * 0.015)); right:max(8px, calc(var(--fs-w, 360px) * 0.015)); display:flex; align-items:center; gap:max(6px, calc(var(--fs-w, 360px) * 0.012)); pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:max(13px, calc(var(--fs-w, 360px) * 0.026)); line-height:1; text-shadow:0 2px 6px rgba(0,0,0,0.75);}
-  #fsViewer .fs-mark img{width:max(26px, calc(var(--fs-w, 360px) * 0.052)); height:max(26px, calc(var(--fs-w, 360px) * 0.052)); border-radius:50%; object-fit:cover; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
+  #fsViewer .fs-mark{position:absolute; top:max(10px, calc(var(--fs-w, 360px) * 0.022)); right:max(10px, calc(var(--fs-w, 360px) * 0.022)); display:flex; align-items:center; gap:max(8px, calc(var(--fs-w, 360px) * 0.016)); pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:max(20px, calc(var(--fs-w, 360px) * 0.042)); line-height:1; text-shadow:0 2px 8px rgba(0,0,0,0.8);}
+  #fsViewer .fs-mark img{width:max(44px, calc(var(--fs-w, 360px) * 0.085)); height:max(44px, calc(var(--fs-w, 360px) * 0.085)); border-radius:50%; object-fit:cover; border:max(2px, calc(var(--fs-w, 360px) * 0.004)) solid rgba(255,255,255,0.95); box-shadow:0 3px 12px rgba(0,0,0,0.45); flex-shrink:0;}
   #fsViewer .fs-close{width:40px; height:40px; border-radius:50%; border:0; background:rgba(255,255,255,0.18); color:#fff; font-size:1.1rem; cursor:pointer;}
   #fsViewer .fs-stage{flex:1; display:flex; align-items:center; justify-content:center; min-height:0; touch-action:pinch-zoom;}
   #fsViewer .fs-stage .fs-media > img, #fsViewer .fs-stage .fs-media > video{max-width:100vw; max-height:100vh; width:auto; height:auto; object-fit:contain; display:block;}
@@ -2474,7 +2471,7 @@ function bdayFieldsHTML(px, val){
   const [mm, dd] = (val || '').split('-').map(x => parseInt(x, 10));
   const days = Array.from({length:31}, (_, i) => `<option value="${i+1}" ${dd===i+1?'selected':''}>${i+1}</option>`).join('');
   const months = MOIS_FR.map((n, i) => `<option value="${i+1}" ${mm===i+1?'selected':''}>${n}</option>`).join('');
-  return `<label>Anniversaire (facultatif, sans l'année)</label>
+  return `<label>Anniversaire</label>
         <div style="display:flex; gap:8px;"><select id="ad-${px}-bj" style="flex:1;"><option value="">Jour</option>${days}</select><select id="ad-${px}-bm" style="flex:2;"><option value="">Mois</option>${months}</select></div>`;
 }
 function bdayRead(px){
@@ -2509,7 +2506,6 @@ function bdayHTML(){
     let d = new Date(now.getFullYear(), mm-1, dd); if(d < t0) d = new Date(now.getFullYear()+1, mm-1, dd);
     return Object.assign({ mm, dd, days: Math.round((d - t0) / 86400000) }, x);
   });
-  const today = info.filter(x => x.days === 0);
   const byDay = (a, b) => a.dd - b.dd;
   const month = info.filter(x => x.mm === curM).sort(byDay);
   const next = info.filter(x => x.mm === nextM).sort(byDay);
@@ -2521,7 +2517,6 @@ function bdayHTML(){
   return `<div class="bd2">
     
     <div class="bd2-body">
-      ${today.map(x => `<div class="bd2-today">${bd2Avatar(x, true)}<div class="bd2-txt">&#127881; Aujourd'hui, joyeux anniversaire à <b>${bdayEsc(x.nom)}</b> !</div><button type="button" class="bd2-btn" onclick="openBdayModal()">Souhaiter &amp; partager</button></div>`).join('')}
       ${month.length ? `<div class="bd2-sec">Ce mois-ci · ${MOIS_FR[curM-1]}</div><div class="bd2-grid">${month.map(row).join('')}</div>` : ''}
       ${next.length ? `<div class="bd2-sec">Le mois prochain · ${MOIS_FR[nextM-1]}</div><div class="bd2-grid">${next.map(row).join('')}</div>` : ''}
       ${!month.length && !next.length ? `<div class="bd2-sec">À venir</div><div class="bd2-grid">${info.slice().sort((a, b) => a.days - b.days).slice(0, 6).map(row).join('')}</div>` : ''}
@@ -2531,7 +2526,7 @@ function bdayHTML(){
 // Tous les anniversaires du site, toutes promotions confondues (fenêtre d'ouverture et rappel par mail).
 function bdayAllGroups(){
   const out = [];
-  const add = (promo, list, store, prefix) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, promo, label:mailPromo(promo), photo:effectivePhoto(store, prefix + m.num, m.photo) }); });
+  const add = (promo, list, store, prefix) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, abbr:(m.abbr || '').trim(), promo, label:mailPromo(promo), photo:effectivePhoto(store, prefix + m.num, m.photo) }); });
   add(null, getBureauList(), DATA.bureauPhotos, '');
   add(null, getMembresList(), DATA.memberPhotos, '');
   promotionsSorted().forEach(p => {
@@ -2613,9 +2608,9 @@ function openBdayModal(){
       ? (x.photo ? `<img class="bday-photo group" src="${x.photo}" alt="LABD">` : `<div class="bday-photo ph group">&#127881;</div>`)
       : (x.photo ? `<img class="bday-photo${multi ? ' small' : ''}" src="${x.photo}" alt="${bdayEsc(x.nom)}">`
                  : `<div class="bday-photo ph${multi ? ' small' : ''}">${bdayEsc(initials(x.nom))}</div>`);
-    const sub = x.group ? `LABD fête ses ${x.years} an${x.years > 1 ? 's' : ''} !` : (many ? bdayEsc(x.label) : '');
+    const sub = x.group ? `LABD fête ses ${x.years} an${x.years > 1 ? 's' : ''} !` : [x.abbr ? bdayEsc(x.abbr) + ' LABD' : '', many ? bdayEsc(x.label) : ''].filter(Boolean).join(' · ');
     return `<div class="bday-person">${ph}<div class="bday-names">${bdayEsc(x.nom)}${sub ? `<small>${sub}</small>` : ''}</div>
-      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div></div>`;
+      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager (WhatsApp, statut…)</button></div></div>`;
   }).join('');
   const m = document.createElement('div'); m.id = 'bdayModal';
   const colors = ['#05b3c2','#13284a','#048b98','#7fe3ec','#f59e0b','#ffffff'];
@@ -2626,7 +2621,7 @@ function openBdayModal(){
     ${people}
     <p class="bday-msg">${bdayToday.every(x => x.group) ? 'Merci à chacun de vous : ensemble, nous avons fait grandir LABD !' : 'Toute la famille LABD vous souhaite une très belle journée !'}</p>
     <button type="button" class="bday-ok" onclick="bdayClose()">Merci !</button>
-    <p class="bday-hint">Ce message reste en haut à droite de l'écran pour le revoir et le partager.</p></div>`;
+    <p class="bday-hint">Pour le statut : choisissez WhatsApp, puis « Mon statut ». Ce message reste en haut à droite de l'écran pour le revoir et le partager.</p></div>`;
   m.addEventListener('click', e => { if(e.target === m) bdayClose(); });
   document.body.appendChild(m);
   bdayToday.forEach(x => bdayPoster(x).catch(() => {})); // prépare les images à partager
@@ -2705,15 +2700,19 @@ function bdayPoster(x){
     ctx.fillText('LABD Org', lg ? x0 + size + gap : W - mg - tw, cy);
     // message en bas
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.shadowBlur = 10;
-    ctx.font = '700 54px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, H - 330); ctx.fillStyle = '#fff';
+    const abbrLine = (!x.group && x.abbr) ? x.abbr + ' LABD' : '';
+    const off = abbrLine ? 64 : 0;
+    ctx.font = '700 54px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, H - 330 - off); ctx.fillStyle = '#fff';
     let fs = 96; ctx.font = `800 ${fs}px sans-serif`;
     while(fs > 44 && ctx.measureText(x.nom).width > W - 120){ fs -= 4; ctx.font = `800 ${fs}px sans-serif`; }
     let nameLines = [x.nom];
     if(ctx.measureText(x.nom).width > W - 120) nameLines = bdayWrap(ctx, x.nom, W - 120).slice(0, 2);
-    nameLines.forEach((ln, i) => ctx.fillText(ln, W/2, H - 230 + i * (fs + 8)));
+    nameLines.forEach((ln, i) => ctx.fillText(ln, W/2, H - 230 - off + i * (fs + 8)));
+    let lastY = H - 230 - off + (nameLines.length - 1) * (fs + 8);
+    if(abbrLine){ ctx.font = '800 50px sans-serif'; ctx.fillStyle = '#6fe6f0'; lastY += 66; ctx.fillText(abbrLine, W/2, lastY); ctx.fillStyle = '#fff'; }
     ctx.font = '500 36px sans-serif'; ctx.shadowBlur = 6;
     const msg = bdayWrap(ctx, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 160);
-    const baseY = H - 150 + (nameLines.length - 1) * (fs + 8);
+    const baseY = lastY + 80;
     msg.forEach((ln, i) => ctx.fillText(ln, W/2, Math.min(baseY + i * 46, H - 40 - (msg.length - 1 - i) * 46)));
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('image impossible')), 'image/jpeg', 0.92));
   })();
@@ -2721,22 +2720,21 @@ function bdayPoster(x){
 async function bdayShare(i, btn){
   const x = bdayToday[i]; if(!x) return;
   const old = btn.innerHTML;
-  const text = (x.group ? `\u{1F382} LABD fête ses ${x.years} an${x.years > 1 ? 's' : ''} ! \u{1F389}\nMerci à toute la famille LABD, ensemble depuis le 16 octobre 2025 !\n` : `\u{1F382} Joyeux anniversaire ${x.nom} ! \u{1F389}\nToute la famille LABD te souhaite une très belle journée !\n`) + `${location.origin && location.origin.startsWith('http') ? location.origin : 'https://labdorg.pages.dev'}`;
   try{
     const blob = await bdayPoster(x);
     const fname = 'anniversaire-' + String(x.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.jpg';
     const file = new File([blob], fname, { type:'image/jpeg' });
+    // Partage de l'image seule : dans WhatsApp on choisit une discussion ou « Mon statut ».
     if(navigator.canShare && navigator.canShare({ files:[file] })){
-      try{ await navigator.share({ files:[file], text, title:'Joyeux anniversaire' }); return; }
+      try{ await navigator.share({ files:[file] }); return; }
       catch(e){ if(e && e.name === 'AbortError') return; }
     }
-    // Ordinateur ou navigateur sans partage de fichier : on télécharge l'image et on ouvre WhatsApp avec le message.
+    // Ordinateur ou navigateur sans partage de fichier : l'image est téléchargée, à publier dans WhatsApp (discussion ou statut).
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = fname; a.style.display = 'none';
     document.body.appendChild(a); a.click();
     setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
-    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
-    btn.textContent = 'Image téléchargée : joignez-la dans WhatsApp';
+    btn.textContent = 'Image téléchargée : publiez-la dans WhatsApp';
     setTimeout(() => { btn.innerHTML = old; }, 6000);
   }catch(e){
     console.error('partage anniversaire', e);
@@ -4154,7 +4152,7 @@ function openLightboxData(src, video, legende, isLogoView, key){
             <button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Plein écran</button>
             <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
           </div>`)
-    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:zoom-in;">`;
+    : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:pointer;">`;
   openModal(`
     <div style="text-align:center;">
       <div style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
@@ -4677,7 +4675,7 @@ function openMemberPanel(){
   openModal(`
     <h3>Espace membre</h3>
     <p>${memberSession.nom}, vous pouvez changer votre photo de profil dans la liste des membres : touchez la petite icône sur votre photo.</p>
-    <label style="display:block; margin-top:10px;">Votre anniversaire (facultatif, sans l'année)</label>
+    <label style="display:block; margin-top:10px;">Votre anniversaire</label>
     <div style="display:flex; gap:8px; margin-bottom:10px;">
       <select id="mb-bj" style="flex:1;"><option value="">Jour</option>${Array.from({length:31}, (_, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[1])||0,10)===i+1?'selected':''}>${i+1}</option>`).join('')}</select>
       <select id="mb-bm" style="flex:2;"><option value="">Mois</option>${MOIS_FR.map((n, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[0])||0,10)===i+1?'selected':''}>${n}</option>`).join('')}</select>

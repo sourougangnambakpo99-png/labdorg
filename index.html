@@ -2635,21 +2635,22 @@ function bdayPoster(x){
         }
         ctx.fillStyle = 'rgba(11,28,51,0.22)'; ctx.fillRect(0, 0, W, photoH);
         ctx.restore();
-        // photo entière, en retrait : le flou reste visible tout autour (le logo est dans la bande du haut)
-        const mx = 56, mt = 164, mb = 44;
+        // photo entière, sans cadre : ses bords se fondent dans le flou (aucune ligne de séparation)
+        const mx = 40, mt = 150, mb = 24;
         const kf = Math.min((W - 2*mx) / iw, (photoH - mt - mb) / ih);
-        const fw = iw * kf, fh = ih * kf, fx = (W - fw) / 2, fy = mt + (photoH - mt - mb - fh) / 2;
-        const rad = 26;
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 30; ctx.shadowOffsetY = 8;
-        ctx.beginPath(); ctx.moveTo(fx + rad, fy); ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, rad); ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, rad); ctx.arcTo(fx, fy + fh, fx, fy, rad); ctx.arcTo(fx, fy, fx + fw, fy, rad); ctx.closePath();
-        ctx.fillStyle = '#000'; ctx.fill();
-        ctx.restore();
-        ctx.save();
-        ctx.beginPath(); ctx.moveTo(fx + rad, fy); ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, rad); ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, rad); ctx.arcTo(fx, fy + fh, fx, fy, rad); ctx.arcTo(fx, fy, fx + fw, fy, rad); ctx.closePath();
-        ctx.clip(); ctx.drawImage(im, fx, fy, fw, fh); ctx.restore();
-        ctx.save(); ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath(); ctx.moveTo(fx + rad, fy); ctx.arcTo(fx + fw, fy, fx + fw, fy + fh, rad); ctx.arcTo(fx + fw, fy + fh, fx, fy + fh, rad); ctx.arcTo(fx, fy + fh, fx, fy, rad); ctx.arcTo(fx, fy, fx + fw, fy, rad); ctx.closePath(); ctx.stroke(); ctx.restore();
+        const fw = Math.round(iw * kf), fh = Math.round(ih * kf), fx = Math.round((W - fw) / 2), fy = Math.round(mt + (photoH - mt - mb - fh) / 2);
+        const off = document.createElement('canvas'); off.width = fw; off.height = fh;
+        const oc = off.getContext('2d');
+        oc.drawImage(im, 0, 0, fw, fh);
+        const f = Math.max(8, Math.min(44, fw * 0.08, fh * 0.08));
+        oc.globalCompositeOperation = 'destination-in';
+        let mk = oc.createLinearGradient(0, 0, fw, 0);
+        mk.addColorStop(0, 'rgba(0,0,0,0)'); mk.addColorStop(f / fw, 'rgba(0,0,0,1)'); mk.addColorStop(1 - f / fw, 'rgba(0,0,0,1)'); mk.addColorStop(1, 'rgba(0,0,0,0)');
+        oc.fillStyle = mk; oc.fillRect(0, 0, fw, fh);
+        mk = oc.createLinearGradient(0, 0, 0, fh);
+        mk.addColorStop(0, 'rgba(0,0,0,0)'); mk.addColorStop(f / fh, 'rgba(0,0,0,1)'); mk.addColorStop(1 - f / fh, 'rgba(0,0,0,1)'); mk.addColorStop(1, 'rgba(0,0,0,0)');
+        oc.fillStyle = mk; oc.fillRect(0, 0, fw, fh);
+        ctx.drawImage(off, fx, fy);
         hasPhoto = true;
       }catch(e){ console.error('photo membre', e); }
     }

@@ -598,31 +598,58 @@
   #fsViewer{position:fixed; inset:0; z-index:9000; background:#000; display:flex; flex-direction:column;}
   #fsViewer .fs-top{position:absolute; top:0; left:0; right:0; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0));}
   #fsViewer .fs-top{justify-content:flex-end;}
-  #bdayBanner{display:flex; align-items:center; justify-content:center; gap:14px; padding:16px 20px; background:linear-gradient(90deg,#0b6e6d,#0ea5a4,#f59e0b,#0ea5a4,#0b6e6d); background-size:300% 100%; animation:bdayShine 8s linear infinite; color:#fff; font-size:1.15rem; font-weight:600; text-align:center; position:relative; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.18);}
-  #bdayBanner[hidden]{display:none;}
-  #bdayBanner .bday-ico{font-size:1.7rem; display:inline-block; animation:bdayBounce 1.4s ease-in-out infinite;}
-  #bdayBanner button{background:rgba(255,255,255,0.22); border:0; color:#fff; font-size:1rem; cursor:pointer; width:32px; height:32px; border-radius:50%; flex:none;}
-  @keyframes bdayShine{0%{background-position:0 0;} 100%{background-position:300% 0;}}
-  @keyframes bdayBounce{0%,100%{transform:translateY(0) rotate(-8deg);} 50%{transform:translateY(-5px) rotate(8deg);}}
-  #bdayModal{position:fixed; inset:0; z-index:9500; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(8,20,24,0.72); overflow:hidden;}
-  #bdayModal[hidden]{display:none;}
-  #bdayModal .bday-card{position:relative; z-index:2; max-width:460px; width:100%; background:#fff; color:#12302f; border-radius:22px; padding:34px 26px 26px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4); animation:bdayPop .55s cubic-bezier(.2,1.4,.4,1);}
-  #bdayModal .bday-emoji{font-size:3.6rem; line-height:1; animation:bdayBounce 1.4s ease-in-out infinite;}
-  #bdayModal .bday-head{margin:10px 0 4px; font-size:1.05rem; letter-spacing:.08em; text-transform:uppercase; color:#0b6e6d; font-weight:700;}
-  #bdayModal .bday-names{margin:8px 0 6px; font-size:2rem; line-height:1.2; font-weight:800; color:#0b6e6d; word-break:break-word;}
-  #bdayModal .bday-names small{display:block; font-size:.95rem; font-weight:600; color:#8a6d1d;}
-  #bdayModal .bday-msg{margin:10px 0 20px; color:#35514f;}
-  #bdayModal .bday-ok{background:linear-gradient(90deg,#0b6e6d,#0ea5a4); color:#fff; border:0; border-radius:999px; padding:12px 28px; font-size:1rem; font-weight:700; cursor:pointer;}
+  /* ----- Fenêtre d'anniversaire (ouverture du site) + bulle dans le coin ----- */
+  #bdayModal{position:fixed; inset:0; z-index:9500; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(8,20,24,0.72); overflow:hidden;}
+  #bdayModal.closing{background:rgba(8,20,24,0); transition:background .5s;}
+  #bdayModal.closing .bday-confetti{opacity:0; transition:opacity .3s;}
+  #bdayModal .bday-card{position:relative; z-index:2; max-width:460px; width:100%; max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow-y:auto; background:#fff; color:#12302f; border-radius:22px; padding:26px 22px 22px; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.4); animation:bdayPop .55s cubic-bezier(.2,1.4,.4,1);}
+  #bdayModal .bday-card.shrink{animation:none; transition:transform .5s cubic-bezier(.5,0,.8,.5), opacity .5s; transform:translate(var(--tx),var(--ty)) scale(.06); opacity:.2;}
+  #bdayModal .bday-emoji{font-size:2.6rem; line-height:1; animation:bdayBounce 1.4s ease-in-out infinite;}
+  #bdayModal .bday-head{margin:6px 0 10px; font-size:1.05rem; letter-spacing:.08em; text-transform:uppercase; color:#0b6e6d; font-weight:700;}
+  .bday-person{margin:0 0 14px; padding-bottom:14px; border-bottom:1px dashed #cfe3e2;}
+  .bday-person:last-of-type{border-bottom:0;}
+  .bday-photo{display:block; width:160px; height:160px; border-radius:50%; object-fit:cover; margin:0 auto 12px; border:5px solid #fff; box-shadow:0 0 0 4px #0ea5a4, 0 10px 28px rgba(0,0,0,0.3);}
+  .bday-photo.small{width:100px; height:100px;}
+  .bday-photo.ph{display:flex; align-items:center; justify-content:center; font-size:3.2rem; font-weight:800; color:#fff; background:linear-gradient(135deg,#0b6e6d,#0ea5a4);}
+  .bday-photo.ph.small{font-size:2.1rem;}
+  #bdayModal .bday-names{margin:6px 0 12px; font-size:1.9rem; line-height:1.2; font-weight:800; color:#0b6e6d; word-break:break-word;}
+  #bdayModal .bday-photo.small + .bday-names{font-size:1.4rem;}
+  #bdayModal .bday-names small{display:block; font-size:.9rem; font-weight:600; color:#8a6d1d;}
+  .bday-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  .bday-wa{display:inline-flex; align-items:center; gap:8px; background:#25D366; color:#fff; border:0; border-radius:999px; padding:11px 20px; font-size:.95rem; font-weight:700; cursor:pointer;}
+  .bday-wa .icon{width:18px; height:18px;}
+  #bdayModal .bday-msg{margin:6px 0 16px; color:#35514f;}
+  #bdayModal .bday-ok{background:linear-gradient(90deg,#0b6e6d,#0ea5a4); color:#fff; border:0; border-radius:999px; padding:12px 30px; font-size:1rem; font-weight:700; cursor:pointer;}
+  #bdayModal .bday-hint{margin:10px 0 0; font-size:.78rem; color:#6b8583;}
   #bdayModal .bday-confetti{position:absolute; top:-20px; width:10px; height:16px; opacity:.95; animation:bdayFall linear infinite; z-index:1;}
+  @keyframes bdayBounce{0%,100%{transform:translateY(0) rotate(-8deg);} 50%{transform:translateY(-5px) rotate(8deg);}}
   @keyframes bdayFall{0%{transform:translateY(-30px) rotate(0);} 100%{transform:translateY(110vh) rotate(720deg);}}
   @keyframes bdayPop{0%{transform:scale(.6); opacity:0;} 100%{transform:scale(1); opacity:1;}}
-  @media(prefers-reduced-motion:reduce){ #bdayBanner, #bdayBanner .bday-ico, #bdayModal .bday-emoji, #bdayModal .bday-card{animation:none !important;} #bdayModal .bday-confetti{display:none;} }
-  .bday-box{margin:0 0 20px; border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--card, #fff);}
-  .bday-today{background:linear-gradient(90deg, rgba(14,165,164,0.16), rgba(14,165,164,0.04)); border-radius:8px; padding:10px 12px; margin-bottom:10px; font-size:0.95rem;}
-  .bday-title{font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin-bottom:6px;}
-  .bday-row{display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px dashed var(--line); font-size:0.9rem;}
-  .bday-row:last-child{border-bottom:0;}
-  .bday-date{color:var(--teal-dark); font-weight:600; white-space:nowrap;}
+  @keyframes bdayPulse{0%{box-shadow:0 0 0 0 rgba(14,165,164,.55), 0 6px 18px rgba(0,0,0,.3);} 70%{box-shadow:0 0 0 16px rgba(14,165,164,0), 0 6px 18px rgba(0,0,0,.3);} 100%{box-shadow:0 0 0 0 rgba(14,165,164,0), 0 6px 18px rgba(0,0,0,.3);}}
+  @keyframes bdayFabPop{0%{transform:scale(.4);} 60%{transform:scale(1.25);} 100%{transform:scale(1);}}
+  #bdayFab{position:fixed; left:14px; bottom:14px; z-index:350; width:64px; height:64px; padding:0; border:3px solid #fff; border-radius:50%; background:linear-gradient(135deg,#0b6e6d,#0ea5a4); cursor:pointer; animation:bdayPulse 2.2s infinite;}
+  #bdayFab.pop{animation:bdayFabPop .7s ease-out;}
+  #bdayFab .fab-img{width:100%; height:100%; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:1.7rem; color:#fff;}
+  #bdayFab .fab-badge{position:absolute; top:-8px; right:-8px; min-width:26px; height:26px; border-radius:13px; background:#f59e0b; color:#fff; font-size:.95rem; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.35);}
+  #bdayFab .fab-count{position:absolute; bottom:-6px; left:50%; transform:translateX(-50%); background:#0b6e6d; color:#fff; font-size:.68rem; font-weight:700; border-radius:10px; padding:1px 7px; border:2px solid #fff;}
+  @media(prefers-reduced-motion:reduce){ #bdayModal .bday-emoji, #bdayModal .bday-card, #bdayFab{animation:none !important;} #bdayModal .bday-confetti{display:none;} }
+  /* ----- Encart des anniversaires dans la section Membres ----- */
+  .bd2{margin:0 0 26px; border-radius:18px; overflow:hidden; border:1px solid var(--line); background:var(--card,#fff); box-shadow:0 8px 28px rgba(11,110,109,0.14);}
+  .bd2-head{background:linear-gradient(90deg,#0b6e6d,#0ea5a4,#f59e0b); color:#fff; padding:16px 20px; font-size:1.3rem; font-weight:800; font-family:'Space Grotesk',sans-serif;}
+  .bd2-body{padding:16px 20px 20px;}
+  .bd2-today{display:flex; align-items:center; gap:16px; flex-wrap:wrap; background:linear-gradient(90deg,rgba(245,158,11,0.22),rgba(14,165,164,0.12)); border:2px solid #f59e0b; border-radius:14px; padding:14px; margin-bottom:12px;}
+  .bd2-today .bd2-txt{flex:1; min-width:180px; font-size:1.05rem;}
+  .bd2-today .bd2-btn{background:#25D366; color:#fff; border:0; border-radius:999px; padding:10px 18px; font-weight:700; cursor:pointer;}
+  .bd2-av{width:48px; height:48px; border-radius:50%; object-fit:cover; flex:none; background:#0b6e6d; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;}
+  .bd2-av.big{width:76px; height:76px; font-size:1.5rem; border:3px solid #fff; box-shadow:0 0 0 3px #f59e0b;}
+  .bd2-sec{font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--teal-dark); margin:16px 0 8px;}
+  .bd2-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
+  .bd2-row{display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; cursor:pointer;}
+  .bd2-row.past{opacity:.55;}
+  .bd2-row.today{border-color:#f59e0b; background:rgba(245,158,11,0.12);}
+  .bd2-row b{display:block;}
+  .bd2-row small{display:block; color:var(--muted-2,#667);}
+  .bd2-row small em{font-style:normal; font-weight:700; color:var(--teal-dark);}
   #fsViewer .fs-media{position:relative; display:inline-flex; max-width:100%; max-height:100%;}
   #fsViewer .fs-media.fs-iframe{width:100%; height:70vh;}
   #fsViewer .fs-mark{position:absolute; top:calc(var(--fs-w, 360px) * 0.03); right:calc(var(--fs-w, 360px) * 0.03); display:flex; align-items:center; gap:calc(var(--fs-w, 360px) * 0.02); pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:calc(var(--fs-w, 360px) * 0.05); line-height:1; text-shadow:0 2px 10px rgba(0,0,0,0.75);}
@@ -759,7 +786,6 @@
 </header>
 
 <main id="top">
-  <div id="bdayBanner" hidden></div>
 
   <section class="hero">
     <div class="hero-photo"><img src="images/hero.jpg" alt="LABDiens en séance de travail" id="heroPhotoImg"></div>
@@ -2438,27 +2464,56 @@ function bdayPeople(){
   return all.filter(m => m.nom && /^\d\d-\d\d$/.test(m.anniv || ''));
 }
 function bdayLabel(a){ const [m, d] = a.split('-').map(Number); return (d === 1 ? '1er' : d) + ' ' + MOIS_FR[m-1]; }
+function bdayPeopleP(){
+  const promo = activePromotion(), out = [];
+  const add = (list, store, prefix) => (list || []).forEach(m => {
+    if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, photo:effectivePhoto(store, prefix + m.num, m.photo) });
+  });
+  if(promo){ add(promo.bureau, DATA.bureauPhotos, promo.id + '_'); add(promo.membres, DATA.memberPhotos, promo.id + '_'); }
+  else { add(getBureauList(), DATA.bureauPhotos, ''); add(getMembresList(), DATA.memberPhotos, ''); }
+  return out;
+}
+function bd2Avatar(x, big){
+  return x.photo ? `<img class="bd2-av${big?' big':''}" src="${x.photo}" alt="">` : `<div class="bd2-av${big?' big':''}">${bdayEsc(initials(x.nom))}</div>`;
+}
 function bdayHTML(){
-  const ppl = bdayPeople(); if(!ppl.length) return '';
-  const now = new Date(); const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const withIn = ppl.map(m => {
-    const [mm, dd] = m.anniv.split('-').map(Number);
+  const ppl = bdayPeopleP(); if(!ppl.length) return '';
+  const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const curM = now.getMonth() + 1, nextM = curM % 12 + 1;
+  const info = ppl.map(x => {
+    const [mm, dd] = x.anniv.split('-').map(Number);
     let d = new Date(now.getFullYear(), mm-1, dd); if(d < t0) d = new Date(now.getFullYear()+1, mm-1, dd);
-    return { m, days: Math.round((d - t0) / 86400000) };
-  }).sort((a, b) => a.days - b.days);
-  const today = withIn.filter(x => x.days === 0);
-  const next = withIn.filter(x => x.days > 0).slice(0, 5);
-  return `<div class="bday-box">
-    ${today.length ? `<div class="bday-today">&#127874; Aujourd'hui, joyeux anniversaire à <b>${today.map(x => x.m.nom).join(' et ')}</b> !</div>` : ''}
-    ${next.length ? `<div class="bday-title">Prochains anniversaires</div>${next.map(x => `<div class="bday-row"><span>${x.m.nom}</span><span class="bday-date">${bdayLabel(x.m.anniv)}${x.days === 1 ? ' · demain' : x.days <= 30 ? ' · dans ' + x.days + ' j' : ''}</span></div>`).join('')}` : ''}
+    return Object.assign({ mm, dd, days: Math.round((d - t0) / 86400000) }, x);
+  });
+  const today = info.filter(x => x.days === 0);
+  const byDay = (a, b) => a.dd - b.dd;
+  const month = info.filter(x => x.mm === curM).sort(byDay);
+  const next = info.filter(x => x.mm === nextM).sort(byDay);
+  const row = x => {
+    const past = x.mm === curM && x.dd < now.getDate();
+    const st = x.days === 0 ? "Aujourd'hui" : x.days === 1 ? 'Demain' : past ? 'Déjà fêté' : x.days <= 30 ? 'dans ' + x.days + ' j' : '';
+    return `<div class="bd2-row${x.days === 0 ? ' today' : ''}${past ? ' past' : ''}" onclick="openProfileModal('${encodeURIComponent(x.nom)}')">${bd2Avatar(x)}<div><b>${bdayEsc(x.nom)}</b><small>${bdayLabel(x.anniv)}${st ? ' · <em>' + st + '</em>' : ''}</small></div></div>`;
+  };
+  return `<div class="bd2">
+    <div class="bd2-head">&#127874; Anniversaires</div>
+    <div class="bd2-body">
+      ${today.map(x => `<div class="bd2-today">${bd2Avatar(x, true)}<div class="bd2-txt">&#127881; Aujourd'hui, joyeux anniversaire à <b>${bdayEsc(x.nom)}</b> !</div><button type="button" class="bd2-btn" onclick="openBdayModal()">Souhaiter &amp; partager</button></div>`).join('')}
+      ${month.length ? `<div class="bd2-sec">Ce mois-ci · ${MOIS_FR[curM-1]}</div><div class="bd2-grid">${month.map(row).join('')}</div>` : ''}
+      ${next.length ? `<div class="bd2-sec">Le mois prochain · ${MOIS_FR[nextM-1]}</div><div class="bd2-grid">${next.map(row).join('')}</div>` : ''}
+      ${!month.length && !next.length ? `<div class="bd2-sec">À venir</div><div class="bd2-grid">${info.slice().sort((a, b) => a.days - b.days).slice(0, 6).map(row).join('')}</div>` : ''}
+    </div>
   </div>`;
 }
-// Tous les anniversaires du site, toutes promotions confondues (pour le bandeau et le rappel par mail).
+// Tous les anniversaires du site, toutes promotions confondues (fenêtre d'ouverture et rappel par mail).
 function bdayAllGroups(){
   const out = [];
-  const add = (promo, list) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, promo, label:mailPromo(promo) }); });
-  add(null, getBureauList().concat(getMembresList()));
-  promotionsSorted().forEach(p => add(p, (p.bureau || []).concat(p.membres || [])));
+  const add = (promo, list, store, prefix) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, promo, label:mailPromo(promo), photo:effectivePhoto(store, prefix + m.num, m.photo) }); });
+  add(null, getBureauList(), DATA.bureauPhotos, '');
+  add(null, getMembresList(), DATA.memberPhotos, '');
+  promotionsSorted().forEach(p => {
+    add(p, p.bureau, DATA.bureauPhotos, p.id + '_');
+    add(p, p.membres, DATA.memberPhotos, p.id + '_');
+  });
   return out;
 }
 function bdayOn(offset){
@@ -2467,36 +2522,155 @@ function bdayOn(offset){
   return bdayAllGroups().filter(x => x.anniv === k);
 }
 function bdayEsc(t){ return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function renderBdayBanner(){
-  const el = document.getElementById('bdayBanner'); if(!el) return;
-  const t = bdayOn(0);
-  let closed = false; try{ closed = sessionStorage.getItem('bday-closed') === new Date().toDateString(); }catch(e){}
-  if(!t.length || closed){ el.hidden = true; el.innerHTML = ''; return; }
-  const names = t.map(x => bdayEsc(x.nom) + (promotionsSorted().length ? ' de ' + bdayEsc(x.label) : '')).join(', ');
-  el.hidden = false;
-  el.innerHTML = `<span class="bday-ico">&#127874;</span><span>Aujourd'hui, joyeux anniversaire à <b>${names}</b> !</span><span class="bday-ico">&#127881;</span><button type="button" aria-label="Fermer" onclick="try{sessionStorage.setItem('bday-closed', new Date().toDateString());}catch(e){} renderBdayBanner()">&#10005;</button>`;
-  showBdayModal(t);
-}
-// Fenêtre de félicitations : s'ouvre une fois par jour et par navigateur, à l'arrivée sur le site.
-function showBdayModal(t){
+
+let bdayToday = [], bdayAutoOpened = false;
+const bdayPosterCache = {};
+// Appelée à chaque rafraîchissement du site : met à jour la bulle et ouvre la fenêtre à l'arrivée.
+function bdayRefresh(){
+  bdayToday = bdayOn(0);
+  if(!bdayToday.length){ const f = document.getElementById('bdayFab'); if(f) f.remove(); return; }
+  bdayUpdateFab();
+  if(bdayAutoOpened) return;
   const key = new Date().toDateString();
-  try{ if(localStorage.getItem('bday-modal') === key) return; }catch(e){}
-  if(document.getElementById('bdayModal')) return;
-  const many = promotionsSorted().length > 0;
-  const names = t.map(x => bdayEsc(x.nom) + (many ? `<small>${bdayEsc(x.label)}</small>` : '')).join('<br>');
+  try{ if(sessionStorage.getItem('bday-seen') === key){ bdayAutoOpened = true; return; } }catch(e){}
+  bdayAutoOpened = true;
+  try{ sessionStorage.setItem('bday-seen', key); }catch(e){}
+  openBdayModal();
+}
+function bdayUpdateFab(){
+  let f = document.getElementById('bdayFab');
+  if(!f){
+    f = document.createElement('button'); f.id = 'bdayFab'; f.type = 'button';
+    f.title = "Anniversaire du jour — touchez pour voir et partager"; f.setAttribute('aria-label', f.title);
+    f.onclick = openBdayModal;
+    document.body.appendChild(f);
+  }
+  const x = bdayToday[0];
+  f.innerHTML = (x.photo ? `<img class="fab-img" src="${x.photo}" alt="">` : `<span class="fab-img">&#127874;</span>`)
+    + `<span class="fab-badge">&#127874;</span>` + (bdayToday.length > 1 ? `<span class="fab-count">+${bdayToday.length - 1}</span>` : '');
+}
+function openBdayModal(){
+  if(document.getElementById('bdayModal') || !bdayToday.length) return;
+  const many = promotionsSorted().length > 0, multi = bdayToday.length > 1;
+  const people = bdayToday.map((x, i) => {
+    const ph = x.photo ? `<img class="bday-photo${multi ? ' small' : ''}" src="${x.photo}" alt="${bdayEsc(x.nom)}">`
+                       : `<div class="bday-photo ph${multi ? ' small' : ''}">${bdayEsc(initials(x.nom))}</div>`;
+    return `<div class="bday-person">${ph}<div class="bday-names">${bdayEsc(x.nom)}${many ? `<small>${bdayEsc(x.label)}</small>` : ''}</div>
+      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div></div>`;
+  }).join('');
   const m = document.createElement('div'); m.id = 'bdayModal';
   const colors = ['#0ea5a4','#f59e0b','#ef4444','#6366f1','#22c55e','#ec4899'];
   let conf = ''; for(let i = 0; i < 40; i++){ conf += `<i class="bday-confetti" style="left:${Math.random()*100}%; background:${colors[i % colors.length]}; animation-duration:${3 + Math.random()*3}s; animation-delay:${Math.random()*2}s;"></i>`; }
   m.innerHTML = conf + `<div class="bday-card" role="dialog" aria-modal="true" aria-label="Joyeux anniversaire">
     <div class="bday-emoji">&#127874;</div>
     <div class="bday-head">Joyeux anniversaire</div>
-    <div class="bday-names">${names}</div>
+    ${people}
     <p class="bday-msg">Toute la famille LABD vous souhaite une très belle journée !</p>
-    <button type="button" class="bday-ok" id="bdayOk">Merci !</button></div>`;
-  const close = () => { try{ localStorage.setItem('bday-modal', key); }catch(e){} m.remove(); };
-  m.addEventListener('click', e => { if(e.target === m) close(); });
+    <button type="button" class="bday-ok" onclick="bdayClose()">Merci !</button>
+    <p class="bday-hint">Ce message reste en bas à gauche de l'écran pour le revoir et le partager.</p></div>`;
+  m.addEventListener('click', e => { if(e.target === m) bdayClose(); });
   document.body.appendChild(m);
-  document.getElementById('bdayOk').onclick = close;
+  bdayToday.forEach(x => bdayPoster(x).catch(() => {})); // prépare les images à partager
+}
+function bdayClose(){
+  const m = document.getElementById('bdayModal'); if(!m) return;
+  const card = m.querySelector('.bday-card'), fab = document.getElementById('bdayFab');
+  if(!card || !fab || window.matchMedia('(prefers-reduced-motion: reduce)').matches){ m.remove(); return; }
+  const c = card.getBoundingClientRect(), f = fab.getBoundingClientRect();
+  card.style.setProperty('--tx', (f.left + f.width/2 - (c.left + c.width/2)) + 'px');
+  card.style.setProperty('--ty', (f.top + f.height/2 - (c.top + c.height/2)) + 'px');
+  m.classList.add('closing'); card.classList.add('shrink');
+  setTimeout(() => { m.remove(); fab.classList.add('pop'); setTimeout(() => fab.classList.remove('pop'), 800); }, 520);
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape') bdayClose(); });
+
+// Image à partager : photo du membre + logo en haut + message en bas.
+function bdayWrap(ctx, text, maxW){
+  const words = text.split(/\s+/), lines = []; let cur = '';
+  words.forEach(w => { const t = cur ? cur + ' ' + w : w; if(ctx.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; } else cur = t; });
+  if(cur) lines.push(cur); return lines;
+}
+function bdayPoster(x){
+  const key = x.nom + '|' + x.anniv + '|' + (x.photo ? x.photo.length : 0);
+  if(bdayPosterCache[key]) return bdayPosterCache[key];
+  return bdayPosterCache[key] = (async () => {
+    const W = 1080, H = 1350;
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b6e6d'); bg.addColorStop(1, '#0ea5a4');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    let hasPhoto = false;
+    if(x.photo){
+      try{
+        const im = await loadImageForCanvas(x.photo);
+        const k = Math.max(W / im.naturalWidth, H / im.naturalHeight);
+        const dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+        ctx.drawImage(im, (W - dw) / 2, (H - dh) * 0.3, dw, dh);
+        hasPhoto = true;
+      }catch(e){ console.error('photo membre', e); }
+    }
+    if(!hasPhoto){
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, 520, 300, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '800 280px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(initials(x.nom), W/2, 530);
+    }
+    // voile en haut (logo) et en bas (message)
+    let g = ctx.createLinearGradient(0, 0, 0, 260); g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 260);
+    g = ctx.createLinearGradient(0, H - 560, 0, H); g.addColorStop(0, 'rgba(6,40,40,0)'); g.addColorStop(0.45, 'rgba(6,40,40,0.82)'); g.addColorStop(1, 'rgba(6,40,40,0.95)');
+    ctx.fillStyle = g; ctx.fillRect(0, H - 560, W, 560);
+    // logo en haut à droite
+    const size = 130, mg = 36, cx = W - mg - size/2, cy = mg + size/2;
+    let logoOk = false;
+    try{
+      const lg = await loadImageForCanvas(DATA.groupLogo || 'images/visuel_labd_01.jpg');
+      ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, size/2, 0, Math.PI*2); ctx.clip(); ctx.drawImage(lg, cx - size/2, cy - size/2, size, size); ctx.restore();
+      ctx.save(); ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.arc(cx, cy, size/2, 0, Math.PI*2); ctx.stroke(); ctx.restore();
+      logoOk = true;
+    }catch(e){ console.error('logo', e); }
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8; ctx.font = '800 44px sans-serif';
+    ctx.fillText('LABD Org', logoOk ? cx - size/2 - 18 : W - mg, cy);
+    // message en bas
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.shadowBlur = 10;
+    ctx.font = '700 54px sans-serif'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, H - 330);
+    let fs = 96; ctx.font = `800 ${fs}px sans-serif`;
+    while(fs > 44 && ctx.measureText(x.nom).width > W - 120){ fs -= 4; ctx.font = `800 ${fs}px sans-serif`; }
+    let nameLines = [x.nom];
+    if(ctx.measureText(x.nom).width > W - 120) nameLines = bdayWrap(ctx, x.nom, W - 120).slice(0, 2);
+    nameLines.forEach((ln, i) => ctx.fillText(ln, W/2, H - 230 + i * (fs + 8)));
+    ctx.font = '500 36px sans-serif'; ctx.shadowBlur = 6;
+    const msg = bdayWrap(ctx, 'Toute la famille LABD te souhaite une très belle journée !', W - 160);
+    const baseY = H - 150 + (nameLines.length - 1) * (fs + 8);
+    msg.forEach((ln, i) => ctx.fillText(ln, W/2, Math.min(baseY + i * 46, H - 40 - (msg.length - 1 - i) * 46)));
+    return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('image impossible')), 'image/jpeg', 0.92));
+  })();
+}
+async function bdayShare(i, btn){
+  const x = bdayToday[i]; if(!x) return;
+  const old = btn.innerHTML;
+  const text = `\u{1F382} Joyeux anniversaire ${x.nom} ! \u{1F389}\nToute la famille LABD te souhaite une très belle journée !\n${location.origin && location.origin.startsWith('http') ? location.origin : 'https://labdorg.pages.dev'}`;
+  try{
+    const blob = await bdayPoster(x);
+    const fname = 'anniversaire-' + String(x.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.jpg';
+    const file = new File([blob], fname, { type:'image/jpeg' });
+    if(navigator.canShare && navigator.canShare({ files:[file] })){
+      try{ await navigator.share({ files:[file], text, title:'Joyeux anniversaire' }); return; }
+      catch(e){ if(e && e.name === 'AbortError') return; }
+    }
+    // Ordinateur ou navigateur sans partage de fichier : on télécharge l'image et on ouvre WhatsApp avec le message.
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = fname; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+    btn.textContent = 'Image téléchargée : joignez-la dans WhatsApp';
+    setTimeout(() => { btn.innerHTML = old; }, 6000);
+  }catch(e){
+    console.error('partage anniversaire', e);
+    btn.textContent = "Partage impossible, réessayez";
+    setTimeout(() => { btn.innerHTML = old; }, 4000);
+  }
 }
 // Rappel par mail au bureau concerné : anniversaires de demain et d'aujourd'hui, une seule fois par jour (le premier visiteur du jour le déclenche).
 async function bdayMailCheck(){
@@ -2537,7 +2711,7 @@ async function memberSaveBirthday(){
   const pid = memberSession.promotionId;
   const num = pid === '__main__' ? memberSession.key : memberSession.key.slice(pid.length + 1);
   await saveAnniv(pid, num, val);
-  renderMembers(); renderBdayBanner(); closeModal();
+  renderMembers(); bdayRefresh(); closeModal();
   alert(val ? "Votre anniversaire est enregistré." : "Votre anniversaire a été retiré.");
 }
 function currentMemberAnniv(){
@@ -5697,7 +5871,7 @@ function animateStatNumber(el){
    INIT
 ========================================================== */
 function renderAll(){
-  renderBdayBanner();
+  bdayRefresh();
   applyGroupLogo();
   applyFooterTagline();
   applyHeroPhoto();

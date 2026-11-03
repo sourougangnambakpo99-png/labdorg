@@ -52,12 +52,12 @@ const grp = (label) => { if (!groups.has(label)) groups.set(label, { label, peop
 // Promotion fondatrice : membres ajoutés et modifications ; les adresses d'origine servent de filet.
 const gF = grp('Promotion fondatrice');
 fallbackEmails.forEach(e => gF.extra.add(e));
-Object.entries(overrides).forEach(([num, o]) => { if (!removed.includes(num) && o) gF.people.push({ nom: o.nom, email: o.email, anniv: o.anniv }); });
-extra.forEach(m => { if (!removed.includes(m.num)) gF.people.push({ nom: m.nom, email: m.email, anniv: m.anniv }); });
+Object.entries(overrides).forEach(([num, o]) => { if (!removed.includes(num) && o) gF.people.push({ nom: o.nom, email: o.email, anniv: o.anniv, abbr: o.abbr }); });
+extra.forEach(m => { if (!removed.includes(m.num)) gF.people.push({ nom: m.nom, email: m.email, anniv: m.anniv, abbr: m.abbr }); });
 
 for (const p of Object.values(promotions)) {
   const g = grp(p.nom + (p.annee ? ' ' + p.annee : ''));
-  (p.bureau || []).concat(p.membres || []).forEach(m => g.people.push({ nom: m.nom, email: m.email, anniv: m.anniv }));
+  (p.bureau || []).concat(p.membres || []).forEach(m => g.people.push({ nom: m.nom, email: m.email, anniv: m.anniv, abbr: m.abbr }));
 }
 
 // Tous les destinataires possibles d'un groupe (sans doublon), nom conservé pour ne pas avertir la personne fêtée.
@@ -70,11 +70,14 @@ function recipientsOf(g) {
 }
 
 // ---------- Mail d'anniversaire d'un membre ----------
+const shownPlain = p => p.nom + (p.abbr && String(p.abbr).trim() ? ' (' + String(p.abbr).trim() + ' LABD)' : '');
 const BTN = 'display:inline-block; background:#05b3c2; color:#ffffff; padding:12px 24px; border-radius:999px; text-decoration:none; font-weight:bold;';
+// Nom affiché, suivi du poste s'il y en a un (ex. « Nom (PR LABD) »).
+const shown = p => esc(p.nom) + (p.abbr && String(p.abbr).trim() ? ' (' + esc(String(p.abbr).trim()) + ' LABD)' : '');
 function memberMailBody(label, nowNames, nextNames) {
   const lignes = [];
-  if (nowNames.length) lignes.push("🎂 <b>Anniversaire aujourd'hui</b> : 🎉 " + esc(nowNames.join(', ')) + ' 🥳');
-  if (nextNames.length) lignes.push('🎈 <b>Anniversaire demain</b> : ' + esc(nextNames.join(', ')) + ' ⏰');
+  if (nowNames.length) lignes.push("🎂 <b>Anniversaire aujourd'hui</b> : 🎉 " + nowNames.map(shown).join(', ') + ' 🥳');
+  if (nextNames.length) lignes.push('🎈 <b>Anniversaire demain</b> : ' + nextNames.map(shown).join(', ') + ' ⏰');
   const pron = (nowNames.length ? nowNames : nextNames).length > 1 ? 'leur' : 'lui';
   const appel = nowNames.length
     ? `👉 Rendez-vous sur le site pour ${pron} souhaiter un joyeux anniversaire : un message de fête s'affiche à l'ouverture, avec un bouton pour le partager sur WhatsApp.`
@@ -149,20 +152,20 @@ const mails = []; // { label, subject, html, to:[emails], attachments? }
 
 // ---------- Anniversaires des membres : un mail à tous les membres du groupe ----------
 for (const g of groups.values()) {
-  const now = g.people.filter(m => m.nom && m.anniv === todayK).map(m => m.nom);
-  const next = g.people.filter(m => m.nom && m.anniv === tomorrowK).map(m => m.nom);
+  const now = g.people.filter(m => m.nom && m.anniv === todayK);
+  const next = g.people.filter(m => m.nom && m.anniv === tomorrowK);
   if (!now.length && !next.length) continue;
   // Chaque membre reçoit le mail, sauf pour sa propre fête (la surprise reste entière).
   const buckets = new Map();
   for (const r of recipientsOf(g)) {
-    const n = now.filter(x => norm(x) !== norm(r.nom)), t = next.filter(x => norm(x) !== norm(r.nom));
+    const n = now.filter(x => norm(x.nom) !== norm(r.nom)), t = next.filter(x => norm(x.nom) !== norm(r.nom));
     if (!n.length && !t.length) continue;
-    const k = JSON.stringify([n, t]);
+    const k = JSON.stringify([n.map(x => x.nom), t.map(x => x.nom)]);
     if (!buckets.has(k)) buckets.set(k, { n, t, to: [] });
     buckets.get(k).to.push(r.email);
   }
   for (const b of buckets.values()) {
-    mails.push({ label: g.label, subject: '🎂 RAPPEL ANNIVERSAIRE', html: memberMailBody(g.label, b.n, b.t), to: b.to, lignes: [b.n, b.t] });
+    mails.push({ label: g.label, subject: '🎂 RAPPEL ANNIVERSAIRE', html: memberMailBody(g.label, b.n, b.t), to: b.to, lignes: [b.n.map(x => shownPlain(x)), b.t.map(x => shownPlain(x))] });
   }
 }
 

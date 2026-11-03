@@ -612,12 +612,12 @@
   .bday-photo{display:block; width:160px; height:160px; border-radius:50%; object-fit:cover; margin:0 auto 12px; border:5px solid #fff; box-shadow:0 0 0 4px #05b3c2, 0 10px 28px rgba(0,0,0,0.3);}
   .bday-photo.small{width:100px; height:100px;}
   #bdayModal .bday-card{padding:14px;}
-  .bday-slot{min-height:120px; display:flex; align-items:center; justify-content:center;}
+  .bday-slot{min-height:120px; display:flex; align-items:center; justify-content:center; margin-bottom:18px;}
   .bday-wait{color:#5c6f7a; font-size:.95rem;}
-  .bday-poster{display:block; max-width:100%; width:auto; height:auto; max-height:calc(100vh - 215px); max-height:calc(100dvh - 215px); border-radius:12px; box-shadow:0 6px 22px rgba(0,0,0,0.3);}
+  .bday-poster{display:block; max-width:100%; width:auto; height:auto; max-height:calc(100vh - 240px); max-height:calc(100dvh - 240px); border-radius:12px; box-shadow:0 6px 22px rgba(0,0,0,0.3);}
   .bday-card.multi .bday-poster{max-height:62vh; max-height:62dvh;}
   #bdayModal .bday-person{margin:0 0 12px; padding-bottom:12px;}
-  #bdayModal .bday-ok{margin-top:2px;}
+  #bdayModal .bday-ok{margin-top:6px;}
   .bday-photo.group{width:100%; height:auto; max-height:240px; border-radius:16px; object-fit:cover;}
   .bday-photo.ph.group{height:140px; font-size:3.4rem;}
   .bday-photo.ph{display:flex; align-items:center; justify-content:center; font-size:3.2rem; font-weight:800; color:#fff; background:linear-gradient(135deg,#13284a,#05b3c2);}
@@ -2612,6 +2612,20 @@ function bdayWrap(ctx, text, maxW){
   words.forEach(w => { const t = cur ? cur + ' ' + w : w; if(ctx.measureText(t).width > maxW && cur){ lines.push(cur); cur = w; } else cur = t; });
   if(cur) lines.push(cur); return lines;
 }
+// Dessine l'image `im` en "cover" dans un rectangle, floutée (sert de fond au pied de page et aux zones libres).
+function bdayBlurCover(ctx, im, rx, ry, rw, rh, blur){
+  const iw = im.naturalWidth, ih = im.naturalHeight, k = Math.max(rw / iw, rh / ih), dw = iw * k, dh = ih * k;
+  ctx.save(); ctx.beginPath(); ctx.rect(rx, ry, rw, rh); ctx.clip();
+  if('filter' in ctx){
+    ctx.filter = `blur(${blur}px)`; ctx.drawImage(im, rx + (rw - dw) / 2 - blur, ry + (rh - dh) / 2 - blur, dw + blur * 2, dh + blur * 2); ctx.filter = 'none';
+  } else {
+    // navigateurs sans filtre de flou : réduction puis agrandissement lissé
+    const sm = document.createElement('canvas'); sm.width = Math.max(8, Math.round(rw / 30)); sm.height = Math.max(8, Math.round(rh / 30));
+    const sc = sm.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(im, ((rw - dw) / 2) / 30, ((rh - dh) / 2) / 30, dw / 30, dh / 30);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(sm, rx, ry, rw, rh);
+  }
+  ctx.restore();
+}
 function bdayPoster(x){
   const key = x.nom + '|' + x.anniv + '|' + (x.abbr || '') + '|' + (x.photo ? x.photo.length : 0);
   if(bdayPosterCache[key]) return bdayPosterCache[key];
@@ -2628,28 +2642,36 @@ function bdayPoster(x){
     const msg = bdayWrap(mc, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 140);
     const nameLH = fs + 6, bar = 14;
     const footH = 28 + 52 + 12 + nameLines.length * nameLH + (abbrLine ? 54 : 0) + 22 + msg.length * 42 + 26 + bar;
-    // 2) La photo occupe toute la largeur et toute la zone du haut, sans cadre : l'affiche s'adapte à sa forme.
+    // 2) Format : jamais plus haut que 3:4 (WhatsApp rogne les images plus hautes dans la conversation).
     let im = null;
     if(x.photo){ try{ im = await loadImageForCanvas(x.photo); }catch(e){ console.error('photo membre', e); } }
-    // Hauteur totale plafonnée à 3:4 : WhatsApp rogne les images plus hautes dans la conversation (logo et texte coupés).
-    const maxPhotoH = Math.round(W * 4 / 3) - footH;
-    const photoH = im ? Math.round(Math.min(maxPhotoH, Math.max(760, W * im.naturalHeight / im.naturalWidth))) : Math.min(1000, maxPhotoH);
-    const H = photoH + footH;
+    const maxH = Math.round(W * 4 / 3);
+    let H = 1200, natH = 0, landscape = false;
+    if(im){
+      natH = Math.round(W * im.naturalHeight / im.naturalWidth);
+      landscape = im.naturalHeight / im.naturalWidth < 0.95;
+      H = landscape ? Math.min(maxH, Math.max(1000, natH + footH)) : Math.min(maxH, Math.max(1100, natH));
+    }
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
-    const bg = ctx.createLinearGradient(0, 0, W, photoH); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, photoH);
+    const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // 3) La photo couvre TOUTE l'affiche, y compris derrière le pied de page (qui est en verre flouté).
     if(im){
-      const iw = im.naturalWidth, ih = im.naturalHeight;
-      const k = Math.max(W / iw, photoH / ih), dw = iw * k, dh = ih * k;
-      ctx.drawImage(im, (W - dw) / 2, dh > photoH ? -(dh - photoH) * 0.3 : 0, dw, dh);
+      if(landscape){
+        bdayBlurCover(ctx, im, 0, 0, W, H, 34);                  // fond flou
+        ctx.drawImage(im, 0, 0, W, Math.min(natH, H));            // photo entière en largeur
+      } else {
+        const iw = im.naturalWidth, ih = im.naturalHeight, k = Math.max(W / iw, H / ih), dw = iw * k, dh = ih * k;
+        ctx.drawImage(im, (W - dw) / 2, dh > H ? -(dh - H) * 0.3 : 0, dw, dh);   // recadrage minimal, vers le haut
+      }
     } else {
       const r = 300;
-      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, photoH/2, r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, (H - footH) / 2, r, 0, Math.PI*2); ctx.fill();
       ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(r*0.95)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(initials(x.nom), W/2, photoH/2 + 8);
+      ctx.fillText(initials(x.nom), W/2, (H - footH) / 2 + 8);
     }
-    // 3) Logo en haut à droite, placé AVANT le texte « LABD Org »
+    // 4) Logo en haut à droite, placé AVANT le texte « LABD Org »
     let g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, 170);
     const size = 120, mg = 32, cy = mg + size/2, gap = 16;
@@ -2667,11 +2689,14 @@ function bdayPoster(x){
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
     ctx.fillText('LABD Org', lg ? x0 + size + gap : W - mg - tw, cy);
     ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-    // 4) Pied de page : fond marine, liseré turquoise, texte
-    ctx.fillStyle = '#0b1c33'; ctx.fillRect(0, photoH, W, footH);
-    ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, photoH, W, 6); ctx.fillRect(0, H - bar, W, bar);
+    // 5) Pied de page en verre flouté : on voit la photo en transparence, floutée, derrière le texte
+    const fy = H - footH;
+    if(im) bdayBlurCover(ctx, im, 0, fy, W, footH, 30);
+    ctx.fillStyle = im ? 'rgba(11,28,51,0.66)' : 'rgba(11,28,51,0.85)'; ctx.fillRect(0, fy, W, footH);
+    ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, fy, W, 6); ctx.fillRect(0, H - bar, W, bar);
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    let y = photoH + 28 + 42;
+    let y = fy + 28 + 42;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 6;
     ctx.font = '700 46px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, y);
     y += 12 + fs;
     ctx.font = `800 ${fs}px sans-serif`; ctx.fillStyle = '#fff';
@@ -2679,7 +2704,7 @@ function bdayPoster(x){
     y += (nameLines.length - 1) * nameLH;
     if(abbrLine){ y += 54; ctx.font = '800 42px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText(abbrLine, W/2, y); }
     y += 22 + 30;
-    ctx.font = '500 32px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = '500 32px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.95)';
     msg.forEach((ln, i) => ctx.fillText(ln, W/2, y + i * 42));
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('image impossible')), 'image/jpeg', 0.92));
   })();

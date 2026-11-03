@@ -611,6 +611,13 @@
   .bday-person:last-of-type{border-bottom:0;}
   .bday-photo{display:block; width:160px; height:160px; border-radius:50%; object-fit:cover; margin:0 auto 12px; border:5px solid #fff; box-shadow:0 0 0 4px #05b3c2, 0 10px 28px rgba(0,0,0,0.3);}
   .bday-photo.small{width:100px; height:100px;}
+  #bdayModal .bday-card{padding:14px;}
+  .bday-slot{min-height:120px; display:flex; align-items:center; justify-content:center;}
+  .bday-wait{color:#5c6f7a; font-size:.95rem;}
+  .bday-poster{display:block; max-width:100%; width:auto; height:auto; max-height:calc(100vh - 215px); max-height:calc(100dvh - 215px); border-radius:12px; box-shadow:0 6px 22px rgba(0,0,0,0.3);}
+  .bday-card.multi .bday-poster{max-height:62vh; max-height:62dvh;}
+  #bdayModal .bday-person{margin:0 0 12px; padding-bottom:12px;}
+  #bdayModal .bday-ok{margin-top:2px;}
   .bday-photo.group{width:100%; height:auto; max-height:240px; border-radius:16px; object-fit:cover;}
   .bday-photo.ph.group{height:140px; font-size:3.4rem;}
   .bday-photo.ph{display:flex; align-items:center; justify-content:center; font-size:3.2rem; font-weight:800; color:#fff; background:linear-gradient(135deg,#13284a,#05b3c2);}
@@ -2556,28 +2563,36 @@ function bdayUpdateFab(){
 function openBdayModal(){
   if(document.getElementById('bdayModal') || !bdayToday.length) return;
   const many = promotionsSorted().length > 0, multi = bdayToday.length > 1;
-  const people = bdayToday.map((x, i) => {
+  // Repli si l'image n'a pas pu être préparée : photo + nom en texte.
+  const fallback = x => {
     const ph = x.group
       ? (x.photo ? `<img class="bday-photo group" src="${x.photo}" alt="LABD">` : `<div class="bday-photo ph group">&#127881;</div>`)
-      : (x.photo ? `<img class="bday-photo${multi ? ' small' : ''}" src="${x.photo}" alt="${bdayEsc(x.nom)}">`
-                 : `<div class="bday-photo ph${multi ? ' small' : ''}">${bdayEsc(initials(x.nom))}</div>`);
+      : (x.photo ? `<img class="bday-photo${multi ? ' small' : ''}" src="${x.photo}" alt="${bdayEsc(x.nom)}">` : `<div class="bday-photo ph${multi ? ' small' : ''}">${bdayEsc(initials(x.nom))}</div>`);
     const sub = x.group ? `LABD fête ses ${x.years} an${x.years > 1 ? 's' : ''} !` : [x.abbr ? bdayEsc(x.abbr) + ' LABD' : '', many ? bdayEsc(x.label) : ''].filter(Boolean).join(' · ');
-    return `<div class="bday-person">${ph}<div class="bday-names">${bdayEsc(x.nom)}${sub ? `<small>${sub}</small>` : ''}</div>
-      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div></div>`;
-  }).join('');
+    return `${ph}<div class="bday-names">${bdayEsc(x.nom)}${sub ? `<small>${sub}</small>` : ''}</div><p class="bday-msg">${x.group ? 'Merci à chacun de vous : ensemble, nous avons fait grandir LABD !' : 'Toute la famille LABD vous souhaite une très belle journée !'}</p>`;
+  };
+  // L'affiche complète (photo, logo, nom, poste, message) s'affiche directement : rien à ouvrir pour la voir.
+  const people = bdayToday.map((x, i) => `<div class="bday-person" data-i="${i}">
+      <div class="bday-slot"><div class="bday-wait">Préparation de l'image…</div></div>
+      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div></div>`).join('');
   const m = document.createElement('div'); m.id = 'bdayModal';
   const colors = ['#05b3c2','#13284a','#048b98','#7fe3ec','#f59e0b','#ffffff'];
   let conf = ''; for(let i = 0; i < 40; i++){ conf += `<i class="bday-confetti" style="left:${Math.random()*100}%; background:${colors[i % colors.length]}; animation-duration:${3 + Math.random()*3}s; animation-delay:${Math.random()*2}s;"></i>`; }
-  m.innerHTML = conf + `<div class="bday-card" role="dialog" aria-modal="true" aria-label="Joyeux anniversaire">
-    <div class="bday-emoji">&#127874;</div>
-    <div class="bday-head">Joyeux anniversaire</div>
+  m.innerHTML = conf + `<div class="bday-card${multi ? ' multi' : ''}" role="dialog" aria-modal="true" aria-label="Joyeux anniversaire">
     ${people}
-    <p class="bday-msg">${bdayToday.every(x => x.group) ? 'Merci à chacun de vous : ensemble, nous avons fait grandir LABD !' : 'Toute la famille LABD vous souhaite une très belle journée !'}</p>
     <button type="button" class="bday-ok" onclick="bdayClose()">Merci !</button>
     <p class="bday-hint">Ce message reste en haut à droite de l'écran pour le revoir et le partager.</p></div>`;
   m.addEventListener('click', e => { if(e.target === m) bdayClose(); });
   document.body.appendChild(m);
-  bdayToday.forEach(x => bdayPoster(x).catch(() => {})); // prépare les images à partager
+  bdayToday.forEach((x, i) => {
+    const slot = m.querySelector(`.bday-person[data-i="${i}"] .bday-slot`);
+    bdayPoster(x).then(blob => {
+      if(!slot.isConnected) return;
+      const img = new Image(); img.className = 'bday-poster'; img.alt = 'Joyeux anniversaire ' + x.nom;
+      img.onload = () => { slot.innerHTML = ''; slot.appendChild(img); };
+      img.src = URL.createObjectURL(blob);
+    }).catch(() => { if(slot.isConnected) slot.innerHTML = fallback(x); });
+  });
 }
 function bdayClose(){
   const m = document.getElementById('bdayModal'); if(!m) return;

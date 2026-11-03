@@ -596,7 +596,8 @@
   .modal-box{background:var(--paper); border-radius:14px; padding:30px; max-width:420px; width:100%; max-height:86vh; overflow-y:auto;}
   .modal-box.wide{max-width:900px;}
   #fsViewer{position:fixed; inset:0; z-index:9000; background:#000; display:flex; flex-direction:column;}
-  #fsViewer .fs-top{position:absolute; top:0; left:0; right:0; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; background:linear-gradient(180deg, rgba(0,0,0,0.65), rgba(0,0,0,0));}
+  #fsViewer .fs-top{position:absolute; top:0; left:0; right:0; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:12px 14px; pointer-events:none;}
+  #fsViewer .fs-top .fs-close{pointer-events:auto; background:rgba(0,0,0,0.55);}
   #fsViewer .fs-top{justify-content:flex-end;}
   /* ----- Fenêtre d'anniversaire (ouverture du site) + bulle dans le coin ----- */
   #bdayModal{position:fixed; inset:0; z-index:9500; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(8,20,24,0.72); overflow:hidden;}
@@ -641,19 +642,6 @@
   #bdayFab .fab-badge{position:absolute; top:-10px; right:-10px; min-width:36px; height:36px; border-radius:18px; background:#f59e0b; color:#fff; font-size:1.3rem; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(0,0,0,.35);}
   #bdayFab .fab-count{position:absolute; bottom:-8px; left:50%; transform:translateX(-50%); background:#048b98; color:#fff; font-size:.85rem; font-weight:700; border-radius:10px; padding:1px 7px; border:2px solid #fff;}
   @media(prefers-reduced-motion:reduce){ #bdayModal .bday-emoji, #bdayModal .bday-card, #bdayFab, #bdayFab::before, #bdayFab .fab-shine::after{animation:none !important;} #bdayModal .bday-confetti{display:none;} }
-  /* ----- Encart des anniversaires dans la section Membres ----- */
-  .bd2{margin:0 0 26px; border-radius:18px; overflow:hidden; border:1px solid var(--line); background:var(--card,#fff); box-shadow:0 8px 28px rgba(11,110,109,0.14);}
-  .bd2-body{padding:16px 20px 20px;}
-  .bd2-av{width:48px; height:48px; border-radius:50%; object-fit:cover; flex:none; background:#048b98; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;}
-  .bd2-av.big{width:76px; height:76px; font-size:1.5rem; border:3px solid #fff; box-shadow:0 0 0 3px #f59e0b;}
-  .bd2-sec{font-size:.82rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--teal-dark); margin:16px 0 8px;}
-  .bd2-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px;}
-  .bd2-row{display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--line); border-radius:12px; cursor:pointer;}
-  .bd2-row.past{opacity:.55;}
-  .bd2-row.today{border-color:#f59e0b; background:rgba(245,158,11,0.12);}
-  .bd2-row b{display:block;}
-  .bd2-row small{display:block; color:var(--muted-2,#667);}
-  .bd2-row small em{font-style:normal; font-weight:700; color:var(--teal-dark);}
   #fsViewer .fs-media{position:relative; display:inline-flex; max-width:100%; max-height:100%;}
   #fsViewer .fs-media.fs-iframe{width:100%; height:70vh;}
   #fsViewer .fs-mark{position:absolute; top:max(10px, calc(var(--fs-w, 360px) * 0.022)); right:max(10px, calc(var(--fs-w, 360px) * 0.022)); display:flex; align-items:center; gap:max(8px, calc(var(--fs-w, 360px) * 0.016)); pointer-events:none; color:#fff; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:max(20px, calc(var(--fs-w, 360px) * 0.042)); line-height:1; text-shadow:0 2px 8px rgba(0,0,0,0.8);}
@@ -662,7 +650,7 @@
   #fsViewer .fs-stage{flex:1; display:flex; align-items:center; justify-content:center; min-height:0; touch-action:pinch-zoom;}
   #fsViewer .fs-stage .fs-media > img, #fsViewer .fs-stage .fs-media > video{max-width:100vw; max-height:100vh; width:auto; height:auto; object-fit:contain; display:block;}
   #fsViewer .fs-stage video{cursor:pointer;}
-  #fsViewer .fs-cap{position:absolute; left:0; right:0; bottom:0; padding:26px 16px 18px; color:#fff; font-size:0.9rem; background:linear-gradient(0deg, rgba(0,0,0,0.7), rgba(0,0,0,0)); pointer-events:none;}
+  #fsViewer .fs-cap{position:static; flex:none; padding:10px 16px 14px; color:#fff; font-size:0.9rem; text-align:center; background:#000; pointer-events:none;}
   #fsViewer .fs-sound{position:absolute; right:14px; bottom:70px; z-index:2; background:rgba(255,255,255,0.2); color:#fff; border:0; border-radius:20px; padding:8px 14px; font-size:0.82rem; cursor:pointer;}
   .modal-box.lb{padding:14px; display:flex; flex-direction:column; overflow:hidden; max-height:calc(100vh - 40px); max-height:calc(100dvh - 40px);}
   .modal-box.lb > div:first-child{flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center;}
@@ -2125,7 +2113,8 @@ function fsSizeMark(){
   let w;
   if(nw && nh && el.tagName !== 'IFRAME'){
     // L'image est agrandie (ou réduite) pour occuper tout l'écran disponible, sans être déformée.
-    const k = Math.min(window.innerWidth / nw, window.innerHeight / nh, 4);
+    const st = document.querySelector('#fsViewer .fs-stage');
+    const k = Math.min((st ? st.clientWidth : window.innerWidth) / nw, (st ? st.clientHeight : window.innerHeight) / nh, 4);
     w = Math.round(nw * k);
     el.style.setProperty('max-width', 'none', 'important'); el.style.setProperty('max-height', 'none', 'important');
     el.style.setProperty('width', w + 'px', 'important'); el.style.setProperty('height', Math.round(nh * k) + 'px', 'important');
@@ -2485,44 +2474,6 @@ function bdayPeople(){
   return all.filter(m => m.nom && /^\d\d-\d\d$/.test(m.anniv || ''));
 }
 function bdayLabel(a){ const [m, d] = a.split('-').map(Number); return (d === 1 ? '1er' : d) + ' ' + MOIS_FR[m-1]; }
-function bdayPeopleP(){
-  const promo = activePromotion(), out = [];
-  const add = (list, store, prefix) => (list || []).forEach(m => {
-    if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, photo:effectivePhoto(store, prefix + m.num, m.photo) });
-  });
-  if(promo){ add(promo.bureau, DATA.bureauPhotos, promo.id + '_'); add(promo.membres, DATA.memberPhotos, promo.id + '_'); }
-  else { add(getBureauList(), DATA.bureauPhotos, ''); add(getMembresList(), DATA.memberPhotos, ''); }
-  return out;
-}
-function bd2Avatar(x, big){
-  return x.photo ? `<img class="bd2-av${big?' big':''}" src="${x.photo}" alt="">` : `<div class="bd2-av${big?' big':''}">${bdayEsc(initials(x.nom))}</div>`;
-}
-function bdayHTML(){
-  const ppl = bdayPeopleP(); if(!ppl.length) return '';
-  const now = new Date(), t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const curM = now.getMonth() + 1, nextM = curM % 12 + 1;
-  const info = ppl.map(x => {
-    const [mm, dd] = x.anniv.split('-').map(Number);
-    let d = new Date(now.getFullYear(), mm-1, dd); if(d < t0) d = new Date(now.getFullYear()+1, mm-1, dd);
-    return Object.assign({ mm, dd, days: Math.round((d - t0) / 86400000) }, x);
-  });
-  const byDay = (a, b) => a.dd - b.dd;
-  const month = info.filter(x => x.mm === curM).sort(byDay);
-  const next = info.filter(x => x.mm === nextM).sort(byDay);
-  const row = x => {
-    const past = x.mm === curM && x.dd < now.getDate();
-    const st = x.days === 0 ? "Aujourd'hui" : x.days === 1 ? 'Demain' : past ? 'Déjà fêté' : x.days <= 30 ? 'dans ' + x.days + ' j' : '';
-    return `<div class="bd2-row${x.days === 0 ? ' today' : ''}${past ? ' past' : ''}" onclick="openProfileModal('${encodeURIComponent(x.nom)}')">${bd2Avatar(x)}<div><b>${bdayEsc(x.nom)}</b><small>${bdayLabel(x.anniv)}${st ? ' · <em>' + st + '</em>' : ''}</small></div></div>`;
-  };
-  return `<div class="bd2">
-    
-    <div class="bd2-body">
-      ${month.length ? `<div class="bd2-sec">Ce mois-ci · ${MOIS_FR[curM-1]}</div><div class="bd2-grid">${month.map(row).join('')}</div>` : ''}
-      ${next.length ? `<div class="bd2-sec">Le mois prochain · ${MOIS_FR[nextM-1]}</div><div class="bd2-grid">${next.map(row).join('')}</div>` : ''}
-      ${!month.length && !next.length ? `<div class="bd2-sec">À venir</div><div class="bd2-grid">${info.slice().sort((a, b) => a.days - b.days).slice(0, 6).map(row).join('')}</div>` : ''}
-    </div>
-  </div>`;
-}
 // Tous les anniversaires du site, toutes promotions confondues (fenêtre d'ouverture et rappel par mail).
 function bdayAllGroups(){
   const out = [];
@@ -2610,7 +2561,7 @@ function openBdayModal(){
                  : `<div class="bday-photo ph${multi ? ' small' : ''}">${bdayEsc(initials(x.nom))}</div>`);
     const sub = x.group ? `LABD fête ses ${x.years} an${x.years > 1 ? 's' : ''} !` : [x.abbr ? bdayEsc(x.abbr) + ' LABD' : '', many ? bdayEsc(x.label) : ''].filter(Boolean).join(' · ');
     return `<div class="bday-person">${ph}<div class="bday-names">${bdayEsc(x.nom)}${sub ? `<small>${sub}</small>` : ''}</div>
-      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager (WhatsApp, statut…)</button></div></div>`;
+      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div></div>`;
   }).join('');
   const m = document.createElement('div'); m.id = 'bdayModal';
   const colors = ['#05b3c2','#13284a','#048b98','#7fe3ec','#f59e0b','#ffffff'];
@@ -2621,7 +2572,7 @@ function openBdayModal(){
     ${people}
     <p class="bday-msg">${bdayToday.every(x => x.group) ? 'Merci à chacun de vous : ensemble, nous avons fait grandir LABD !' : 'Toute la famille LABD vous souhaite une très belle journée !'}</p>
     <button type="button" class="bday-ok" onclick="bdayClose()">Merci !</button>
-    <p class="bday-hint">Pour le statut : choisissez WhatsApp, puis « Mon statut ». Ce message reste en haut à droite de l'écran pour le revoir et le partager.</p></div>`;
+    <p class="bday-hint">Ce message reste en haut à droite de l'écran pour le revoir et le partager.</p></div>`;
   m.addEventListener('click', e => { if(e.target === m) bdayClose(); });
   document.body.appendChild(m);
   bdayToday.forEach(x => bdayPoster(x).catch(() => {})); // prépare les images à partager
@@ -2645,47 +2596,52 @@ function bdayWrap(ctx, text, maxW){
   if(cur) lines.push(cur); return lines;
 }
 function bdayPoster(x){
-  const key = x.nom + '|' + x.anniv + '|' + (x.photo ? x.photo.length : 0);
+  const key = x.nom + '|' + x.anniv + '|' + (x.abbr || '') + '|' + (x.photo ? x.photo.length : 0);
   if(bdayPosterCache[key]) return bdayPosterCache[key];
   return bdayPosterCache[key] = (async () => {
     const W = 1080, H = 1350;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
-    const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
-    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    // 1) Le texte est mesuré d'abord : il occupe un pied de page séparé, la photo garde tout le reste.
+    const abbrLine = (!x.group && x.abbr) ? x.abbr + ' LABD' : '';
+    let fs = 84; ctx.font = `800 ${fs}px sans-serif`;
+    while(fs > 40 && ctx.measureText(x.nom).width > W - 100){ fs -= 4; ctx.font = `800 ${fs}px sans-serif`; }
+    let nameLines = [x.nom];
+    if(ctx.measureText(x.nom).width > W - 100) nameLines = bdayWrap(ctx, x.nom, W - 100).slice(0, 2);
+    ctx.font = '500 32px sans-serif';
+    const msg = bdayWrap(ctx, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 140);
+    const nameLH = fs + 6, bar = 14;
+    const footH = 28 + 52 + 12 + nameLines.length * nameLH + (abbrLine ? 54 : 0) + 22 + msg.length * 42 + 26 + bar;
+    const photoH = H - footH;
+    // 2) Zone photo : fond flou + photo ENTIÈRE (rien n'est coupé, même pour un selfie).
+    const bg = ctx.createLinearGradient(0, 0, W, photoH); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, photoH);
     let hasPhoto = false;
     if(x.photo){
       try{
         const im = await loadImageForCanvas(x.photo);
-        const k = Math.max(W / im.naturalWidth, H / im.naturalHeight);
-        const dw = im.naturalWidth * k, dh = im.naturalHeight * k;
-        if(x.group){
-          // Photo d'ensemble (paysage) : fond flou + photo entière, sans couper les gens sur les côtés.
-          try{ ctx.filter = 'blur(28px)'; }catch(e){}
-          ctx.drawImage(im, (W - dw) / 2 - 40, (H - dh) * 0.3 - 40, dw + 80, dh + 80);
-          try{ ctx.filter = 'none'; }catch(e){}
-          const fw = W, fh = im.naturalHeight * W / im.naturalWidth;
-          ctx.drawImage(im, 0, Math.max(130, (H - 420 - fh) / 2 + 40), fw, fh);
-        } else {
-          ctx.drawImage(im, (W - dw) / 2, (H - dh) * 0.3, dw, dh);
-        }
+        const iw = im.naturalWidth, ih = im.naturalHeight;
+        ctx.save(); ctx.beginPath(); ctx.rect(0, 0, W, photoH); ctx.clip();
+        const kc = Math.max(W / iw, photoH / ih);
+        if('filter' in ctx){ ctx.filter = 'blur(30px)'; ctx.drawImage(im, (W - iw*kc) / 2 - 40, (photoH - ih*kc) / 2 - 40, iw*kc + 80, ih*kc + 80); ctx.filter = 'none'; }
+        else { ctx.drawImage(im, (W - iw*kc) / 2, (photoH - ih*kc) / 2, iw*kc, ih*kc); ctx.fillStyle = 'rgba(11,28,51,0.6)'; ctx.fillRect(0, 0, W, photoH); }
+        ctx.restore();
+        const kf = Math.min(W / iw, photoH / ih);
+        ctx.drawImage(im, (W - iw*kf) / 2, (photoH - ih*kf) / 2, iw*kf, ih*kf);
         hasPhoto = true;
       }catch(e){ console.error('photo membre', e); }
     }
     if(!hasPhoto){
-      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, 520, 300, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = '800 280px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(initials(x.nom), W/2, 530);
+      const r = Math.min(300, photoH * 0.32);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, photoH/2, r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(r*0.95)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(initials(x.nom), W/2, photoH/2 + 8);
     }
-    // voile en haut (logo) et en bas (message)
-    let g = ctx.createLinearGradient(0, 0, 0, 260); g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 260);
-    g = ctx.createLinearGradient(0, H - 560, 0, H); g.addColorStop(0, 'rgba(11,28,51,0)'); g.addColorStop(0.45, 'rgba(11,28,51,0.82)'); g.addColorStop(1, 'rgba(11,28,51,0.95)');
-    ctx.fillStyle = g; ctx.fillRect(0, H - 560, W, 560);
-    ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, H - 14, W, 14);
-    // logo en haut à droite, placé AVANT le texte « LABD Org »
-    const size = 130, mg = 36, cy = mg + size/2, gap = 18;
-    ctx.font = '800 44px sans-serif';
+    // 3) Logo en haut à droite, placé AVANT le texte « LABD Org »
+    let g = ctx.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, 'rgba(0,0,0,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 200);
+    const size = 120, mg = 32, cy = mg + size/2, gap = 16;
+    ctx.font = '800 42px sans-serif';
     const tw = ctx.measureText('LABD Org').width;
     let lg = null;
     try{ lg = await loadImageForCanvas(DATA.groupLogo || 'images/visuel_labd_01.jpg'); }catch(e){ console.error('logo', e); }
@@ -2698,22 +2654,21 @@ function bdayPoster(x){
     ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = '#fff';
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
     ctx.fillText('LABD Org', lg ? x0 + size + gap : W - mg - tw, cy);
-    // message en bas
-    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.shadowBlur = 10;
-    const abbrLine = (!x.group && x.abbr) ? x.abbr + ' LABD' : '';
-    const off = abbrLine ? 64 : 0;
-    ctx.font = '700 54px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, H - 330 - off); ctx.fillStyle = '#fff';
-    let fs = 96; ctx.font = `800 ${fs}px sans-serif`;
-    while(fs > 44 && ctx.measureText(x.nom).width > W - 120){ fs -= 4; ctx.font = `800 ${fs}px sans-serif`; }
-    let nameLines = [x.nom];
-    if(ctx.measureText(x.nom).width > W - 120) nameLines = bdayWrap(ctx, x.nom, W - 120).slice(0, 2);
-    nameLines.forEach((ln, i) => ctx.fillText(ln, W/2, H - 230 - off + i * (fs + 8)));
-    let lastY = H - 230 - off + (nameLines.length - 1) * (fs + 8);
-    if(abbrLine){ ctx.font = '800 50px sans-serif'; ctx.fillStyle = '#6fe6f0'; lastY += 66; ctx.fillText(abbrLine, W/2, lastY); ctx.fillStyle = '#fff'; }
-    ctx.font = '500 36px sans-serif'; ctx.shadowBlur = 6;
-    const msg = bdayWrap(ctx, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 160);
-    const baseY = lastY + 80;
-    msg.forEach((ln, i) => ctx.fillText(ln, W/2, Math.min(baseY + i * 46, H - 40 - (msg.length - 1 - i) * 46)));
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+    // 4) Pied de page : fond marine, liseré turquoise, texte
+    ctx.fillStyle = '#0b1c33'; ctx.fillRect(0, photoH, W, footH);
+    ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, photoH, W, 6); ctx.fillRect(0, H - bar, W, bar);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    let y = photoH + 28 + 42;
+    ctx.font = '700 46px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, y);
+    y += 12 + fs;
+    ctx.font = `800 ${fs}px sans-serif`; ctx.fillStyle = '#fff';
+    nameLines.forEach((ln, i) => ctx.fillText(ln, W/2, y + i * nameLH));
+    y += (nameLines.length - 1) * nameLH;
+    if(abbrLine){ y += 54; ctx.font = '800 42px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText(abbrLine, W/2, y); }
+    y += 22 + 30;
+    ctx.font = '500 32px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    msg.forEach((ln, i) => ctx.fillText(ln, W/2, y + i * 42));
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('image impossible')), 'image/jpeg', 0.92));
   })();
 }
@@ -2724,12 +2679,13 @@ async function bdayShare(i, btn){
     const blob = await bdayPoster(x);
     const fname = 'anniversaire-' + String(x.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.jpg';
     const file = new File([blob], fname, { type:'image/jpeg' });
-    // Partage de l'image seule : dans WhatsApp on choisit une discussion ou « Mon statut ».
-    if(navigator.canShare && navigator.canShare({ files:[file] })){
+    // Téléphone : feuille de partage du système, avec l'image seule.
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || !!(navigator.userAgentData && navigator.userAgentData.mobile);
+    if(mobile && navigator.canShare && navigator.canShare({ files:[file] })){
       try{ await navigator.share({ files:[file] }); return; }
       catch(e){ if(e && e.name === 'AbortError') return; }
     }
-    // Ordinateur ou navigateur sans partage de fichier : l'image est téléchargée, à publier dans WhatsApp (discussion ou statut).
+    // Ordinateur : l'image est téléchargée, à publier ensuite dans WhatsApp.
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = fname; a.style.display = 'none';
     document.body.appendChild(a); a.click();
@@ -3578,14 +3534,14 @@ function renderMembers(){
   const list = promo ? (promo.membres || []) : getMembresList();
   const keyOf = m => promo ? promo.id + '_' + m.num : m.num;
   if(promo && !list.length){
-    wrap.innerHTML = bdayHTML() + '<p class="form-note">Aucun membre enregistré pour cette promotion pour le moment.</p>';
+    wrap.innerHTML = '<p class="form-note">Aucun membre enregistré pour cette promotion pour le moment.</p>';
     return;
   }
   if(!membersOpen){
-    wrap.innerHTML = bdayHTML() + `<div class="discover-cta"><button class="btn-primary" onclick="membersOpen=true; renderMembers();">${ICONS.info} Découvrir tous les LABDiens (${list.length})</button></div>`;
+    wrap.innerHTML = `<div class="discover-cta"><button class="btn-primary" onclick="membersOpen=true; renderMembers();">${ICONS.info} Découvrir tous les LABDiens (${list.length})</button></div>`;
     return;
   }
-  wrap.innerHTML = bdayHTML() + `
+  wrap.innerHTML = `
     <button class="btn-ghost" style="border-color:var(--line); color:var(--ink); margin-bottom:20px;" onclick="membersOpen=false; renderMembers();">Masquer les membres</button>
     <div class="grid-3">${list.map((m,i) => {
       const photo = effectivePhoto(DATA.memberPhotos, keyOf(m), m.photo);

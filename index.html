@@ -2628,11 +2628,12 @@ function bdayPoster(x){
     const msg = bdayWrap(mc, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 140);
     const nameLH = fs + 6, bar = 14;
     const footH = 28 + 52 + 12 + nameLines.length * nameLH + (abbrLine ? 54 : 0) + 22 + msg.length * 42 + 26 + bar;
-    // 2) La photo occupe toute la largeur et toute la zone du haut : l'affiche s'adapte à sa forme
-    //    (un selfie en portrait donne une affiche plus haute, rien n'est coupé ni encadré).
+    // 2) La photo occupe toute la largeur et toute la zone du haut, sans cadre : l'affiche s'adapte à sa forme.
     let im = null;
     if(x.photo){ try{ im = await loadImageForCanvas(x.photo); }catch(e){ console.error('photo membre', e); } }
-    const photoH = im ? Math.round(Math.min(1500, Math.max(760, W * im.naturalHeight / im.naturalWidth))) : 1000;
+    // Hauteur totale plafonnée à 3:4 : WhatsApp rogne les images plus hautes dans la conversation (logo et texte coupés).
+    const maxPhotoH = Math.round(W * 4 / 3) - footH;
+    const photoH = im ? Math.round(Math.min(maxPhotoH, Math.max(760, W * im.naturalHeight / im.naturalWidth))) : Math.min(1000, maxPhotoH);
     const H = photoH + footH;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');

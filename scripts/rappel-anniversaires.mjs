@@ -68,14 +68,14 @@ const transport = DRY ? null : nodemailer.createTransport({
 
 for (const [label, g] of jobs) {
   const lignes = [];
-  if (g.now.length) lignes.push('<b>Anniversaire aujourd\'hui</b> : ' + g.now.join(', '));
-  if (g.next.length) lignes.push('<b>Anniversaire demain</b> : ' + g.next.join(', '));
-  const body = `Bonjour,<br><br>${lignes.join('<br>')}<br><br><span style="color:#888; font-size:12px;">Rappel automatique du site LABD (${label}). Merci de ne pas répondre à ce message.</span>`;
+  if (g.now.length) lignes.push('🎂 <b>Anniversaire aujourd\'hui</b> : 🎉 ' + g.now.join(', ') + ' 🥳');
+  if (g.next.length) lignes.push('🎈 <b>Anniversaire demain</b> : ' + g.next.join(', ') + ' ⏰');
+  const body = `Bonjour 👋,<br><br>${lignes.join('<br><br>')}<br><br>🎁 N'oubliez pas de lui souhaiter un joyeux anniversaire !<br><br><span style="color:#888; font-size:12px;">Rappel automatique du site LABD (${label}). Merci de ne pas répondre à ce message.</span>`;
   if (DRY) { console.log('[TEST]', label, [...g.emails], lignes); continue; }
   await transport.sendMail({
     from: `"LABD Org" <${process.env.GMAIL_USER}>`,
     to: [...g.emails].join(','),
-    subject: 'RAPPEL ANNIVERSAIRE',
+    subject: '🎂 RAPPEL ANNIVERSAIRE',
     html: body
   });
   console.log('Envoyé :', label);

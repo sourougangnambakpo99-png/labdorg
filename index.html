@@ -6074,6 +6074,9 @@ function saveDataToCache(){
   catch(e){ /* stockage plein ou indisponible (navigation privée...) : tant pis, pas bloquant */ }
 }
 
+// Variables du choix de promotion : déclarées AVANT init() (renderAll() peut s'exécuter tout de suite avec le cache).
+var PROMO_SECTIONS = ['bureau','cycles','galerie','activites','actualites','evenements','formations','projets','cotisations','adhesion','avis','contact'];
+var promoChosen = false, promoInitDone = false, promoInviteClosed = false, promoSheetCtx = null, promoToastTimer = null, promoBarSeen = false;
 async function init(){
   const loader = document.getElementById('siteLoader');
   const hasCache = loadDataFromCache();
@@ -6212,8 +6215,6 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
    le menu sans avoir choisi, et le formulaire refuse d'être envoyé tant que le choix
    n'a pas été fait. Le choix est mémorisé : le visiteur retrouve sa promotion.
 ========================================================== */
-const PROMO_SECTIONS = ['bureau','cycles','galerie','activites','actualites','evenements','formations','projets','cotisations','adhesion','avis','contact'];
-let promoChosen = false, promoInitDone = false, promoInviteClosed = false, promoSheetCtx = null, promoToastTimer = null;
 function promoLocked(){ try{ return !!((currentRole && currentRole.promotionId) || memberSession); }catch(e){ return false; } }
 function promoActive(){ return promotionsSorted().length > 0; }
 function promoNeedsChoice(){ return promoActive() && !promoChosen && !promoLocked(); }
@@ -6257,7 +6258,6 @@ function renderPromoUI(){
   }
   document.documentElement.style.setProperty('--pb-h', (bar.offsetHeight || 56) + 'px');
 }
-let promoBarSeen = false;
 function promoBarUpdate(){
   const bar = document.getElementById('promoBar'); if(!bar) return;
   const hdr = document.querySelector('header.nav');

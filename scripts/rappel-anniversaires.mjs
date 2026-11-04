@@ -52,7 +52,15 @@ const grp = (label) => { if (!groups.has(label)) groups.set(label, { label, peop
 // Promotion fondatrice : membres ajoutés et modifications ; les adresses d'origine servent de filet.
 const gF = grp('Promotion fondatrice');
 fallbackEmails.forEach(e => gF.extra.add(e));
-Object.entries(overrides).forEach(([num, o]) => { if (!removed.includes(num) && o) gF.people.push({ nom: o.nom, email: o.email, anniv: o.anniv, abbr: o.abbr }); });
+// Membres d'origine : écrits dans le site (CONFIG), avec leurs modifications éventuelles (anniversaire, e-mail saisis par eux ou par le bureau).
+function parseConfigList(name) {
+  const mt = html.match(new RegExp('\\n  ' + name + ':\\s*\\[([\\s\\S]*?)\\n  \\],'));
+  if (!mt) return [];
+  try { return new Function('return [' + mt[1] + ']')(); } catch (e) { return []; }
+}
+[...parseConfigList('bureau'), ...parseConfigList('membres')]
+  .filter(m => m && !removed.includes(m.num))
+  .forEach(m => { const o = overrides[m.num] || {}; const f = Object.assign({}, m, o); gF.people.push({ nom: f.nom, email: f.email, anniv: f.anniv, abbr: f.abbr }); });
 extra.forEach(m => { if (!removed.includes(m.num)) gF.people.push({ nom: m.nom, email: m.email, anniv: m.anniv, abbr: m.abbr }); });
 
 for (const p of Object.values(promotions)) {
@@ -70,10 +78,10 @@ function recipientsOf(g) {
 }
 
 // ---------- Mail d'anniversaire d'un membre ----------
-const shownPlain = p => p.nom + (p.abbr && String(p.abbr).trim() ? ' (' + String(p.abbr).trim() + ' LABD)' : '');
+const shownPlain = p => p.nom + (p.abbr && String(p.abbr).trim() ? ' (' + String(p.abbr).trim().toUpperCase() + ' LABD)' : '');
 const BTN = 'display:inline-block; background:#05b3c2; color:#ffffff; padding:12px 24px; border-radius:999px; text-decoration:none; font-weight:bold;';
 // Nom affiché, suivi du poste s'il y en a un (ex. « Nom (PR LABD) »).
-const shown = p => esc(p.nom) + (p.abbr && String(p.abbr).trim() ? ' (' + esc(String(p.abbr).trim()) + ' LABD)' : '');
+const shown = p => esc(p.nom) + (p.abbr && String(p.abbr).trim() ? ' (' + esc(String(p.abbr).trim().toUpperCase()) + ' LABD)' : '');
 function memberMailBody(label, nowNames, nextNames) {
   const lignes = [];
   if (nowNames.length) lignes.push("🎂 <b>Anniversaire aujourd'hui</b> : 🎉 " + nowNames.map(shown).join(', ') + ' 🥳');

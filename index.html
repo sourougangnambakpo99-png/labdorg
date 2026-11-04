@@ -394,6 +394,64 @@
   .history-edit-toolbar button:hover{border-color:var(--teal);}
 
   /* ---------- BUREAU ---------- */
+  /* ----- Choix de la promotion : barre au défilement, fenêtre de choix, pastille du formulaire ----- */
+  #bureau,#cycles,#galerie,#activites,#projets,#cotisations,#adhesion,#avis{scroll-margin-top:var(--pb-h, 0px);}
+  #promoBar{position:fixed; left:0; right:0; top:68px; z-index:150; transform:translateY(-135%); opacity:0; pointer-events:none; transition:transform .5s cubic-bezier(.2,1.15,.3,1), opacity .3s ease;}
+  #promoBar.show{transform:none; opacity:1; pointer-events:auto;}
+  #promoBar .pb-inner{max-width:1100px; margin:0 auto; padding:8px 14px; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,0.97); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); border:1px solid var(--line); border-top:0; border-radius:0 0 18px 18px; box-shadow:0 10px 28px rgba(11,28,51,0.16);}
+  #promoBar .pb-label{font-size:.78rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted-2, #667); white-space:nowrap;}
+  #promoBar .pb-chips{display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; padding:2px 0; flex:1; min-width:0;}
+  #promoBar .pb-chips::-webkit-scrollbar{display:none;}
+  .pb-chip{display:inline-flex; align-items:baseline; gap:6px; flex:none; border:1.5px solid #05b3c2; color:#048b98; background:#fff; border-radius:999px; padding:7px 15px; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.86rem; cursor:pointer; white-space:nowrap; transition:transform .15s, box-shadow .15s, background .2s;}
+  .pb-chip small{font-weight:600; opacity:.75; font-size:.72rem;}
+  .pb-chip:hover{transform:translateY(-1px); box-shadow:0 4px 12px rgba(5,179,194,0.3);}
+  .pb-chip.on{background:linear-gradient(90deg,#13284a,#05b3c2); color:#fff; border-color:transparent;}
+  #promoBar.pb-invite .pb-inner{flex-direction:column; align-items:stretch; gap:6px; padding:10px 16px 10px; background:linear-gradient(#fff,#fff) padding-box, linear-gradient(90deg,#05b3c2,#13284a,#05b3c2) border-box; border:2px solid transparent; border-top:0; animation:pbGlow 2.6s ease-in-out infinite;}
+  #promoBar .pb-head{position:relative; padding-right:26px;}
+  #promoBar .pb-title{font-family:'Space Grotesk',sans-serif; font-weight:800; font-size:1.02rem; color:#0b1c33;}
+  #promoBar .pb-sub{font-size:.84rem; color:#3d505c; margin-top:2px;}
+  #promoBar .pb-x{position:absolute; top:-2px; right:-4px; border:0; background:transparent; color:#7a8a96; font-size:1rem; cursor:pointer; width:28px; height:28px; border-radius:50%;}
+  #promoBar.pb-invite .pb-chip:not(.on){animation:pbPulse 2.2s ease-in-out infinite;}
+  #promoBar.pb-attn .pb-inner{animation:pbWiggle .8s ease-in-out 2, pbGlow 2.6s ease-in-out infinite;}
+  @media(min-width:760px){
+    #promoBar.pb-invite .pb-inner{flex-direction:row; align-items:center; justify-content:space-between; gap:18px; padding:9px 18px;}
+    #promoBar.pb-invite .pb-head{flex:1; min-width:0;}
+    #promoBar.pb-invite .pb-chips{flex:none; overflow:visible;}
+  }
+  @media(max-width:759px){ #promoBar .pb-sub{display:none;} #promoBar .pb-title{font-size:.95rem;} }
+  @keyframes pbGlow{0%,100%{box-shadow:0 10px 28px rgba(11,28,51,0.16), 0 0 0 0 rgba(5,179,194,0.45);} 50%{box-shadow:0 10px 28px rgba(11,28,51,0.16), 0 0 0 8px rgba(5,179,194,0);}}
+  @keyframes pbPulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.06);}}
+  @keyframes pbWiggle{0%,100%{transform:translateY(0);} 40%{transform:translateY(5px);} 70%{transform:translateY(-2px);}}
+  #promoSheet{position:fixed; inset:0; z-index:9400; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(8,20,24,0.62); -webkit-backdrop-filter:blur(3px); backdrop-filter:blur(3px);}
+  #promoSheet .ps-card{position:relative; width:100%; max-width:520px; max-height:calc(100vh - 32px); max-height:calc(100dvh - 32px); overflow-y:auto; background:#fff; color:#0b1c33; border-radius:24px; padding:26px 22px 20px; box-shadow:0 24px 70px rgba(0,0,0,0.4); animation:psIn .5s cubic-bezier(.2,1.2,.4,1);}
+  #promoSheet .ps-card::before{content:''; position:absolute; left:0; right:0; top:0; height:6px; background:linear-gradient(90deg,#13284a,#05b3c2,#13284a); background-size:200% 100%; animation:bdaySweepBg 4s linear infinite; border-radius:24px 24px 0 0;}
+  @keyframes bdaySweepBg{0%{background-position:0 0;} 100%{background-position:200% 0;}}
+  @keyframes psIn{0%{transform:translateY(40px) scale(.96); opacity:0;} 100%{transform:none; opacity:1;}}
+  #promoSheet .ps-x{position:absolute; top:12px; right:12px; border:0; background:#eef3f5; color:#52646f; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:.95rem;}
+  #promoSheet .ps-ico-big{font-size:2.2rem; line-height:1; margin-bottom:6px;}
+  #promoSheet h3{margin:0 28px 6px 0; font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:800; color:#0b1c33;}
+  #promoSheet .ps-sub{margin:0 0 16px; font-size:.92rem; color:#4b5d68; line-height:1.45;}
+  #promoSheet .ps-list{display:flex; flex-direction:column; gap:10px;}
+  .ps-opt{display:flex; align-items:center; gap:14px; width:100%; text-align:left; padding:13px 16px; background:#fff; border:2px solid #d8ecef; border-radius:16px; cursor:pointer; font-family:inherit; transition:transform .15s, box-shadow .15s, border-color .15s;}
+  .ps-opt:hover{border-color:#05b3c2; transform:translateY(-2px); box-shadow:0 8px 20px rgba(5,179,194,0.22);}
+  .ps-opt.on{border-color:#05b3c2; background:linear-gradient(90deg,rgba(5,179,194,0.12),rgba(19,40,74,0.06));}
+  .ps-opt .ps-ico{width:44px; height:44px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.3rem; background:linear-gradient(135deg,#13284a,#05b3c2);}
+  .ps-opt .ps-txt{flex:1; min-width:0; display:flex; flex-direction:column;}
+  .ps-opt .ps-txt b{font-family:'Space Grotesk',sans-serif; font-size:1.02rem; color:#0b1c33;}
+  .ps-opt .ps-txt small{color:#5d6f7a; font-size:.8rem;}
+  .ps-opt .ps-go{font-size:1.6rem; color:#05b3c2; font-weight:700;}
+  #promoSheet .ps-later{display:block; margin:14px auto 0; border:0; background:transparent; color:#5d6f7a; font-size:.84rem; text-decoration:underline; cursor:pointer;}
+  @media(max-width:600px){
+    #promoSheet{align-items:flex-end; padding:0;}
+    #promoSheet .ps-card{max-width:none; border-radius:24px 24px 0 0; padding-bottom:26px; animation:psUp .45s cubic-bezier(.2,1.1,.4,1);}
+    #promoBar .pb-label{display:none;}
+  }
+  @keyframes psUp{0%{transform:translateY(100%);} 100%{transform:none;}}
+  #promoToast{position:fixed; left:50%; bottom:22px; transform:translate(-50%, 30px); z-index:9450; background:#0b1c33; color:#fff; padding:11px 20px; border-radius:999px; font-weight:600; font-size:.9rem; box-shadow:0 10px 30px rgba(0,0,0,0.35); opacity:0; transition:transform .35s cubic-bezier(.2,1.2,.4,1), opacity .3s; max-width:calc(100vw - 32px); text-align:center;}
+  #promoToast.show{opacity:1; transform:translate(-50%, 0);}
+  .promo-badge{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:0 0 14px; padding:10px 14px; border-radius:14px; background:linear-gradient(90deg,rgba(5,179,194,0.14),rgba(19,40,74,0.05)); border-left:4px solid #05b3c2; font-size:.92rem;}
+  .promo-badge button{border:1.5px solid #05b3c2; background:#fff; color:#048b98; border-radius:999px; padding:5px 14px; font-weight:700; cursor:pointer; font-size:.82rem;}
+  @media(prefers-reduced-motion:reduce){ #promoBar, #promoBar *, #promoSheet .ps-card, #promoSheet .ps-card::before{animation:none !important; transition:none !important;} }
   .promotion-switch{display:flex; align-items:center; gap:10px; margin-bottom:22px;}
   .promotion-switch label{font-size:0.78rem; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--muted-2);}
   .promotion-switch select{appearance:none; -webkit-appearance:none; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:0.92rem; color:var(--ink); background:var(--paper) url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23048b98' stroke-width='2.2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/14px 14px; border:1px solid var(--line); border-radius:8px; padding:8px 32px 8px 12px; cursor:pointer; transition:border-color 0.2s ease;}
@@ -1036,6 +1094,7 @@
 
       <div class="form-panel card" id="adhesionPanel">
         <h3>Dossier de candidature</h3>
+        <div id="adhesionPromoBadge" class="promo-badge" style="display:none;"></div>
         <p class="form-note" id="adhesionPromoNote" style="display:none; margin-bottom:10px;"></p>
         <p class="lead">Remplissez le formulaire et joignez votre CV ainsi que votre lettre de motivation manuscrite, scannée ou photographiée, sur une ou deux images, dans deux champs séparés. Votre dossier sera enregistré et envoyé au bureau une fois le paiement des frais d'adhésion validé par le Trésorier Général ; la Secrétaire Générale reviendra ensuite vers vous.</p>
 
@@ -2484,7 +2543,7 @@ function bdayLabel(a){ const [m, d] = a.split('-').map(Number); return (d === 1 
 // Tous les anniversaires du site, toutes promotions confondues (fenêtre d'ouverture et rappel par mail).
 function bdayAllGroups(){
   const out = [];
-  const add = (promo, list, store, prefix) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, abbr:(m.abbr || '').trim(), promo, label:mailPromo(promo), photo:effectivePhoto(store, prefix + m.num, m.photo) }); });
+  const add = (promo, list, store, prefix) => (list || []).forEach(m => { if(m.nom && /^\d\d-\d\d$/.test(m.anniv || '')) out.push({ nom:m.nom, anniv:m.anniv, abbr:(m.abbr || '').trim().toUpperCase(), promo, label:mailPromo(promo), photo:effectivePhoto(store, prefix + m.num, m.photo) }); });
   add(null, getBureauList(), DATA.bureauPhotos, '');
   add(null, getMembresList(), DATA.memberPhotos, '');
   promotionsSorted().forEach(p => {
@@ -2689,14 +2748,35 @@ function bdayPoster(x){
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
     ctx.fillText('LABD Org', lg ? x0 + size + gap : W - mg - tw, cy);
     ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-    // 5) Pied de page en verre flouté : on voit la photo en transparence, floutée, derrière le texte
-    const fy = H - footH;
-    if(im) bdayBlurCover(ctx, im, 0, fy, W, footH, 30);
-    ctx.fillStyle = im ? 'rgba(11,28,51,0.66)' : 'rgba(11,28,51,0.85)'; ctx.fillRect(0, fy, W, footH);
-    ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, fy, W, 6); ctx.fillRect(0, H - bar, W, bar);
+    // 5) Bas de l'affiche : la photo devient floue progressivement (aucune arête, aucune ligne) et reste visible derrière le texte
+    const fy = H - footH, soft = 110, ly = Math.max(0, fy - soft), lh = H - ly;
+    if(im){
+      const layer = document.createElement('canvas'); layer.width = W; layer.height = lh;
+      const lc = layer.getContext('2d');
+      if('filter' in lc){
+        lc.filter = 'blur(4px)';
+        lc.drawImage(c, 0, ly, W, lh, -8, -8, W + 16, lh + 16);
+        lc.filter = 'none';
+      } else {
+        const sm = document.createElement('canvas'); sm.width = Math.round(W / 4); sm.height = Math.max(4, Math.round(lh / 4));
+        const sc = sm.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(c, 0, ly, W, lh, 0, 0, sm.width, sm.height);
+        lc.imageSmoothingEnabled = true; lc.imageSmoothingQuality = 'high'; lc.drawImage(sm, 0, 0, W, lh);
+      }
+      lc.globalCompositeOperation = 'destination-in';
+      const mk = lc.createLinearGradient(0, 0, 0, lh);
+      mk.addColorStop(0, 'rgba(0,0,0,0)'); mk.addColorStop(Math.min(0.9, (soft * 1.1) / lh), 'rgba(0,0,0,1)'); mk.addColorStop(1, 'rgba(0,0,0,1)');
+      lc.fillStyle = mk; lc.fillRect(0, 0, W, lh);
+      ctx.drawImage(layer, 0, ly);
+      // voile marine léger, plus présent derrière le texte
+      const vg = ctx.createLinearGradient(0, fy - 20, 0, H);
+      vg.addColorStop(0, 'rgba(11,28,51,0)'); vg.addColorStop(0.3, 'rgba(11,28,51,0.16)'); vg.addColorStop(1, 'rgba(11,28,51,0.44)');
+      ctx.fillStyle = vg; ctx.fillRect(0, fy - 20, W, footH + 20);
+    } else {
+      ctx.fillStyle = 'rgba(11,28,51,0.85)'; ctx.fillRect(0, fy, W, footH);
+    }
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     let y = fy + 28 + 42;
-    ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 6;
+    ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 16;
     ctx.font = '700 46px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, y);
     y += 12 + fs;
     ctx.font = `800 ${fs}px sans-serif`; ctx.fillStyle = '#fff';
@@ -2768,35 +2848,42 @@ async function bdayMailCheck(){
     }
   }catch(e){ console.error('bdayMailCheck', e); }
 }
-async function saveAnniv(promoId, num, val){
+// Enregistre un champ (anniv, email) d'un membre, au bon endroit selon sa promotion : fiche ajoutée, modification d'un membre d'origine, ou membre d'une promotion.
+async function saveMemberField(promoId, num, field, val){
   if(promoId === '__main__'){
     const ex = DATA.membresExtra.findIndex(m => m.num === num);
-    if(ex > -1){ DATA.membresExtra[ex].anniv = val; await storageSet('membres-extra', DATA.membresExtra); }
-    else { DATA.membresOverrides[num] = Object.assign({}, DATA.membresOverrides[num] || {}, { anniv: val }); await storageSet('membres-overrides', DATA.membresOverrides); }
+    if(ex > -1){ DATA.membresExtra[ex][field] = val; await storageSet('membres-extra', DATA.membresExtra); }
+    else { DATA.membresOverrides[num] = Object.assign({}, DATA.membresOverrides[num] || {}, { [field]: val }); await storageSet('membres-overrides', DATA.membresOverrides); }
   } else {
     const p = DATA.promotions[promoId]; if(!p) return;
     const m = (p.membres || []).concat(p.bureau || []).find(x => x.num === num); if(!m) return;
-    m.anniv = val; await storageSet('promotions', DATA.promotions);
+    m[field] = val; await storageSet('promotions', DATA.promotions);
   }
 }
+async function saveAnniv(promoId, num, val){ return saveMemberField(promoId, num, 'anniv', val); }
 async function memberSaveBirthday(){
   if(!memberSession) return;
   const d = parseInt(document.getElementById('mb-bj').value, 10), m = parseInt(document.getElementById('mb-bm').value, 10);
   const val = (d && m) ? String(m).padStart(2,'0') + '-' + String(d).padStart(2,'0') : '';
+  const emailEl = document.getElementById('mb-email');
+  const email = emailEl ? emailEl.value.trim() : null;
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert("Cette adresse e-mail n'a pas l'air valide. Exemple : prenom.nom@gmail.com"); return; }
   const pid = memberSession.promotionId;
   const num = pid === '__main__' ? memberSession.key : memberSession.key.slice(pid.length + 1);
   await saveAnniv(pid, num, val);
+  if(email !== null) await saveMemberField(pid, num, 'email', email);
   renderMembers(); bdayRefresh(); closeModal();
-  alert(val ? "Votre anniversaire est enregistré." : "Votre anniversaire a été retiré.");
+  alert("Vos informations sont enregistrées.");
 }
-function currentMemberAnniv(){
-  if(!memberSession) return '';
+function currentMemberRecord(){
+  if(!memberSession) return null;
   const pid = memberSession.promotionId;
   const num = pid === '__main__' ? memberSession.key : memberSession.key.slice(pid.length + 1);
   const p = pid === '__main__' ? null : DATA.promotions[pid];
-  const m = p ? (p.membres || []).concat(p.bureau || []).find(x => x.num === num) : getMembresList().find(x => x.num === num);
-  return (m && m.anniv) || '';
+  return p ? (p.membres || []).concat(p.bureau || []).find(x => x.num === num) : getMembresList().concat(getBureauList()).find(x => x.num === num);
 }
+function currentMemberAnniv(){ const m = currentMemberRecord(); return (m && m.anniv) || ''; }
+function currentMemberEmail(){ const m = currentMemberRecord(); return (m && m.email) || ''; }
 function memberListHTML(bureau, membres, editFn, removeFn){
   const head = t => `<div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:${t==='Bureau'?'0':'18px'} 0 4px;">${t}</div>`;
   const row = (m, withAbbr) => {
@@ -3020,6 +3107,7 @@ function renderPromotionSwitches(){
     wraps.forEach(w => w.classList.remove('is-visible'));
     activePromotionId = '__main__';
   }
+  try{ renderPromoUI(); promoBarUpdate(); }catch(e){}
 }
 // Garde en mémoire l'endroit exact de la page (section visible + décalage) pour y revenir après un changement de promotion.
 function captureScrollAnchor(){
@@ -3073,6 +3161,7 @@ function doSwitchPromotion(id){
   bdayRefresh();
 }
 function switchPromotion(id){
+  promoMarkChosen(id);
   const anchor = captureScrollAnchor();
   try{ const mm=document.getElementById('mobileMenu'), bb=document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded','false'); }catch(e){}
   const loader = showQuickLoader();
@@ -3342,7 +3431,7 @@ async function renderPromoAcces(el){
     <div style="overflow-x:auto; margin-bottom:14px;"><table style="width:100%; border-collapse:collapse;"><thead>${mine.head}</thead>
       <tbody>${mine.row}${kid ? kid.row : ''}</tbody></table></div>
     ${kid ? `<button class="btn-primary" onclick="saveChildPasswords('${child.id}')">Enregistrer les mots de passe</button>` : ''}
-    ${await codesSectionHTML([me.id].concat(child ? [child.id] : []))}`;
+    ${await codesSectionHTML([me.id])}`;
 }
 // Onglet « Promotions » d'une promotion : créer l'unique promotion suivante.
 function renderPromoPromotions(el){
@@ -4578,6 +4667,7 @@ lettreInputJ.addEventListener('change', () => {
 
 document.getElementById('adhesionForm').addEventListener('submit', async e => {
   e.preventDefault();
+  if(promoNeedsChoice()){ openPromoSheet({ reason:'form' }); return; }
   // Limite de Cloudinary (plan gratuit) : 10 Mo pour un document, 10 Mo pour une image.
   // On vérifie avant tout envoi pour donner un message clair plutôt qu'un échec silencieux.
   if(lettreInputJ.files.length > 2){ alert("La lettre de motivation peut comporter au maximum 2 images."); return; }
@@ -4644,6 +4734,7 @@ document.getElementById('adhesionForm').addEventListener('submit', async e => {
 
 document.getElementById('avisForm').addEventListener('submit', async e => {
   e.preventDefault();
+  if(promoNeedsChoice()){ openPromoSheet({ reason:'form' }); return; }
   const nom = document.getElementById('a-nom').value.trim();
   const msg = document.getElementById('a-msg').value.trim();
   // Avis : tout le bureau de la promotion concernée est notifié.
@@ -4686,8 +4777,11 @@ function openMemberPanel(){
       <select id="mb-bj" style="flex:1;"><option value="">Jour</option>${Array.from({length:31}, (_, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[1])||0,10)===i+1?'selected':''}>${i+1}</option>`).join('')}</select>
       <select id="mb-bm" style="flex:2;"><option value="">Mois</option>${MOIS_FR.map((n, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[0])||0,10)===i+1?'selected':''}>${n}</option>`).join('')}</select>
     </div>
+    <label style="display:block; margin-top:4px;">Votre adresse e-mail</label>
+    <input id="mb-email" type="email" autocomplete="email" placeholder="Ex : prenom.nom@gmail.com" value="${String(currentMemberEmail()).replace(/"/g, '&quot;')}" style="width:100%; margin-bottom:6px;">
+    <p class="form-note" style="margin-bottom:12px;">Elle sert à recevoir les rappels d'anniversaire des membres de votre promotion. Elle n'est pas affichée sur le site.</p>
     <div class="row">
-      <button class="btn-primary" onclick="memberSaveBirthday()">Enregistrer mon anniversaire</button>
+      <button class="btn-primary" onclick="memberSaveBirthday()">Enregistrer</button>
       <button class="btn-primary" onclick="closeModal()">Compris</button>
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="memberLogout()">Se déconnecter</button>
     </div>
@@ -5165,7 +5259,7 @@ function renderAdminContent(){
         <tbody>${foundingRow}${promoRows}</tbody></table></div>
       <button class="btn-primary" onclick="savePasswordsTable()">Enregistrer les mots de passe</button>
       ${permsMatrixHTML()}`;
-    codesSectionHTML(['__main__'].concat(childPromoOf('__main__') ? [childPromoOf('__main__').id] : [])).then(h => { if(adminTab === 'acces' && el.isConnected) el.insertAdjacentHTML('beforeend', h); });
+    codesSectionHTML(['__main__']).then(h => { if(adminTab === 'acces' && el.isConnected) el.insertAdjacentHTML('beforeend', h); });
   }
   if(adminTab === 'acces' && !isOwner() && currentRole && currentRole.promotionId){ renderPromoAcces(el); }
   if(adminTab === 'promotions' && currentRole && currentRole.promotionId){ renderPromoPromotions(el); }
@@ -5941,6 +6035,7 @@ function animateStatNumber(el){
    INIT
 ========================================================== */
 function renderAll(){
+  promoInit();
   bdayRefresh();
   applyGroupLogo();
   applyFooterTagline();
@@ -6109,6 +6204,127 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
   }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
   navSections.forEach(sec => navObserver.observe(sec));
 })();
+
+/* ==========================================================
+   CHOIX DE LA PROMOTION
+   Chaque promotion a son propre LABD sur le même site. Une barre discrète apparaît
+   au défilement à partir du Bureau, une fenêtre de choix s'ouvre quand on arrive par
+   le menu sans avoir choisi, et le formulaire refuse d'être envoyé tant que le choix
+   n'a pas été fait. Le choix est mémorisé : le visiteur retrouve sa promotion.
+========================================================== */
+const PROMO_SECTIONS = ['bureau','cycles','galerie','activites','actualites','evenements','formations','projets','cotisations','adhesion','avis','contact'];
+let promoChosen = false, promoInitDone = false, promoInviteClosed = false, promoSheetCtx = null, promoToastTimer = null;
+function promoLocked(){ try{ return !!((currentRole && currentRole.promotionId) || memberSession); }catch(e){ return false; } }
+function promoActive(){ return promotionsSorted().length > 0; }
+function promoNeedsChoice(){ return promoActive() && !promoChosen && !promoLocked(); }
+function promoInit(){
+  if(promoInitDone) return; promoInitDone = true;
+  try{
+    const id = localStorage.getItem('labd-promo');
+    if(id && promoActive() && (id === '__main__' || (DATA.promotions || {})[id])){ activePromotionId = id; promoChosen = true; }
+  }catch(e){}
+}
+function promoMarkChosen(id){ promoChosen = true; try{ localStorage.setItem('labd-promo', id); }catch(e){} }
+function promoCount(p){ return p ? (p.bureau || []).concat(p.membres || []).filter(m => m.nom).length : getBureauList().concat(getMembresList()).filter(m => m.nom).length; }
+function promoOptions(){ return [{ id:'__main__', promo:null }].concat(promotionsSorted().map(p => ({ id:p.id, promo:p }))); }
+function promoToast(msg){
+  let t = document.getElementById('promoToast');
+  if(!t){ t = document.createElement('div'); t.id = 'promoToast'; document.body.appendChild(t); }
+  t.textContent = msg; requestAnimationFrame(() => t.classList.add('show'));
+  clearTimeout(promoToastTimer); promoToastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+function promoScrollTo(id){ const el = document.getElementById(id); if(el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function promoInviteClose(){ promoInviteClosed = true; renderPromoUI(); promoBarUpdate(); }
+
+// Barre au défilement + pastille du formulaire : mises à jour à chaque affichage ou changement de promotion.
+function renderPromoUI(){
+  const on = promoActive() && !promoLocked();
+  let bar = document.getElementById('promoBar');
+  const badge = document.getElementById('adhesionPromoBadge');
+  if(!on){ if(bar) bar.remove(); if(badge) badge.style.display = 'none'; document.documentElement.style.setProperty('--pb-h', '0px'); return; }
+  if(!bar){ bar = document.createElement('div'); bar.id = 'promoBar'; document.body.appendChild(bar); }
+  const cur = activePromotionId, invite = !promoChosen && !promoInviteClosed;
+  const label = bdayEsc(mailPromo(activePromotion()));
+  const chips = promoOptions().map(o => `<button type="button" class="pb-chip${!invite && o.id === cur ? ' on' : ''}" onclick="promoPick('${o.id}')">${o.id === '__main__' ? 'Fondatrice' : bdayEsc(o.promo.nom)}${o.promo && o.promo.annee ? `<small>${bdayEsc(o.promo.annee)}</small>` : ''}</button>`).join('');
+  bar.classList.toggle('pb-invite', invite);
+  bar.innerHTML = `<div class="pb-inner">${invite
+      ? `<div class="pb-head"><div class="pb-title">🎓 Chaque promotion a son propre LABD</div><div class="pb-sub">Vous voyez pour l'instant : <b>${label}</b>. Choisissez la vôtre ci-dessous.</div><button type="button" class="pb-x" aria-label="Plus tard" onclick="promoInviteClose()">✕</button></div>`
+      : `<span class="pb-label">🎓 Vous consultez</span>`}
+    <div class="pb-chips">${chips}</div></div>`;
+  if(badge){
+    badge.style.display = 'flex';
+    badge.innerHTML = `<span>🎓 Candidature pour : <b>${label}</b>${promoChosen ? '' : ' <em>(à confirmer)</em>'}</span><button type="button" onclick="openPromoSheet({reason:'change'})">Changer</button>`;
+  }
+  document.documentElement.style.setProperty('--pb-h', (bar.offsetHeight || 56) + 'px');
+}
+let promoBarSeen = false;
+function promoBarUpdate(){
+  const bar = document.getElementById('promoBar'); if(!bar) return;
+  const hdr = document.querySelector('header.nav');
+  const top = hdr ? Math.round(hdr.getBoundingClientRect().bottom) : 68;
+  bar.style.top = top + 'px';
+  const b = document.getElementById('bureau');
+  const show = !!b && b.getBoundingClientRect().top < top + (bar.offsetHeight || 56) + 12;
+  bar.classList.toggle('show', show);
+  if(show && !promoBarSeen){
+    promoBarSeen = true;
+    if(bar.classList.contains('pb-invite')){ bar.classList.add('pb-attn'); setTimeout(() => bar.classList.remove('pb-attn'), 2200); }
+  }
+}
+(() => { let tk = false; const f = () => { tk = false; promoBarUpdate(); }; const h = () => { if(!tk){ tk = true; requestAnimationFrame(f); } };
+  window.addEventListener('scroll', h, { passive:true }); window.addEventListener('resize', h); })();
+
+// Fenêtre de choix
+function openPromoSheet(ctx){
+  if(!promoActive() || promoLocked() || document.getElementById('promoSheet')) return;
+  promoSheetCtx = ctx || {};
+  const form = promoSheetCtx.reason === 'form';
+  const title = form ? 'Pour quelle promotion candidatez-vous ?' : 'Quelle est votre promotion ?';
+  const sub = form ? "Votre dossier est envoyé au bureau de la promotion choisie. Choisissez la vôtre avant de l'enregistrer."
+                   : 'LABD existe pour chaque promotion, sur ce même site : chaque bureau a ses membres, ses projets et ses frais. Choisissez la vôtre.';
+  const cur = activePromotionId;
+  const list = promoOptions().map(o => { const n = promoCount(o.promo); return `<button type="button" class="ps-opt${promoChosen && o.id === cur ? ' on' : ''}" onclick="promoPick('${o.id}')"><span class="ps-ico">🎓</span><span class="ps-txt"><b>${bdayEsc(mailPromo(o.promo))}</b><small>${n} membre${n > 1 ? 's' : ''}</small></span><span class="ps-go">›</span></button>`; }).join('');
+  const m = document.createElement('div'); m.id = 'promoSheet';
+  m.innerHTML = `<div class="ps-card" role="dialog" aria-modal="true" aria-label="${title}">
+    <button type="button" class="ps-x" aria-label="Fermer" onclick="closePromoSheet(true)">✕</button>
+    <div class="ps-ico-big">🎓</div><h3>${title}</h3><p class="ps-sub">${sub}</p>
+    <div class="ps-list">${list}</div>
+    ${form ? '' : '<button type="button" class="ps-later" onclick="closePromoSheet(true)">Plus tard</button>'}</div>`;
+  m.addEventListener('click', e => { if(e.target === m) closePromoSheet(true); });
+  document.body.appendChild(m);
+}
+function closePromoSheet(dismiss){
+  const m = document.getElementById('promoSheet'); if(m) m.remove();
+  const ctx = promoSheetCtx; promoSheetCtx = null;
+  // Fermé sans choisir depuis le menu : on emmène quand même le visiteur à l'endroit demandé.
+  if(dismiss && ctx && ctx.target) setTimeout(() => promoScrollTo(ctx.target), 60);
+}
+function promoPick(id){
+  const ctx = promoSheetCtx; promoSheetCtx = null;
+  const m = document.getElementById('promoSheet'); if(m) m.remove();
+  const target = ctx && ctx.target, form = ctx && ctx.reason === 'form';
+  const name = mailPromo(id === '__main__' ? null : (DATA.promotions || {})[id]);
+  const msg = form ? `✓ ${name} : vous pouvez enregistrer votre dossier` : `✓ Vous consultez : ${name}`;
+  if(id === activePromotionId){
+    promoMarkChosen(id); renderPromoUI(); promoBarUpdate(); promoToast(msg);
+    if(target) setTimeout(() => promoScrollTo(target), 80);
+    return;
+  }
+  switchPromotion(id);            // marque le choix, redessine toute la page et garde la position
+  setTimeout(() => promoToast(msg), 450);
+  if(target) setTimeout(() => promoScrollTo(target), 800);
+}
+// Arrivée par le menu (ou un bouton) vers une section qui dépend de la promotion, sans choix préalable.
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[href^="#"]'); if(!a) return;
+  if(a.closest('#promoSheet') || a.closest('#promoBar')) return;
+  const id = (a.getAttribute('href') || '').slice(1);
+  if(!PROMO_SECTIONS.includes(id) || !promoNeedsChoice()) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  try{ const mm = document.getElementById('mobileMenu'), bb = document.getElementById('burgerBtn'); if(mm) mm.classList.remove('open'); if(bb) bb.setAttribute('aria-expanded', 'false'); }catch(_){}
+  openPromoSheet({ target:id });
+}, true);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closePromoSheet(true); });
 
 // Menu du haut : reste TOUJOURS affiché, mais se resserre légèrement (moins
 // haut, logo plus petit, une ombre douce apparaît dessous) dès qu'on

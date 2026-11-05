@@ -555,9 +555,10 @@
   .tile-progress-fill{height:100%; width:0%; background:var(--teal, #2f9e8f); transition:width 0.1s linear;}
   .watermark{position:absolute; top:8px; right:10px; display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; color:rgba(255,255,255,0.9); text-shadow:0 1px 3px rgba(0,0,0,0.6); pointer-events:none;}
   .watermark img{width:15px; height:15px; border-radius:4px; object-fit:cover; opacity:0.92; box-shadow:0 1px 3px rgba(0,0,0,0.5);}
-  .post-mark{position:absolute; left:0; right:0; bottom:0; padding:38px 16px 12px; text-align:right; border-radius:0 0 8px 8px; background:linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0)); font-family:'Space Grotesk', sans-serif; font-size:1.6rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap; pointer-events:none;}
-  .modal-box.lb .post-mark{font-size:1.05rem; padding:30px 12px 10px;}
-  @media(max-width:560px){ .modal-box.lb .post-mark{font-size:0.78rem; padding:22px 8px 7px;} }
+  .post-mark{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; font-family:'Space Grotesk', sans-serif; font-size:2rem; font-weight:800; letter-spacing:0.08em; color:#05b3c2; text-shadow:1px 0 #0b1c33,-1px 0 #0b1c33,0 1px #0b1c33,0 -1px #0b1c33,1px 1px #0b1c33,-1px -1px #0b1c33,1px -1px #0b1c33,-1px 1px #0b1c33,0 3px 12px rgba(0,0,0,0.55); white-space:nowrap; pointer-events:none;}
+  .modal-box.lb .post-mark{font-size:1.9rem;}
+  @media(max-width:560px){ .modal-box.lb .post-mark{font-size:1.15rem;} }
+  #fsViewer .fs-post{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:max(20px, calc(var(--fs-w, 360px) * 0.065)); letter-spacing:0.08em; color:#05b3c2; text-shadow:2px 0 #0b1c33,-2px 0 #0b1c33,0 2px #0b1c33,0 -2px #0b1c33,2px 2px #0b1c33,-2px -2px #0b1c33,2px -2px #0b1c33,-2px 2px #0b1c33,0 4px 16px rgba(0,0,0,0.55); white-space:nowrap; pointer-events:none;}
   .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
   .watermark-large img{width:53px; height:53px; border-radius:50%; object-fit:cover; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
   .watermark-large .wm-text{font-family:'Space Grotesk', sans-serif; font-size:1.6rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap;}
@@ -2143,6 +2144,7 @@ const modalContent = document.getElementById('modalContent');
 
 /* ---------- Plein écran (comme Facebook ou WhatsApp) ---------- */
 let fsOn = false, fsHistory = false, fsBackPending = false;
+function fsPost(t){ return `<div class="fs-post">${escapeHTML(t)}</div>`; }
 function fsMark(logo){ return `<div class="fs-mark"><img src="${logo}" alt="Logo LABD"><span>LABD Org</span></div>`; }
 function openFullMedia(){
   const c = lbCurrent; if(!c || fsOn) return;
@@ -2160,7 +2162,7 @@ function openFullMedia(){
       ? (isExternalVideoUrl(c.video)
           ? `<div class="fs-media fs-iframe"><iframe src="${youtubeEmbedSrc(c.video)}" style="width:100%; height:100%; border:0;" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>${c.isLogo ? '' : fsMark(logo)}</div>`
           : `<div class="fs-media"><video src="${c.video}" muted loop autoplay playsinline onclick="fsTogglePlay(this)"></video>${fsMark(logo)}</div>`)
-      : `<div class="fs-media"><img src="${c.src}" alt="">${c.isLogo ? '' : fsMark(logo)}</div>`}</div>
+      : `<div class="fs-media"><img src="${c.src}" alt="">${c.isLogo ? '' : fsMark(logo)}${c.mark ? fsPost(c.mark) : ''}</div>`}</div>
     ${c.video && !isExternalVideoUrl(c.video) ? `<button type="button" class="fs-sound" onclick="fsToggleMute(this)">Activer le son</button>` : ''}
     ${c.legende ? `<div class="fs-cap">${c.legende}</div>` : ''}`;
   document.body.appendChild(o);
@@ -3969,14 +3971,15 @@ async function watermarkImageDataUrl(src, mark){
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size*0.08);
     ctx.fillText('LABD Org', logo ? x0 + size + gap : W - margin - tw, cy);
     if(mark){
-      // Mention du poste en bas à droite, dans le même style que « LABD Org » en haut.
+      // Mention du poste au milieu de l'image, aux couleurs du groupe (turquoise cerclé de bleu marine).
+      const fsz = Math.max(22, W * 0.065);
+      ctx.font = `800 ${fsz}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const txt = mark.split('').join(String.fromCharCode(8202));   // léger espacement entre les lettres
+      ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(4, fsz * 0.14); ctx.strokeStyle = '#0b1c33';
+      ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = fsz * 0.25;
+      ctx.strokeText(txt, W / 2, H / 2);
       ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-      const fsz = Math.max(16, size * 0.3), bandH = fsz + margin * 2.4;
-      const gb = ctx.createLinearGradient(0, H - bandH, 0, H); gb.addColorStop(0, 'rgba(0,0,0,0)'); gb.addColorStop(1, 'rgba(0,0,0,0.55)');
-      ctx.fillStyle = gb; ctx.fillRect(0, H - bandH, W, bandH);
-      ctx.font = `800 ${fsz}px sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-      ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size * 0.08);
-      ctx.fillText(mark, W - margin, H - margin);
+      ctx.fillStyle = '#05b3c2'; ctx.fillText(txt, W / 2, H / 2);
     }
     return canvas.toDataURL('image/jpeg', 0.92);
   }catch(e){
@@ -6277,11 +6280,12 @@ function promoNeedsChoice(){ return promoActive() && !promoChosen && !promoLocke
 function promoInit(){
   if(promoInitDone) return; promoInitDone = true;
   try{
-    const id = localStorage.getItem('labd-promo');
+    try{ localStorage.removeItem('labd-promo'); }catch(e){}      // ancien choix mémorisé en permanence : abandonné
+    const id = sessionStorage.getItem('labd-promo');
     if(id && promoActive() && (id === '__main__' || (DATA.promotions || {})[id])){ activePromotionId = id; promoChosen = true; }
   }catch(e){}
 }
-function promoMarkChosen(id){ promoChosen = true; try{ localStorage.setItem('labd-promo', id); }catch(e){} }
+function promoMarkChosen(id){ promoChosen = true; try{ sessionStorage.setItem('labd-promo', id); }catch(e){} }
 function promoCount(p){ return p ? (p.bureau || []).concat(p.membres || []).filter(m => m.nom).length : getBureauList().concat(getMembresList()).filter(m => m.nom).length; }
 function promoOptions(){ return [{ id:'__main__', promo:null }].concat(promotionsSorted().map(p => ({ id:p.id, promo:p }))); }
 function promoToast(msg){

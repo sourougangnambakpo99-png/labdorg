@@ -432,6 +432,8 @@
   #promoSheet h3{margin:0 28px 6px 0; font-family:'Space Grotesk',sans-serif; font-size:1.35rem; font-weight:800; color:#0b1c33;}
   #promoSheet .ps-sub{margin:0 0 16px; font-size:.92rem; color:#4b5d68; line-height:1.45;}
   #promoSheet .ps-list{display:flex; flex-direction:column; gap:10px;}
+  #promoSheet .ps-more{align-self:center; border:0; background:transparent; color:#048b98; font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:.9rem; cursor:pointer; padding:6px 10px; text-decoration:underline;}
+  #promoBar .pb-more{border-style:dashed; background:#f3fbfc;}
   .ps-opt{display:flex; align-items:center; gap:14px; width:100%; text-align:left; padding:13px 16px; background:#fff; border:2px solid #d8ecef; border-radius:16px; cursor:pointer; font-family:inherit; transition:transform .15s, box-shadow .15s, border-color .15s;}
   .ps-opt:hover{border-color:#05b3c2; transform:translateY(-2px); box-shadow:0 8px 20px rgba(5,179,194,0.22);}
   .ps-opt.on{border-color:#05b3c2; background:linear-gradient(90deg,rgba(5,179,194,0.12),rgba(19,40,74,0.06));}
@@ -553,6 +555,9 @@
   .tile-progress-fill{height:100%; width:0%; background:var(--teal, #2f9e8f); transition:width 0.1s linear;}
   .watermark{position:absolute; top:8px; right:10px; display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; color:rgba(255,255,255,0.9); text-shadow:0 1px 3px rgba(0,0,0,0.6); pointer-events:none;}
   .watermark img{width:15px; height:15px; border-radius:4px; object-fit:cover; opacity:0.92; box-shadow:0 1px 3px rgba(0,0,0,0.5);}
+  .post-mark{position:absolute; left:0; right:0; bottom:0; padding:38px 16px 12px; text-align:right; border-radius:0 0 8px 8px; background:linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0)); font-family:'Space Grotesk', sans-serif; font-size:1.6rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap; pointer-events:none;}
+  .modal-box.lb .post-mark{font-size:1.05rem; padding:30px 12px 10px;}
+  @media(max-width:560px){ .modal-box.lb .post-mark{font-size:0.78rem; padding:22px 8px 7px;} }
   .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
   .watermark-large img{width:53px; height:53px; border-radius:50%; object-fit:cover; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
   .watermark-large .wm-text{font-family:'Space Grotesk', sans-serif; font-size:1.6rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap;}
@@ -2685,56 +2690,64 @@ function bdayBlurCover(ctx, im, rx, ry, rw, rh, blur){
   }
   ctx.restore();
 }
+function bdayTracked(ctx, text, cx, y, sp){
+  // texte centré avec espacement entre les lettres (compatible partout)
+  const chars = [...text]; let w = 0; const ws = chars.map(ch => { const m = ctx.measureText(ch).width; w += m + sp; return m; }); w -= sp;
+  let px = cx - w / 2; const al = ctx.textAlign; ctx.textAlign = 'left';
+  chars.forEach((ch, i) => { ctx.fillText(ch, px, y); px += ws[i] + sp; }); ctx.textAlign = al;
+}
 function bdayPoster(x){
-  const key = x.nom + '|' + x.anniv + '|' + (x.abbr || '') + '|' + (x.photo ? x.photo.length : 0);
+  const key = x.nom + '|' + x.anniv + '|' + (x.abbr || '') + '|' + (x.photo ? x.photo.length : 0) + '|v8';
   if(bdayPosterCache[key]) return bdayPosterCache[key];
   return bdayPosterCache[key] = (async () => {
-    const W = 1080;
-    // 1) Pied de page (texte) : mesuré d'abord pour connaître sa hauteur.
+    const W = 1080, SERIF = 'Georgia, "Times New Roman", serif', SANS = '"Helvetica Neue", Arial, sans-serif';
     const mc = document.createElement('canvas').getContext('2d');
+    // 1) Le texte : prénom en grand, nom de famille en petites capitales espacées, message personnel.
+    let surname = '', first = x.nom;
+    if(!x.group){
+      const toks = x.nom.trim().split(/\s+/);
+      const sn = toks.filter(t => t.length > 1 && t === t.toUpperCase() && /[A-ZÀ-Ý]/.test(t));
+      const fn = toks.filter(t => !sn.includes(t));
+      if(sn.length && fn.length){ surname = sn.join(' '); first = fn.join(' '); }
+    }
+    let fs = 104; mc.font = `700 ${fs}px ${SERIF}`;
+    while(fs > 70 && mc.measureText(first).width > W - 120){ fs -= 6; mc.font = `700 ${fs}px ${SERIF}`; }
     const abbrLine = (!x.group && x.abbr) ? x.abbr + ' LABD' : '';
-    let fs = 84; mc.font = `800 ${fs}px sans-serif`;
-    while(fs > 40 && mc.measureText(x.nom).width > W - 100){ fs -= 4; mc.font = `800 ${fs}px sans-serif`; }
-    let nameLines = [x.nom];
-    if(mc.measureText(x.nom).width > W - 100) nameLines = bdayWrap(mc, x.nom, W - 100).slice(0, 2);
-    mc.font = '500 32px sans-serif';
+    mc.font = `italic 400 26px ${SERIF}`;
     const msg = bdayWrap(mc, x.group ? `Déjà ${x.years} an${x.years > 1 ? 's' : ''} ensemble ! Merci à toute la famille LABD.` : 'Toute la famille LABD te souhaite une très belle journée !', W - 140);
-    const nameLH = fs + 6, bar = 14;
-    const footH = 28 + 52 + 12 + nameLines.length * nameLH + (abbrLine ? 54 : 0) + 22 + msg.length * 42 + 26 + bar;
-    // 2) Format : jamais plus haut que 3:4 (WhatsApp rogne les images plus hautes dans la conversation).
+    const bm = 44, labelH = 42, surH = surname ? 38 : 0, nameH = Math.round(fs * 0.86), pillH = abbrLine ? 54 : 18, msgH = msg.length * 36;
+    const blockH = labelH + 12 + surH + nameH + 18 + pillH + msgH;
+    // 2) Format : jamais plus haut que 3:4 (WhatsApp rogne les images plus hautes). La photo n'est pas recadrée sur les personnes.
     let im = null;
     if(x.photo){ try{ im = await loadImageForCanvas(x.photo); }catch(e){ console.error('photo membre', e); } }
     const maxH = Math.round(W * 4 / 3);
-    let H = 1200, natH = 0, landscape = false;
+    let H = 1200, natH = 0, wide = false;
     if(im){
       natH = Math.round(W * im.naturalHeight / im.naturalWidth);
-      landscape = im.naturalHeight / im.naturalWidth < 0.95;
-      H = landscape ? Math.min(maxH, Math.max(1000, natH + footH)) : Math.min(maxH, Math.max(1100, natH));
+      wide = im.naturalHeight / im.naturalWidth < 0.95;
+      H = wide ? Math.min(maxH, Math.max(1000, natH + blockH + bm + 90)) : Math.min(maxH, Math.max(1100, natH));
     }
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d');
     const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1c33'); bg.addColorStop(1, '#05b3c2');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    // 3) La photo couvre TOUTE l'affiche, y compris derrière le pied de page (qui est en verre flouté).
+    // 3) La photo, nette, sur toute l'affiche.
     if(im){
-      if(landscape){
-        bdayBlurCover(ctx, im, 0, 0, W, H, 34);                  // fond flou
-        ctx.drawImage(im, 0, 0, W, Math.min(natH, H));            // photo entière en largeur
-      } else {
-        const iw = im.naturalWidth, ih = im.naturalHeight, k = Math.max(W / iw, H / ih), dw = iw * k, dh = ih * k;
-        ctx.drawImage(im, (W - dw) / 2, dh > H ? -(dh - H) * 0.3 : 0, dw, dh);   // recadrage minimal, vers le haut
+      if(wide){ ctx.drawImage(im, 0, 0, W, Math.min(natH, H)); }
+      else {
+        const k = Math.max(W / im.naturalWidth, H / im.naturalHeight), dw = im.naturalWidth * k, dh = im.naturalHeight * k;
+        ctx.drawImage(im, (W - dw) / 2, dh > H ? -(dh - H) * 0.25 : 0, dw, dh);
       }
     } else {
-      const r = 300;
-      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.arc(W/2, (H - footH) / 2, r, 0, Math.PI*2); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = `800 ${Math.round(r*0.95)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(initials(x.nom), W/2, (H - footH) / 2 + 8);
+      const r = 300; ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.arc(W/2, (H - blockH) / 2, r, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = `700 ${Math.round(r*0.95)}px ${SERIF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(initials(x.nom), W/2, (H - blockH) / 2 + 8);
     }
     // 4) Logo en haut à droite, placé AVANT le texte « LABD Org »
     let g = ctx.createLinearGradient(0, 0, 0, 170); g.addColorStop(0, 'rgba(0,0,0,0.4)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, 170);
     const size = 120, mg = 32, cy = mg + size/2, gap = 16;
-    ctx.font = '800 42px sans-serif';
+    ctx.font = `800 42px ${SANS}`;
     const tw = ctx.measureText('LABD Org').width;
     let lg = null;
     try{ lg = await loadImageForCanvas(DATA.groupLogo || 'images/visuel_labd_01.jpg'); }catch(e){ console.error('logo', e); }
@@ -2748,44 +2761,56 @@ function bdayPoster(x){
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
     ctx.fillText('LABD Org', lg ? x0 + size + gap : W - mg - tw, cy);
     ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-    // 5) Bas de l'affiche : la photo devient floue progressivement (aucune arête, aucune ligne) et reste visible derrière le texte
-    const fy = H - footH, soft = 110, ly = Math.max(0, fy - soft), lh = H - ly;
-    if(im){
-      const layer = document.createElement('canvas'); layer.width = W; layer.height = lh;
-      const lc = layer.getContext('2d');
-      if('filter' in lc){
-        lc.filter = 'blur(4px)';
-        lc.drawImage(c, 0, ly, W, lh, -8, -8, W + 16, lh + 16);
-        lc.filter = 'none';
-      } else {
-        const sm = document.createElement('canvas'); sm.width = Math.round(W / 4); sm.height = Math.max(4, Math.round(lh / 4));
-        const sc = sm.getContext('2d'); sc.imageSmoothingQuality = 'high'; sc.drawImage(c, 0, ly, W, lh, 0, 0, sm.width, sm.height);
-        lc.imageSmoothingEnabled = true; lc.imageSmoothingQuality = 'high'; lc.drawImage(sm, 0, 0, W, lh);
-      }
-      lc.globalCompositeOperation = 'destination-in';
-      const mk = lc.createLinearGradient(0, 0, 0, lh);
-      mk.addColorStop(0, 'rgba(0,0,0,0)'); mk.addColorStop(Math.min(0.9, (soft * 1.1) / lh), 'rgba(0,0,0,1)'); mk.addColorStop(1, 'rgba(0,0,0,1)');
-      lc.fillStyle = mk; lc.fillRect(0, 0, W, lh);
-      ctx.drawImage(layer, 0, ly);
-      // voile marine léger, plus présent derrière le texte
-      const vg = ctx.createLinearGradient(0, fy - 20, 0, H);
-      vg.addColorStop(0, 'rgba(11,28,51,0)'); vg.addColorStop(0.3, 'rgba(11,28,51,0.16)'); vg.addColorStop(1, 'rgba(11,28,51,0.44)');
-      ctx.fillStyle = vg; ctx.fillRect(0, fy - 20, W, footH + 20);
-    } else {
-      ctx.fillStyle = 'rgba(11,28,51,0.85)'; ctx.fillRect(0, fy, W, footH);
+    // 5) Voile très progressif derrière le texte (aucune arête, aucun flou) : la photo reste visible.
+    const ty = H - bm - blockH, sy = Math.max(0, ty - 120);
+    const sg = ctx.createLinearGradient(0, sy, 0, H);
+    [[0,'rgba(5,179,194,0)'],[0.3,'rgba(5,179,194,0.12)'],[0.6,'rgba(4,100,125,0.38)'],[0.85,'rgba(11,28,51,0.60)'],[1,'rgba(11,28,51,0.72)']].forEach(([o,c2]) => sg.addColorStop(o, c2));
+    ctx.fillStyle = sg; ctx.fillRect(0, sy, W, H - sy);
+    // lueur chaude derrière le prénom
+    const gcy = ty + labelH + surH + nameH * 0.45, gl = ctx.createRadialGradient(W/2, gcy, 20, W/2, gcy, 420);
+    gl.addColorStop(0, 'rgba(5,179,194,0.28)'); gl.addColorStop(0.55, 'rgba(5,179,194,0.08)'); gl.addColorStop(1, 'rgba(5,179,194,0)');
+    ctx.fillStyle = gl; ctx.fillRect(0, Math.max(0, gcy - 420), W, 840);
+    // étoiles scintillantes (placées selon le nom, jamais sur le visage ni sur les lettres)
+    let seed = 0; for(const ch of x.nom) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const star = (px, py, r, col, al) => {
+      ctx.save(); ctx.translate(px, py); ctx.globalAlpha = al; ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = r * 0.9;
+      ctx.beginPath(); ctx.moveTo(0, -r);
+      ctx.quadraticCurveTo(r * 0.12, -r * 0.12, r, 0); ctx.quadraticCurveTo(r * 0.12, r * 0.12, 0, r);
+      ctx.quadraticCurveTo(-r * 0.12, r * 0.12, -r, 0); ctx.quadraticCurveTo(-r * 0.12, -r * 0.12, 0, -r);
+      ctx.fill(); ctx.restore();
+    };
+    for(let i = 0, n = 0; i < 500 && n < 16; i++){
+      const px = 40 + rnd() * (W - 80), py = ty - 360 + rnd() * (H - ty + 330), r = 9 + rnd() * 17, gold = rnd() < 0.6;
+      const inText = py > ty - 20 && py < H - bm + 20 && Math.abs(px - W / 2) < 420;
+      const onFace = Math.abs(px - W / 2) < 260 && py < ty;      // le corps/visage du membre reste libre
+      if(inText || onFace) continue;
+      star(px, py, r, gold ? '#ffd84d' : '#ffffff', 0.85 + rnd() * 0.15); n++;
     }
+
+    // 6) Le texte.
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-    let y = fy + 28 + 42;
-    ctx.shadowColor = 'rgba(0,0,0,0.85)'; ctx.shadowBlur = 16;
-    ctx.font = '700 46px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText('\u{1F382} Joyeux anniversaire', W/2, y);
-    y += 12 + fs;
-    ctx.font = `800 ${fs}px sans-serif`; ctx.fillStyle = '#fff';
-    nameLines.forEach((ln, i) => ctx.fillText(ln, W/2, y + i * nameLH));
-    y += (nameLines.length - 1) * nameLH;
-    if(abbrLine){ y += 54; ctx.font = '800 42px sans-serif'; ctx.fillStyle = '#6fe6f0'; ctx.fillText(abbrLine, W/2, y); }
-    y += 22 + 30;
-    ctx.font = '500 32px sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    msg.forEach((ln, i) => ctx.fillText(ln, W/2, y + i * 42));
+    ctx.shadowColor = 'rgba(0,10,25,0.85)'; ctx.shadowBlur = 16;
+    let y = ty + 32;
+    ctx.font = `italic 400 38px ${SERIF}`; ctx.fillStyle = '#6fe6f0'; ctx.fillText('Joyeux anniversaire', W/2, y);
+    y += 10;
+    if(surname){ y += 28; ctx.font = `600 23px ${SANS}`; ctx.fillStyle = 'rgba(255,255,255,0.92)'; bdayTracked(ctx, surname.toUpperCase(), W/2, y, 7); y += 10; }
+    y += Math.round(fs * 0.80);
+    ctx.font = `700 ${fs}px ${SERIF}`; ctx.fillStyle = '#fff'; ctx.fillText(first, W/2, y);
+    y += 16;
+    if(abbrLine){
+      ctx.shadowBlur = 0;
+      ctx.font = `600 21px ${SANS}`; const pw = ctx.measureText(abbrLine.toUpperCase()).width + 5 * (abbrLine.length - 1) + 44, ph = 38, py = y + 8;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2 - pw/2, py, pw, ph, 19) : ctx.rect(W/2 - pw/2, py, pw, ph);
+      ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(111,230,240,0.95)'; ctx.stroke();
+      ctx.fillStyle = '#8defF5'.toLowerCase(); ctx.textBaseline = 'middle'; bdayTracked(ctx, abbrLine.toUpperCase(), W/2, py + ph/2 + 1, 5); ctx.textBaseline = 'alphabetic';
+      ctx.shadowColor = 'rgba(0,10,25,0.85)'; ctx.shadowBlur = 16;
+      y = py + ph + 14;
+    } else { y += 18; }
+    y += 24;
+    ctx.font = `italic 400 26px ${SERIF}`; ctx.fillStyle = 'rgba(255,255,255,0.94)';
+    msg.forEach((ln, i) => ctx.fillText(ln, W/2, y + i * 36));
+    ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('image impossible')), 'image/jpeg', 0.92));
   })();
 }
@@ -3909,7 +3934,7 @@ async function loadImageForCanvas(src){
 }
 function wmCircleClip(ctx, cx, cy, r){ ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.closePath(); }
 // Incruste réellement le logo dans l'image (en haut à droite) : il reste présent après téléchargement.
-async function watermarkImageDataUrl(src){
+async function watermarkImageDataUrl(src, mark){
   try{
     const img = await loadImageForCanvas(src);
     const W = img.naturalWidth, H = img.naturalHeight;
@@ -3943,6 +3968,16 @@ async function watermarkImageDataUrl(src){
     ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size*0.08);
     ctx.fillText('LABD Org', logo ? x0 + size + gap : W - margin - tw, cy);
+    if(mark){
+      // Mention du poste en bas à droite, dans le même style que « LABD Org » en haut.
+      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
+      const fsz = Math.max(16, size * 0.3), bandH = fsz + margin * 2.4;
+      const gb = ctx.createLinearGradient(0, H - bandH, 0, H); gb.addColorStop(0, 'rgba(0,0,0,0)'); gb.addColorStop(1, 'rgba(0,0,0,0.55)');
+      ctx.fillStyle = gb; ctx.fillRect(0, H - bandH, W, bandH);
+      ctx.font = `800 ${fsz}px sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size * 0.08);
+      ctx.fillText(mark, W - margin, H - margin);
+    }
     return canvas.toDataURL('image/jpeg', 0.92);
   }catch(e){
     console.error('watermark', e);
@@ -3956,11 +3991,11 @@ function dataUrlToBlob(u){
   for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return new Blob([arr], { type:mime });
 }
-async function downloadImage(src, name, btn){
+async function downloadImage(src, name, btn, mark){
   const old = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = 'Téléchargement...'; }
   try{
-    let out = await watermarkImageDataUrl(src);
+    let out = await watermarkImageDataUrl(src, mark);
     if(out === src) alert("Le logo n'a pas pu être ajouté à cette photo (image protégée). La photo originale est téléchargée.");
     let blob;
     if(out.startsWith('data:')) blob = dataUrlToBlob(out);
@@ -3995,9 +4030,29 @@ async function prepareWatermarkedDownload(linkId, src){
   }catch(e){ console.error('watermark', e); }
 }
 
+// Mention du poste écrite en texte, en bas de la photo d'un profil (comme « LABD Org » en haut) : « PR LABD », « SG LABD »…
+// Uniquement pour les personnes qui occupent un poste.
+function findPostHolder(nom){
+  const target = normName(nom), pPromo = activePromotion();
+  const lists = pPromo ? [pPromo.bureau, pPromo.membres] : [getBureauList(), getMembresList()];
+  for(const list of lists){
+    const m = (list || []).find(b => b && b.nom && normName(b.nom) === target);
+    if(m) return m;
+  }
+  return null;
+}
+function postMarkText(nom){
+  const m = findPostHolder(nom);
+  if(!m) return '';
+  const abbr = String(m.abbr || '').trim(), role = String(m.role || '').trim();
+  if(abbr) return abbr.toUpperCase() + ' LABD';
+  return role ? role + ' · LABD' : '';
+}
 function openImageLightbox(src, caption){
   window.dlSrc = src;
-  openLightboxData(src, null, caption || '', false, 'photo-' + String(caption || '').replace(/[^a-z0-9]/gi, ''));
+  let mark = '';
+  try{ mark = caption ? postMarkText(caption) : ''; }catch(e){ mark = ''; }
+  openLightboxData(src, null, caption || '', false, 'photo-' + String(caption || '').replace(/[^a-z0-9]/gi, ''), mark);
 }
 
 let galleryPage = 0;
@@ -4236,8 +4291,8 @@ function openLightbox(key){
   }
   openLightboxData(src, video, legende, key === 'logo', key);
 }
-function openLightboxData(src, video, legende, isLogoView, key){
-  lbCurrent = { src, video, legende, isLogo: isLogoView };
+function openLightboxData(src, video, legende, isLogoView, key, mark){
+  lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
         ? `<iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
@@ -4253,11 +4308,12 @@ function openLightboxData(src, video, legende, isLogoView, key){
       <div style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${!isLogoView ? lightboxWatermarkHTML() : ''}
+        ${mark ? `<div class="post-mark">${escapeHTML(mark)}</div>` : ''}
       </div>
     </div>
     <p style="margin-top:14px;">${legende||''}</p>
     <div class="row">
-      ${!video ? `<button type="button" class="btn-primary" onclick="downloadImage(lbCurrent.src, 'labd-${key}', this)">Télécharger</button>` : ''}
+      ${!video ? `<button type="button" class="btn-primary" onclick="downloadImage(lbCurrent.src, 'labd-${key}', this, lbCurrent.mark)">Télécharger</button>` : ''}
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
@@ -6076,7 +6132,7 @@ function saveDataToCache(){
 
 // Variables du choix de promotion : déclarées AVANT init() (renderAll() peut s'exécuter tout de suite avec le cache).
 var PROMO_SECTIONS = ['bureau','cycles','galerie','activites','actualites','evenements','formations','projets','cotisations','adhesion','avis','contact'];
-var promoChosen = false, promoInitDone = false, promoInviteClosed = false, promoSheetCtx = null, promoToastTimer = null, promoBarSeen = false;
+var promoShowOlder = false, promoChosen = false, promoInitDone = false, promoInviteClosed = false, promoSheetCtx = null, promoToastTimer = null, promoBarSeen = false;
 async function init(){
   const loader = document.getElementById('siteLoader');
   const hasCache = loadDataFromCache();
@@ -6235,27 +6291,29 @@ function promoToast(msg){
   clearTimeout(promoToastTimer); promoToastTimer = setTimeout(() => t.classList.remove('show'), 2800);
 }
 function promoScrollTo(id){ const el = document.getElementById(id); if(el) el.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function promoToggleOlder(){ promoShowOlder = !promoShowOlder; renderPromoUI(); promoBarUpdate(); if(document.getElementById('promoSheet')) promoSheetRefreshList(); }
 function promoInviteClose(){ promoInviteClosed = true; renderPromoUI(); promoBarUpdate(); }
 
 // Barre au défilement + pastille du formulaire : mises à jour à chaque affichage ou changement de promotion.
 function renderPromoUI(){
-  const on = promoActive() && !promoLocked();
+  // La barre n'existe que tant que le visiteur n'a pas choisi sa promotion : dès qu'il a choisi, elle disparaît.
+  // (Il peut toujours changer de promotion avec le sélecteur du menu.)
+  const on = promoActive() && !promoLocked() && !promoChosen;
   let bar = document.getElementById('promoBar');
   const badge = document.getElementById('adhesionPromoBadge');
-  if(!on){ if(bar) bar.remove(); if(badge) badge.style.display = 'none'; document.documentElement.style.setProperty('--pb-h', '0px'); return; }
+  if(badge) badge.style.display = 'none';
+  if(!on){ if(bar) bar.remove(); document.documentElement.style.setProperty('--pb-h', '0px'); return; }
   if(!bar){ bar = document.createElement('div'); bar.id = 'promoBar'; document.body.appendChild(bar); }
   const cur = activePromotionId, invite = !promoChosen && !promoInviteClosed;
   const label = bdayEsc(mailPromo(activePromotion()));
-  const chips = promoOptions().map(o => `<button type="button" class="pb-chip${!invite && o.id === cur ? ' on' : ''}" onclick="promoPick('${o.id}')">${o.id === '__main__' ? 'Fondatrice' : bdayEsc(o.promo.nom)}${o.promo && o.promo.annee ? `<small>${bdayEsc(o.promo.annee)}</small>` : ''}</button>`).join('');
+  const allOpts = promoOptions(), visOpts = (allOpts.length > 3 && !promoShowOlder) ? allOpts.slice(-3) : allOpts;
+  const moreBtn = allOpts.length > 3 ? `<button type="button" class="pb-chip pb-more" onclick="promoToggleOlder()">${promoShowOlder ? 'Voir moins' : 'Voir +'}</button>` : '';
+  const chips = visOpts.map(o => `<button type="button" class="pb-chip${!invite && o.id === cur ? ' on' : ''}" onclick="promoPick('${o.id}')">${o.id === '__main__' ? 'Fondatrice' : bdayEsc(o.promo.nom)}${o.promo && o.promo.annee ? `<small>${bdayEsc(o.promo.annee)}</small>` : ''}</button>`).join('') + moreBtn;
   bar.classList.toggle('pb-invite', invite);
   bar.innerHTML = `<div class="pb-inner">${invite
       ? `<div class="pb-head"><div class="pb-title">🎓 Chaque promotion a son propre LABD</div><div class="pb-sub">Vous voyez pour l'instant : <b>${label}</b>. Choisissez la vôtre ci-dessous.</div><button type="button" class="pb-x" aria-label="Plus tard" onclick="promoInviteClose()">✕</button></div>`
       : `<span class="pb-label">🎓 Vous consultez</span>`}
     <div class="pb-chips">${chips}</div></div>`;
-  if(badge){
-    badge.style.display = 'flex';
-    badge.innerHTML = `<span>🎓 Candidature pour : <b>${label}</b>${promoChosen ? '' : ' <em>(à confirmer)</em>'}</span><button type="button" onclick="openPromoSheet({reason:'change'})">Changer</button>`;
-  }
   document.documentElement.style.setProperty('--pb-h', (bar.offsetHeight || 56) + 'px');
 }
 function promoBarUpdate(){
@@ -6275,6 +6333,14 @@ function promoBarUpdate(){
   window.addEventListener('scroll', h, { passive:true }); window.addEventListener('resize', h); })();
 
 // Fenêtre de choix
+function promoSheetListHTML(){
+  const cur = activePromotionId, all = promoOptions();
+  const vis = (all.length > 3 && !promoShowOlder) ? all.slice(-3) : all;
+  const items = vis.map(o => { const n = promoCount(o.promo); return `<button type="button" class="ps-opt${promoChosen && o.id === cur ? ' on' : ''}" onclick="promoPick('${o.id}')"><span class="ps-ico">🎓</span><span class="ps-txt"><b>${bdayEsc(mailPromo(o.promo))}</b><small>${n} membre${n > 1 ? 's' : ''}</small></span><span class="ps-go">›</span></button>`; }).join('');
+  const more = all.length > 3 ? `<button type="button" class="ps-more" onclick="promoToggleOlder()">${promoShowOlder ? 'Voir moins' : 'Voir les promotions précédentes'}</button>` : '';
+  return items + more;
+}
+function promoSheetRefreshList(){ const l = document.querySelector('#promoSheet .ps-list'); if(l) l.innerHTML = promoSheetListHTML(); }
 function openPromoSheet(ctx){
   if(!promoActive() || promoLocked() || document.getElementById('promoSheet')) return;
   promoSheetCtx = ctx || {};
@@ -6283,7 +6349,7 @@ function openPromoSheet(ctx){
   const sub = form ? "Votre dossier est envoyé au bureau de la promotion choisie. Choisissez la vôtre avant de l'enregistrer."
                    : 'LABD existe pour chaque promotion, sur ce même site : chaque bureau a ses membres, ses projets et ses frais. Choisissez la vôtre.';
   const cur = activePromotionId;
-  const list = promoOptions().map(o => { const n = promoCount(o.promo); return `<button type="button" class="ps-opt${promoChosen && o.id === cur ? ' on' : ''}" onclick="promoPick('${o.id}')"><span class="ps-ico">🎓</span><span class="ps-txt"><b>${bdayEsc(mailPromo(o.promo))}</b><small>${n} membre${n > 1 ? 's' : ''}</small></span><span class="ps-go">›</span></button>`; }).join('');
+  const list = promoSheetListHTML();
   const m = document.createElement('div'); m.id = 'promoSheet';
   m.innerHTML = `<div class="ps-card" role="dialog" aria-modal="true" aria-label="${title}">
     <button type="button" class="ps-x" aria-label="Fermer" onclick="closePromoSheet(true)">✕</button>

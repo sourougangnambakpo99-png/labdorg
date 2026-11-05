@@ -555,10 +555,10 @@
   .tile-progress-fill{height:100%; width:0%; background:var(--teal, #2f9e8f); transition:width 0.1s linear;}
   .watermark{position:absolute; top:8px; right:10px; display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; color:rgba(255,255,255,0.9); text-shadow:0 1px 3px rgba(0,0,0,0.6); pointer-events:none;}
   .watermark img{width:15px; height:15px; border-radius:4px; object-fit:cover; opacity:0.92; box-shadow:0 1px 3px rgba(0,0,0,0.5);}
-  .post-mark{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; font-family:'Space Grotesk', sans-serif; font-size:2rem; font-weight:800; letter-spacing:0.08em; color:#05b3c2; text-shadow:1px 0 #0b1c33,-1px 0 #0b1c33,0 1px #0b1c33,0 -1px #0b1c33,1px 1px #0b1c33,-1px -1px #0b1c33,1px -1px #0b1c33,-1px 1px #0b1c33,0 3px 12px rgba(0,0,0,0.55); white-space:nowrap; pointer-events:none;}
-  .modal-box.lb .post-mark{font-size:1.9rem;}
-  @media(max-width:560px){ .modal-box.lb .post-mark{font-size:1.15rem;} }
-  #fsViewer .fs-post{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); text-align:center; font-family:'Space Grotesk', sans-serif; font-weight:800; font-size:max(20px, calc(var(--fs-w, 360px) * 0.065)); letter-spacing:0.08em; color:#05b3c2; text-shadow:2px 0 #0b1c33,-2px 0 #0b1c33,0 2px #0b1c33,0 -2px #0b1c33,2px 2px #0b1c33,-2px -2px #0b1c33,2px -2px #0b1c33,-2px 2px #0b1c33,0 4px 16px rgba(0,0,0,0.55); white-space:nowrap; pointer-events:none;}
+  .post-mark{position:absolute; left:50%; bottom:16px; transform:translateX(-50%); padding:8px 22px 9px; border-radius:999px; background:rgba(11,28,51,0.92); border:1px solid rgba(255,255,255,0.38); box-shadow:0 4px 14px rgba(0,0,0,0.35); font-family:'Space Grotesk', sans-serif; font-size:1.2rem; font-weight:700; letter-spacing:0.12em; line-height:1.1; color:#fff; white-space:nowrap; pointer-events:none;}
+  .modal-box.lb .post-mark{font-size:1.1rem;}
+  @media(max-width:560px){ .modal-box.lb .post-mark{font-size:0.78rem; padding:6px 14px 7px; bottom:10px;} }
+  #fsViewer .fs-post{position:absolute; left:50%; bottom:max(14px, calc(var(--fs-w, 360px) * 0.04)); transform:translateX(-50%); padding:calc(var(--fs-w, 360px) * 0.02) calc(var(--fs-w, 360px) * 0.05); border-radius:999px; background:rgba(11,28,51,0.92); border:1px solid rgba(255,255,255,0.38); box-shadow:0 4px 18px rgba(0,0,0,0.35); font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:max(14px, calc(var(--fs-w, 360px) * 0.045)); letter-spacing:0.12em; line-height:1.1; color:#fff; white-space:nowrap; pointer-events:none;}
   .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
   .watermark-large img{width:53px; height:53px; border-radius:50%; object-fit:cover; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
   .watermark-large .wm-text{font-family:'Space Grotesk', sans-serif; font-size:1.6rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap;}
@@ -3971,15 +3971,20 @@ async function watermarkImageDataUrl(src, mark){
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size*0.08);
     ctx.fillText('LABD Org', logo ? x0 + size + gap : W - margin - tw, cy);
     if(mark){
-      // Mention du poste au milieu de l'image, aux couleurs du groupe (turquoise cerclé de bleu marine).
-      const fsz = Math.max(22, W * 0.065);
-      ctx.font = `800 ${fsz}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const txt = mark.split('').join(String.fromCharCode(8202));   // léger espacement entre les lettres
-      ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(4, fsz * 0.14); ctx.strokeStyle = '#0b1c33';
-      ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = fsz * 0.25;
-      ctx.strokeText(txt, W / 2, H / 2);
-      ctx.shadowBlur = 0; ctx.shadowColor = 'transparent';
-      ctx.fillStyle = '#05b3c2'; ctx.fillText(txt, W / 2, H / 2);
+      // Mention du poste en bas, au milieu de l'image : pastille bleu marine du groupe, texte blanc.
+      const fsz = Math.max(16, W * 0.045), padX = fsz * 1.1, padY = fsz * 0.55, bm = Math.max(14, W * 0.04);
+      const txt = mark.split('').join(String.fromCharCode(8202));
+      ctx.font = `700 ${fsz}px sans-serif`;
+      const tw2 = ctx.measureText(txt).width, bw = tw2 + padX * 2, bh = fsz + padY * 2, bx = (W - bw) / 2, by = H - bm - bh;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = fsz * 0.4; ctx.shadowOffsetY = fsz * 0.12;
+      ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(bx, by, bw, bh, bh / 2); else ctx.rect(bx, by, bw, bh);
+      ctx.fillStyle = 'rgba(11,28,51,0.92)'; ctx.fill();
+      ctx.restore();
+      ctx.lineWidth = Math.max(1, fsz * 0.05); ctx.strokeStyle = 'rgba(255,255,255,0.38)'; ctx.beginPath();
+      if(ctx.roundRect) ctx.roundRect(bx, by, bw, bh, bh / 2); else ctx.rect(bx, by, bw, bh); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(txt, W / 2, by + bh / 2 + fsz * 0.04);
     }
     return canvas.toDataURL('image/jpeg', 0.92);
   }catch(e){

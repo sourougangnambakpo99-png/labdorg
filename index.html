@@ -543,7 +543,7 @@
   .gallery-tile{aspect-ratio:4/3; border-radius:var(--radius); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted-2); background:var(--paper-2); overflow:hidden; position:relative; border:1px solid var(--line);}
   .gallery-tile img, .gallery-tile video{width:100%; height:100%; object-fit:cover;}
   .gallery-tile span{font-size:0.72rem; text-align:center; padding:0 10px;}
-  .gallery-tile .cap{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, rgba(11,28,51,0), rgba(11,28,51,0.82) 55%); color:#fff; font-size:0.72rem; line-height:1.3; padding:16px 9px 0; border-bottom:7px solid transparent; background-clip:padding-box; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; pointer-events:none;}
+  .gallery-tile .cap{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.9) 55%, rgba(255,255,255,0.97)); color:#0b1c33; font-weight:600; font-size:0.72rem; line-height:1.3; padding:18px 9px 0; border-bottom:8px solid transparent; background-origin:border-box; background-clip:border-box; background-repeat:no-repeat; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; pointer-events:none;}
   .gallery-tile{cursor:pointer;}
   .gallery-tile .tile-admin{position:absolute; top:34px; right:8px; display:none; gap:6px; z-index:2;}
   .perm-photos .gallery-tile .tile-admin{display:flex;}
@@ -558,10 +558,13 @@
   /* Mention du poste : une ligne, blanche, avec un point turquoise du groupe comme séparateur : « PR • LABD ». Aucun fond. */
   .post-mark,#fsViewer .fs-post{position:absolute; left:0; right:0; bottom:16px; text-align:center; pointer-events:none;}
   .post-mark{font-size:1rem;}
-  .pm-text{display:inline-flex; align-items:center; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1em; letter-spacing:0.18em; padding-left:0.18em; line-height:1; white-space:nowrap; color:#fff; text-shadow:0 1px 3px rgba(0,10,25,0.55), 0 2px 10px rgba(0,10,25,0.45);}
+  .pm-text{display:inline-flex; align-items:center; font-family:'Space Grotesk', sans-serif; font-weight:500; font-size:1.05em; letter-spacing:0.2em; padding-left:0.2em; line-height:1; white-space:nowrap; color:#fff; -webkit-text-stroke:0.15em #0b1c33; paint-order:stroke fill;
+    filter:drop-shadow(0 0 0.07em rgba(70,140,255,0.55)); animation:pmShine 3.6s ease-in-out infinite;}
+  @keyframes pmShine{0%,100%{filter:drop-shadow(0 0 0.05em rgba(70,140,255,0.4));} 50%{filter:drop-shadow(0 0 0.1em rgba(90,155,255,0.8));}}
+  @media(prefers-reduced-motion:reduce){ .pm-text{animation:none;} }
   .lb-stamp{display:flex; align-items:center; justify-content:flex-start; gap:6px; margin:4px 0 0; text-align:left; line-height:1.3; font-size:0.8rem; color:var(--muted); font-family:'IBM Plex Sans', sans-serif;}
   .lb-stamp svg{color:var(--teal-dark); flex:none;}
-  .pm-dot{display:inline-block; width:0.34em; height:0.34em; border-radius:50%; background:#fff; margin:0 0.7em 0 0.54em; box-shadow:0 0 0 0.075em #0b1c33;}
+  .pm-dot{display:inline-block; width:0.34em; height:0.34em; border-radius:50%; background:#fff; margin:0 0.7em 0 0.54em; box-shadow:0 0 0 0.05em #0b1c33;}
   @media(max-width:560px){ .post-mark{font-size:0.72rem; bottom:11px;} }
   #fsViewer .fs-post{font-size:max(11px, calc(var(--fs-w, 360px) * 0.028)); bottom:max(14px, calc(var(--fs-w, 360px) * 0.04));}
   .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
@@ -1952,16 +1955,20 @@ async function __waitFirebaseAuthReady(){
   })();
   return __firebaseAuthReadyCache;
 }
+// Clés dont la LECTURE a échoué (connexion, quota…) : leur valeur affichée est un faux « vide ». On interdit de les réécrire,
+// sinon une sauvegarde pourrait écraser les vraies données (dossiers, membres…) par une liste vide.
+const __readFailed = new Set();
 async function storageGet(key, fallback){
   try{
     const ready = await __waitFirebaseReady();
-    if(!ready) return fallback;
+    if(!ready){ __readFailed.add(key); return fallback; }
     const snap = await window.__fbGetDoc(window.__fbDoc(window.__fbDb, 'labd-data', key));
     return snap.exists() && snap.data().value !== undefined ? JSON.parse(snap.data().value) : fallback;
   }
-  catch(e){ console.error('storage get error', e); return fallback; }
+  catch(e){ console.error('storage get error', e); __readFailed.add(key); return fallback; }
 }
 async function storageSet(key, value){
+  if(__readFailed.has(key)){ console.error('storage set bloqué : la lecture de « ' + key + ' » a échoué, on n\'écrase pas les données. Rechargez la page.'); return false; }
   try{
     const ready = await __waitFirebaseReady();
     if(!ready) return false;
@@ -3984,22 +3991,29 @@ async function watermarkImageDataUrl(src, mark){
     ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size*0.08);
     ctx.fillText('LABD Org', logo ? x0 + size + gap : W - margin - tw, cy);
     if(mark){
-      // Mention du poste, une ligne : texte blanc (police du logo), point vert-turquoise du groupe à épais bord blanc comme séparateur. Aucun fond.
-      const fsz = Math.max(13, W * 0.034), bm = Math.max(14, W * 0.045), sp = fsz * 0.18, base = H - bm;
-      ctx.font = `600 ${fsz}px "Space Grotesk", sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      // Mention du poste, une ligne : texte blanc (police du logo) cerclé de bleu marine avec un très léger reflet bleu ; point blanc à contour bleu marine. Aucun fond.
+      const fsz = Math.max(13, W * 0.036), bm = Math.max(14, W * 0.045), sp = fsz * 0.2, base = H - bm;
+      ctx.font = `500 ${fsz}px "Space Grotesk", sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       const trkW = t => { let w = 0; for(const ch of t) w += ctx.measureText(ch).width + sp; return w - sp; };
-      const drawT = (t, x0) => { let px = x0; for(const ch of t){ ctx.fillText(ch, px, base); px += ctx.measureText(ch).width + sp; } };
-      ctx.shadowColor = 'rgba(0,10,25,0.55)'; ctx.shadowBlur = fsz * 0.35; ctx.shadowOffsetY = fsz * 0.08; ctx.fillStyle = '#fff';
+      let lx0 = 0, lw = 1;   // étendue de la ligne entière (pour que le reflet traverse tout le texte)
+      const drawT = (t, x0) => {
+        let px = x0; const pos = []; for(const ch of t){ pos.push([ch, px]); px += ctx.measureText(ch).width + sp; }
+        ctx.lineJoin = 'round'; ctx.lineWidth = fsz * 0.15; ctx.strokeStyle = '#0b1c33';
+        ctx.shadowColor = 'rgba(80,150,255,0.7)'; ctx.shadowBlur = fsz * 0.16; ctx.shadowOffsetY = 0;      // léger reflet bleu sur le contour
+        pos.forEach(([c, x]) => ctx.strokeText(c, x, base));                                                // contour bleu marine
+        ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff'; pos.forEach(([c, x]) => ctx.fillText(c, x, base));     // texte blanc
+      };
       if(mark.a){
         const d = fsz * 0.34, g1 = fsz * 0.72, g2 = fsz * 0.72, wa = trkW(mark.a), wl = trkW('LABD'), total = wa + g1 + d + g2 + wl;
-        let x = W / 2 - total / 2;
+        let x = W / 2 - total / 2; lx0 = x; lw = total;
         drawT(mark.a, x); x += wa + g1;
         const cyd = base - fsz * 0.36;      // point centré sur la hauteur des majuscules
-        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2 + fsz * 0.075, 0, Math.PI * 2); ctx.fillStyle = '#0b1c33'; ctx.fill();
+        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2 + fsz * 0.05, 0, Math.PI * 2); ctx.fillStyle = '#0b1c33'; ctx.fill();
         ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
-        ctx.fillStyle = '#fff'; x += d + g2; drawT('LABD', x);
+        x += d + g2; drawT('LABD', x);
       } else {
-        const t = postMarkLine(mark); drawT(t, W / 2 - trkW(t) / 2);
+        const t = postMarkLine(mark); lw = trkW(t); lx0 = W / 2 - lw / 2; drawT(t, lx0);
       }
       ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.shadowColor = 'transparent';
     }
@@ -5413,16 +5427,22 @@ function renderAdminContent(){
     // Vue CRE (+ SG, Pr, ou bureau d'une promotion pour ses propres dossiers) :
     // dossiers accessibles uniquement une fois le paiement validé par le TG.
     const promoScopeC = currentRole && currentRole.promotionId;
-    const valides = DATA.candidatures.filter(c => (promoScopeC ? c.promotionId === promoScopeC : !c.promotionId) && c.paye);
+    const inScope = DATA.candidatures.filter(c => (promoScopeC ? c.promotionId === promoScopeC : !c.promotionId));
+    const valides = inScope.filter(c => c.paye);
+    const enAttente = inScope.length - valides.length;
+    const autresPromos = DATA.candidatures.length - inScope.length;
     const aTraiter = valides.filter(c => !c.sgSuivi);
     const traites = valides.filter(c => c.sgSuivi);
-    el.innerHTML = `<p class="form-note" style="margin-bottom:14px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Déroulez un dossier pour consulter le CV et la lettre, puis le partager (ou non) dans le groupe WhatsApp du bureau. Une fois la réponse envoyée et cochée, le dossier passe dans l'archive.</p>
+    const scopeName = promoScopeC && DATA.promotions[promoScopeC] ? mailPromo(DATA.promotions[promoScopeC]) : 'la promotion fondatrice';
+    const failBanner = __readFailed.has('candidatures') ? `<div style="background:#fdecea; border:1px solid #f1b3ab; color:#8a1f11; border-radius:10px; padding:10px 14px; margin-bottom:14px; font-size:.86rem;"><strong>Les dossiers n'ont pas pu être chargés</strong> (connexion ou limite Firebase). Ils ne sont pas perdus : rechargez la page avant de modifier quoi que ce soit. Les enregistrements sont bloqués tant que le chargement n'a pas réussi, pour ne rien écraser.</div>` : '';
+    el.innerHTML = `${failBanner}<p class="form-note" style="margin-bottom:8px;">Dossiers accessibles ici une fois le paiement validé par le Trésorier Général. Déroulez un dossier pour consulter le CV et la lettre, puis le partager (ou non) dans le groupe WhatsApp du bureau. Une fois la réponse envoyée et cochée, le dossier passe dans l'archive.</p>
+      <p class="form-note" style="margin-bottom:14px; font-size:.78rem;">Vous consultez les dossiers de : <strong>${escapeHTML(scopeName)}</strong>${enAttente ? ` · ${enAttente} en attente du paiement (côté Trésorier Général)` : ''}${autresPromos ? ` · ${autresPromos} dossier(s) d'autres promotions, visibles uniquement par leur bureau` : ''}.</p>
       <div style="font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); margin:0 0 4px;">À traiter (${aTraiter.length})</div>
       <div>${aTraiter.map(c => candidatureRowHTML(c, false)).join("") || '<p class="form-note">Aucun dossier à traiter pour le moment.</p>'}</div>
-      ${traites.length ? `<details ${openCandArchive?'open':''} ontoggle="openCandArchive = this.open" style="margin-top:18px;">
+      <details ${openCandArchive?'open':''} ontoggle="openCandArchive = this.open" style="margin-top:18px;">
         <summary style="cursor:pointer; font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted-2); padding:6px 0;">Dossiers traités, archive (${traites.length})</summary>
-        <div>${traites.map(c => candidatureRowHTML(c, true)).join("")}</div>
-      </details>` : ''}`;
+        <div>${traites.map(c => candidatureRowHTML(c, true)).join("") || '<p class="form-note">Aucun dossier archivé.</p>'}</div>
+      </details>`;
   }
   if(adminTab === 'cotisations'){
     // Vue TG : uniquement les dossiers en attente de SA promotion (ou de la

@@ -559,7 +559,9 @@
   .post-mark,#fsViewer .fs-post{position:absolute; left:0; right:0; bottom:16px; text-align:center; pointer-events:none;}
   .post-mark{font-size:1rem;}
   .pm-text{display:inline-flex; align-items:center; font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:1em; letter-spacing:0.18em; padding-left:0.18em; line-height:1; white-space:nowrap; color:#fff; text-shadow:0 1px 3px rgba(0,10,25,0.55), 0 2px 10px rgba(0,10,25,0.45);}
-  .pm-dot{display:inline-block; width:0.24em; height:0.24em; border-radius:50%; background:#05b3c2; margin:0 0.72em 0 0.56em; box-shadow:0 0 0 0.08em #fff, 0 1px 4px rgba(0,10,25,0.45);}
+  .lb-stamp{display:flex; align-items:center; justify-content:flex-start; gap:6px; margin:4px 0 0; text-align:left; line-height:1.3; font-size:0.8rem; color:var(--muted); font-family:'IBM Plex Sans', sans-serif;}
+  .lb-stamp svg{color:var(--teal-dark); flex:none;}
+  .pm-dot{display:inline-block; width:0.34em; height:0.34em; border-radius:50%; background:#fff; margin:0 0.7em 0 0.54em; box-shadow:0 0 0 0.075em #0b1c33;}
   @media(max-width:560px){ .post-mark{font-size:0.72rem; bottom:11px;} }
   #fsViewer .fs-post{font-size:max(11px, calc(var(--fs-w, 360px) * 0.028)); bottom:max(14px, calc(var(--fs-w, 360px) * 0.04));}
   .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
@@ -3238,6 +3240,13 @@ function promoDepth(p){
   while(cur && guard++ < 50){ d++; const par = cur.parentId || '__main__'; if(par === '__main__') break; cur = DATA.promotions[par]; }
   return d;
 }
+function fmtDateTimeFR(ts){
+  try{
+    const d = new Date(ts); if(isNaN(d)) return '';
+    const pad = n => String(n).padStart(2, '0');
+    return d.toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }) + ' à ' + pad(d.getHours()) + ' h ' + pad(d.getMinutes());
+  }catch(e){ return ''; }
+}
 function fmtLongDate(ts){
   try{ return new Date(ts).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' }); }catch(e){ return ''; }
 }
@@ -3982,12 +3991,12 @@ async function watermarkImageDataUrl(src, mark){
       const drawT = (t, x0) => { let px = x0; for(const ch of t){ ctx.fillText(ch, px, base); px += ctx.measureText(ch).width + sp; } };
       ctx.shadowColor = 'rgba(0,10,25,0.55)'; ctx.shadowBlur = fsz * 0.35; ctx.shadowOffsetY = fsz * 0.08; ctx.fillStyle = '#fff';
       if(mark.a){
-        const d = fsz * 0.24, g1 = fsz * 0.74, g2 = fsz * 0.74, wa = trkW(mark.a), wl = trkW('LABD'), total = wa + g1 + d + g2 + wl;
+        const d = fsz * 0.34, g1 = fsz * 0.72, g2 = fsz * 0.72, wa = trkW(mark.a), wl = trkW('LABD'), total = wa + g1 + d + g2 + wl;
         let x = W / 2 - total / 2;
         drawT(mark.a, x); x += wa + g1;
         const cyd = base - fsz * 0.36;      // point centré sur la hauteur des majuscules
-        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2 + fsz * 0.08, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
-        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2, 0, Math.PI * 2); ctx.fillStyle = '#05b3c2'; ctx.fill();
+        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2 + fsz * 0.075, 0, Math.PI * 2); ctx.fillStyle = '#0b1c33'; ctx.fill();
+        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
         ctx.fillStyle = '#fff'; x += d + g2; drawT('LABD', x);
       } else {
         const t = postMarkLine(mark); drawT(t, W / 2 - trkW(t) / 2);
@@ -4058,10 +4067,10 @@ function findPostHolder(nom){
   return null;
 }
 function firstNameOf(nom){
-  // « ZINSOU Jean » → « Jean » : on garde les mots qui ne sont pas entièrement en majuscules ; à défaut, le premier mot.
+  // « ZINSOU Jean » → « Jean ». S'il y a plusieurs prénoms (« ZINSOU Jean Pierre »), on prend le dernier : « Pierre ».
   const toks = String(nom || '').trim().split(/\s+/).filter(Boolean);
   const fn = toks.filter(t => t.length > 1 && t !== t.toUpperCase());
-  return (fn.length ? fn.join(' ') : (toks[0] || ''));
+  return fn.length ? fn[fn.length - 1] : (toks[toks.length - 1] || '');
 }
 function postMarkText(nom){
   const m = findPostHolder(nom);
@@ -4305,7 +4314,7 @@ function lbToggleMute(btn){
   btn.textContent = vid.muted ? 'Activer le son' : 'Couper le son';
 }
 function openLightbox(key){
-  let src, video, legende;
+  let src, video, legende, stamp = null;
   if(key === 'logo'){
     src = DATA.groupLogo; legende = 'Logo du groupe';
   } else if(key.startsWith('seed-')){
@@ -4315,10 +4324,11 @@ function openLightbox(key){
     const m = DATA.medias.find(x => x.id === id);
     if(!m) return;
     src = m.photo; video = m.video; legende = m.legende;
+    if(m.date || m.maj) stamp = { ts: m.maj || m.date, kind: m.maj ? 'Mis à jour' : 'Publié' };
   }
-  openLightboxData(src, video, legende, key === 'logo', key);
+  openLightboxData(src, video, legende, key === 'logo', key, '', stamp);
 }
-function openLightboxData(src, video, legende, isLogoView, key, mark){
+function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
@@ -4339,6 +4349,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark){
       </div>
     </div>
     <p style="margin-top:14px;">${legende||''}</p>
+    ${stamp && stamp.ts ? `<div class="lb-stamp"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>${stamp.kind} le ${fmtDateTimeFR(stamp.ts)}</span></div>` : ''}
     <div class="row">
       ${!video ? `<button type="button" class="btn-primary" onclick="downloadImage(lbCurrent.src, 'labd-${key}', this, lbCurrent.mark)">Télécharger</button>` : ''}
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
@@ -6022,6 +6033,7 @@ async function publishMedia(){
     if(m){
       m.legende = legende || m.legende;
       if(file || videoUrl){ m.photo = photo; m.video = video; if(poster) m.poster = poster; }
+      m.maj = Date.now();      // date et heure de la dernière mise à jour
     }
     editingMediaId = null;
   } else {

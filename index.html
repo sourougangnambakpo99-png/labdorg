@@ -556,10 +556,10 @@
   .watermark{position:absolute; top:8px; right:10px; display:flex; align-items:center; gap:5px; font-family:'IBM Plex Mono', monospace; font-size:0.62rem; letter-spacing:0.06em; color:rgba(255,255,255,0.9); text-shadow:0 1px 3px rgba(0,0,0,0.6); pointer-events:none;}
   .watermark img{width:15px; height:15px; border-radius:4px; object-fit:cover; opacity:0.92; box-shadow:0 1px 3px rgba(0,0,0,0.5);}
   /* Mention du poste : une ligne, blanche, avec un point turquoise du groupe comme séparateur : « PR • LABD ». Aucun fond. */
-  .post-mark,#fsViewer .fs-post{position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; gap:0.9em; padding:3.4em 0 1em; background:linear-gradient(to top, rgba(8,20,40,0.66), rgba(8,20,40,0.3) 45%, rgba(8,20,40,0)), linear-gradient(#05b3c2,#05b3c2) bottom / 100% 2px no-repeat; box-sizing:border-box; pointer-events:none;}
-  .post-mark::before,.post-mark::after,#fsViewer .fs-post::before,#fsViewer .fs-post::after{content:''; flex:0 0 3.4em; height:1px; background:rgba(255,255,255,0.6);}
+  .post-mark,#fsViewer .fs-post{position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; align-items:center; gap:0.9em; padding:0.8em 0 0.95em; background:linear-gradient(#05b3c2,#05b3c2) bottom / 100% 2px no-repeat, rgba(8,20,40,0.66); box-sizing:border-box; pointer-events:none;}
+  .post-mark::before,.post-mark::after,#fsViewer .fs-post::before,#fsViewer .fs-post::after{content:''; flex:0 1 3.4em; min-width:0; height:1px; background:rgba(255,255,255,0.6);}
   .post-mark{font-size:1rem; border-radius:0 0 8px 8px;}
-  .pm-text{display:inline-flex; align-items:center; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:0.6em; letter-spacing:0.5em; padding-left:0.5em; line-height:1; white-space:nowrap; color:#fff; text-shadow:0 1px 4px rgba(0,10,25,0.5);}
+  .pm-text{display:inline-flex; align-items:center; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:1.2em; letter-spacing:0.5em; padding-left:0.5em; line-height:1; white-space:nowrap; color:#fff; text-shadow:0 1px 4px rgba(0,10,25,0.5);}
   .lb-stamp{display:flex; align-items:center; justify-content:flex-start; gap:6px; margin:4px 0 0; text-align:left; line-height:1.3; font-size:0.8rem; color:var(--muted); font-family:'IBM Plex Sans', sans-serif;}
   .lb-stamp svg{color:var(--teal-dark); flex:none;}
   .pm-dot{display:inline-block; width:0.36em; height:0.36em; border-radius:50%; background:#fff; margin:0 1.2em 0 0.76em;}

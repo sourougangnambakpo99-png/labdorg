@@ -565,6 +565,11 @@
   .pm-dot{display:inline-block; width:0.36em; height:0.36em; border-radius:50%; background:#fff; margin:0 1.2em 0 0.76em;}
   @media(max-width:560px){ .post-mark{font-size:0.72rem;} }
   #fsViewer .fs-post{font-size:max(11px, calc(var(--fs-w, 360px) * 0.028));}
+  /* Fenêtre qui précède le plein écran : logo et mention à la même échelle que le plein écran (proportionnels à la largeur de l'image). */
+  .modal-box.lb .lb-frame .post-mark{font-size:max(11px, calc(var(--fs-w, 360px) * 0.028));}
+  .modal-box.lb .lb-frame .watermark-large{top:max(10px, calc(var(--fs-w, 360px) * 0.022)); right:max(10px, calc(var(--fs-w, 360px) * 0.022)); gap:max(8px, calc(var(--fs-w, 360px) * 0.016)); min-width:0;}
+  .modal-box.lb .lb-frame .watermark-large img{width:max(44px, calc(var(--fs-w, 360px) * 0.085)); height:max(44px, calc(var(--fs-w, 360px) * 0.085)); border:max(2px, calc(var(--fs-w, 360px) * 0.004)) solid rgba(255,255,255,0.95); box-sizing:border-box;}
+  .modal-box.lb .lb-frame .watermark-large .wm-text{font-size:max(20px, calc(var(--fs-w, 360px) * 0.042)); line-height:1;}
   /* Logo sur les vignettes de la galerie : même rendu que dans la vue agrandie (logo rond + « LABD Org » en gras), à l'échelle de la vignette. */
   .gallery-tile .watermark{top:9px; right:9px; gap:7px; font-family:'Space Grotesk', sans-serif; font-size:0.95rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap; z-index:2;}
   .gallery-tile .watermark img{width:30px; height:30px; border-radius:50%; object-fit:cover; opacity:1; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
@@ -4478,7 +4483,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:pointer;">`;
   openModal(`
     <div style="text-align:center;">
-      <div style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
+      <div class="lb-frame" style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${!isLogoView ? lightboxWatermarkHTML() : ''}
         ${mark ? `<div class="post-mark">${postMarkHTML(mark)}</div>` : ''}
@@ -4492,7 +4497,21 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
     </div>
   `, true);
   modalContent.classList.add('lb');
+  lbSizeMark();
+  const lbEl = modalContent.querySelector('.lb-frame img, .lb-frame video');
+  if(lbEl){ lbEl.addEventListener('load', lbSizeMark); lbEl.addEventListener('loadedmetadata', lbSizeMark); }
 }
+// Même échelle que le plein écran : le logo et la mention suivent la largeur réelle de l'image affichée dans la fenêtre.
+function lbSizeMark(){
+  const f = document.querySelector('.modal-box.lb .lb-frame'); if(!f) return;
+  const el = f.querySelector('img, video, iframe'); if(!el) return;
+  let w = el.clientWidth || el.getBoundingClientRect().width;
+  if(el.tagName === 'VIDEO' && el.videoWidth && el.videoHeight && el.clientHeight){
+    w = Math.min(el.clientWidth, el.clientHeight * el.videoWidth / el.videoHeight);
+  }
+  if(w) f.style.setProperty('--fs-w', Math.max(240, Math.min(w, 2400)) + 'px');
+}
+window.addEventListener('resize', lbSizeMark);
 let editingMediaId = null;
 function editMedia(id){ editingMediaId = id; renderAdminContent(); }
 async function deleteMedia(id){

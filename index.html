@@ -5424,12 +5424,12 @@ function renderAdminContent(){
         <label>Description</label>
         ${fmtBarHTML('ad-art-desc')}
         <textarea id="ad-art-desc" placeholder="Description">${editing?editing.description:''}</textarea>
-        <label>Lien (optionnel)</label>
-        <input id="ad-art-lien" placeholder="Collez un lien : YouTube, Vimeo, Google Drive, Docs, PDF, image, site web..." value="${editing ? ((editing.video && isExternalVideoUrl(editing.video)) ? editing.video : (editing.lien||'')) : ''}">
-        <label style="margin-top:10px;">Changer la miniature${editing?' (laisser vide pour la garder)':''}</label><input type="file" accept="image/*,video/*" id="ad-art-photo">
+        <label>Photo${editing?' (laisser vide pour garder la photo actuelle)':''}</label><input type="file" accept="image/*,video/*" id="ad-art-photo">
         <div class="frame-picker" id="frame-ad-art-photo"></div>
-        <p class="frame-hint">Pour une photo : cliquez sur l'aperçu pour choisir la partie qui s'affichera en miniature.</p>
+        <p class="frame-hint">Cliquez sur l'aperçu pour choisir la partie de la photo qui s'affichera.</p>
         <div id="ad-art-poster-preview"></div>
+        <label style="margin-top:10px;">Lien (optionnel)</label>
+        <input id="ad-art-lien" placeholder="Collez un lien : YouTube, Vimeo, Google Drive, Docs, PDF, image, site web..." value="${editing ? ((editing.video && isExternalVideoUrl(editing.video)) ? editing.video : (editing.lien||'')) : ''}">
         ${visibilityPickerHTML('ad-art-vis', editing ? articleReserved(editing) : effectiveType==='formation')}
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>

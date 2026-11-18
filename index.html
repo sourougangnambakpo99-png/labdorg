@@ -1331,7 +1331,7 @@ const DEFAULT_VIDEO_POSTER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
 function isExternalVideoUrl(src){
   return typeof src === 'string' && /^https?:\/\//i.test(src) && !src.startsWith('data:');
 }
-function youtubeEmbedSrc(url, auto){
+function youtubeEmbedSrc(url, auto, tile){
   try{
     const u = new URL(url);
     let id = null;
@@ -1341,7 +1341,7 @@ function youtubeEmbedSrc(url, auto){
       else if(u.pathname.startsWith('/embed/')) id = u.pathname.split('/embed/')[1];
       else if(u.pathname.startsWith('/shorts/')) id = u.pathname.split('/shorts/')[1];
     }
-    if(id){ id = id.split('&')[0].split('?')[0]; return `https://www.youtube.com/embed/${id}?rel=0` + (auto ? `&autoplay=1&mute=1&loop=1&playlist=${id}&playsinline=1` : ''); }
+    if(id){ id = id.split('&')[0].split('?')[0]; return `https://www.youtube.com/embed/${id}?rel=0&enablejsapi=1` + (tile ? '&controls=0&modestbranding=1&iv_load_policy=3&disablekb=1&fs=0' : '') + (auto ? `&autoplay=1&mute=1&loop=1&playlist=${id}&playsinline=1` : ''); }
     if(u.hostname.includes('vimeo.com')){
       const vid = u.pathname.split('/').filter(Boolean)[0];
       if(vid) return `https://player.vimeo.com/video/${vid}` + (auto ? '?autoplay=1&muted=1&loop=1' : '');
@@ -1349,13 +1349,28 @@ function youtubeEmbedSrc(url, auto){
   }catch(e){ /* lien non reconnu, on l'utilise tel quel */ }
   return url;
 }
+const EXT_ICON_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const EXT_ICON_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+// Allume / éteint la vidéo YouTube ou Vimeo directement sur le site.
+function toggleExtVideo(btn){
+  const tile = btn.closest('.video-tile'); if(!tile) return;
+  const f = tile.querySelector('iframe'); if(!f || !f.contentWindow) return;
+  const playing = tile.dataset.playing === '1';
+  const vimeo = /player\.vimeo\.com/.test(f.src);
+  const msg = vimeo ? { method: playing ? 'pause' : 'play' } : { event:'command', func: playing ? 'pauseVideo' : 'playVideo', args:'' };
+  f.contentWindow.postMessage(JSON.stringify(msg), '*');
+  tile.dataset.playing = playing ? '0' : '1';
+  btn.innerHTML = playing ? EXT_ICON_PLAY : EXT_ICON_PAUSE;
+  btn.style.opacity = playing ? '1' : '0.6';
+}
 function videoTileHTML(src, poster, expandCall, extraStyle, auto){
   if(isExternalVideoUrl(src)){
     // auto (galerie) : la vidéo remplit toute la case, sans bandes noires ; sinon elle garde son cadre normal.
     const frameStyle = auto ? 'position:absolute; top:0; left:-17.5%; width:135%; height:100%;' : 'width:100%; height:100%;';
-    return `<div class="video-tile" style="position:relative; width:100%; height:100%; overflow:hidden; background:#000;">
-      <iframe src="${youtubeEmbedSrc(src, auto)}" style="${frameStyle} border:0; display:block; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-      ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3; clip-path:polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 25%);"></div>` : ''}
+    return `<div class="video-tile" data-playing="${auto ? '1' : '0'}" style="position:relative; width:100%; height:100%; overflow:hidden; background:#000;">
+      <iframe src="${youtubeEmbedSrc(src, auto, true)}" style="${frameStyle} border:0; display:block; pointer-events:none; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" loading="lazy"></iframe>
+      ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3;"></div>` : ''}
+      <button type="button" class="ext-play" title="Lecture / Pause" aria-label="Lecture / Pause" onclick="event.stopPropagation(); toggleExtVideo(this)" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:2px solid rgba(255,255,255,0.85); cursor:default; z-index:4; display:flex; align-items:center; justify-content:center; padding:0; opacity:${auto ? '0.6' : '1'};">${auto ? EXT_ICON_PAUSE : EXT_ICON_PLAY}</button>
     </div>`;
   }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">

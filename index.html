@@ -756,8 +756,6 @@
   .modal-box.lb > div:first-child{flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center;}
   .modal-box.lb .lb-img{max-height:calc(100vh - 205px); max-height:calc(100dvh - 205px); max-width:100%; width:auto; height:auto; object-fit:contain;}
   .modal-box.lb .lb-video video{max-height:calc(100vh - 205px) !important; max-height:calc(100dvh - 205px) !important;}
-  .modal-box.lb iframe{max-height:calc(100vh - 150px); max-height:calc(100dvh - 150px);}
-  .modal-box.lb:has(iframe){max-width:min(1200px, 96vw); padding:10px;}
   .modal-box.lb > p{flex:none; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .modal-box.lb .row{flex:none;}
   .modal-box.lb .watermark-large{top:10px; right:10px; min-width:0; gap:8px;}
@@ -1333,7 +1331,7 @@ const DEFAULT_VIDEO_POSTER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
 function isExternalVideoUrl(src){
   return typeof src === 'string' && /^https?:\/\//i.test(src) && !src.startsWith('data:');
 }
-function youtubeEmbedSrc(url){
+function youtubeEmbedSrc(url, auto){
   try{
     const u = new URL(url);
     let id = null;
@@ -1343,19 +1341,21 @@ function youtubeEmbedSrc(url){
       else if(u.pathname.startsWith('/embed/')) id = u.pathname.split('/embed/')[1];
       else if(u.pathname.startsWith('/shorts/')) id = u.pathname.split('/shorts/')[1];
     }
-    if(id) return `https://www.youtube.com/embed/${id.split('&')[0].split('?')[0]}?rel=0`;
+    if(id){ id = id.split('&')[0].split('?')[0]; return `https://www.youtube.com/embed/${id}?rel=0` + (auto ? `&autoplay=1&mute=1&loop=1&playlist=${id}&playsinline=1` : ''); }
     if(u.hostname.includes('vimeo.com')){
       const vid = u.pathname.split('/').filter(Boolean)[0];
-      if(vid) return `https://player.vimeo.com/video/${vid}`;
+      if(vid) return `https://player.vimeo.com/video/${vid}` + (auto ? '?autoplay=1&muted=1&loop=1' : '');
     }
   }catch(e){ /* lien non reconnu, on l'utilise tel quel */ }
   return url;
 }
-function videoTileHTML(src, poster, expandCall, extraStyle){
+function videoTileHTML(src, poster, expandCall, extraStyle, auto){
   if(isExternalVideoUrl(src)){
-    return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
-      <iframe src="${youtubeEmbedSrc(src)}" style="width:100%; height:100%; border:0; display:block; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-      ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3;"></div>` : ''}
+    // auto (galerie) : la vidéo remplit toute la case, sans bandes noires ; sinon elle garde son cadre normal.
+    const frameStyle = auto ? 'position:absolute; top:0; left:-17.5%; width:135%; height:100%;' : 'width:100%; height:100%;';
+    return `<div class="video-tile" style="position:relative; width:100%; height:100%; overflow:hidden; background:#000;">
+      <iframe src="${youtubeEmbedSrc(src, auto)}" style="${frameStyle} border:0; display:block; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+      ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3; clip-path:polygon(evenodd, 0 0, 100% 0, 100% 100%, 0 100%, 0 0, 25% 25%, 75% 25%, 75% 75%, 25% 75%, 25% 25%);"></div>` : ''}
     </div>`;
   }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
@@ -2264,7 +2264,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape' && fsOn) close
 let modalHistoryOn = false, modalBackPending = false;
 function openModal(html, wide){
   modalContent.className = 'modal-box' + (wide ? ' wide' : '');
-  modalContent.style.maxWidth = '';
+  modalContent.style.maxWidth = ''; modalContent.style.padding = '';
   modalContent.innerHTML = html;
   modalOverlay.classList.add('open');
   if(!modalHistoryOn && !modalBackPending){
@@ -4444,7 +4444,7 @@ function openMediaUploadModal(){
 }
 function galleryTileHTML({photo, video, poster, legende, key, id, editable, seed}){
   const mediaHTML = video
-    ? videoTileHTML(video, poster, `event.stopPropagation(); openLightbox('${key}')`)
+    ? videoTileHTML(video, poster, `event.stopPropagation(); openLightbox('${key}')`, '', true)
     : `<img src="${photo}" alt="${legende||''}" loading="lazy">`;
   const adminBtns = editable
     ? (seed
@@ -4492,9 +4492,9 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
-        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
-        : `<div class="lb-video" style="position:relative; width:100%; background:#000; border-radius:8px; overflow:hidden;">
-            <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
+        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
+        : `<div class="lb-video" style="position:relative; display:block; width:fit-content; max-width:100%; margin:0 auto; border-radius:8px; overflow:hidden;">
+            <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:auto; max-width:100%; height:auto; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
             <button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Plein écran</button>
             <button type="button" class="lb-mute" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer;">Activer le son</button>
@@ -4502,7 +4502,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:pointer;">`;
   openModal(`
     <div style="text-align:center;">
-      <div class="lb-frame" style="position:relative; ${video ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
+      <div class="lb-frame" style="position:relative; ${video ? (isExternalVideoUrl(video) ? 'display:block; width:min(100%, calc((100dvh - 215px) * 16 / 9)); margin:0 auto;' : 'display:block; width:fit-content; max-width:100%; margin:0 auto;') : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${!isLogoView ? lightboxWatermarkHTML() : ''}
         ${mark ? `<div class="post-mark">${postMarkHTML(mark)}</div>` : ''}
@@ -4794,7 +4794,7 @@ function openArticleLightbox(id){
   if(articleLocked(a)){ openAdminEntry(true); return; }
   const mediaHTML = a.video
     ? (isExternalVideoUrl(a.video)
-        ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
         : `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
     : a.photo ? `<img src="${a.photo}" style="width:100%; border-radius:8px; display:block;">` : '';
   window.dlSrc = a.photo;
@@ -4802,7 +4802,7 @@ function openArticleLightbox(id){
   if(extVideo) lbCurrent = { src: a.photo || '', video: a.video, legende: '', isLogo: false, mark: '' };
   openModal(`
     <div style="text-align:center;">
-      <div style="position:relative; ${extVideo ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
+      <div style="position:relative; ${extVideo ? 'display:block; width:min(100%, calc((100dvh - 290px) * 16 / 9)); margin:0 auto;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${extVideo ? `<button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
         ${mediaHTML ? lightboxWatermarkHTML() : ''}
@@ -4816,7 +4816,7 @@ function openArticleLightbox(id){
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
-  if(extVideo) modalContent.style.maxWidth = 'min(1200px, 96vw)';
+  if(extVideo) modalContent.style.padding = '18px';
 }
 
 const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };

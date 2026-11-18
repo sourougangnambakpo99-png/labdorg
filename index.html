@@ -795,7 +795,7 @@
   .admin-list-row{display:flex; justify-content:space-between; gap:14px; padding:12px 0; border-bottom:1px solid var(--line); font-size:0.86rem;}
   .admin-list-row .meta{color:var(--muted-2); font-size:0.78rem;}
   .link-btn{background:none; border:none; color:#c0392b; font-size:0.75rem; cursor:pointer; text-decoration:underline; padding:0; margin-left:8px; font-family:inherit;}
-  #adminFab{position:fixed; bottom:22px; right:22px; z-index:300; background:var(--teal); color:#fff; font-weight:600; border:1px solid var(--teal); border-radius:30px; padding:12px 18px; display:flex; align-items:center; gap:8px; font-size:0.85rem; box-shadow:0 8px 22px rgba(0,0,0,0.18);}
+  #adminFab{position:fixed; bottom:22px; right:22px; z-index:300; background:var(--navy); color:#fff; border:1px solid var(--teal); border-radius:30px; padding:12px 18px; display:flex; align-items:center; gap:8px; font-size:0.85rem; box-shadow:0 8px 22px rgba(0,0,0,0.18);}
   #adminFab:hover{background:var(--teal-dark);}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -1354,6 +1354,7 @@ function videoTileHTML(src, poster, expandCall, extraStyle){
   if(isExternalVideoUrl(src)){
     return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
       <iframe src="${youtubeEmbedSrc(src)}" style="width:100%; height:100%; border:0; display:block; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+      ${expandCall ? `<button type="button" title="Agrandir" aria-label="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; top:8px; right:8px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(0,0,0,0.62); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
     </div>`;
   }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
@@ -3947,7 +3948,7 @@ function handleLaureatePhoto(evt, key){
   reader.onload = e => {
     openModal(`
       <h3>Cadrer la photo</h3>
-      <p>Cliquez sur la partie de la photo qui doit rester visible en miniature.</p>
+      <p>Cliquez sur la partie de la photo qui doit rester visible.</p>
       <div class="frame-picker show" id="laureate-frame-picker"><img src="${e.target.result}"><div class="marker" style="left:50%;top:50%;"></div></div>
       <div class="row"><button class="btn-primary" onclick="confirmLaureatePhoto('${key}')">Valider</button><button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Annuler</button></div>
     `, false);
@@ -4489,7 +4490,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
-        ? `<iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer; z-index:3;">Plein écran</button></div>`
         : `<div class="lb-video" style="position:relative; width:100%; background:#000; border-radius:8px; overflow:hidden;">
             <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
@@ -4499,7 +4500,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:pointer;">`;
   openModal(`
     <div style="text-align:center;">
-      <div class="lb-frame" style="position:relative; ${video && !isExternalVideoUrl(video) ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
+      <div class="lb-frame" style="position:relative; ${video ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${!isLogoView ? lightboxWatermarkHTML() : ''}
         ${mark ? `<div class="post-mark">${postMarkHTML(mark)}</div>` : ''}
@@ -5148,10 +5149,10 @@ let loginFromLock = false;
 function visibilityPickerHTML(name, reserved){
   const globe = '<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
   return `<div class="vis-picker">
-    <div class="vis-title">Qui peut voir cet élément ?</div>
+    <div class="vis-title">Qui peut voir ?</div>
     <div class="vis-opts">
-      <label class="vis-opt"><input type="radio" name="${name}" value="public" ${reserved ? '' : 'checked'}><span class="vis-ico">${globe}</span><span><b>Tout le monde</b><small>Visible par tous les visiteurs du site.</small></span></label>
-      <label class="vis-opt"><input type="radio" name="${name}" value="membres" ${reserved ? 'checked' : ''}><span class="vis-ico">${ICONS.lock}</span><span><b>Uniquement les membres</b><small>S'ouvre après connexion avec son mot de passe.</small></span></label>
+      <label class="vis-opt"><input type="radio" name="${name}" value="public" ${reserved ? '' : 'checked'}><span class="vis-ico">${globe}</span><span><b>Tout le monde</b></span></label>
+      <label class="vis-opt"><input type="radio" name="${name}" value="membres" ${reserved ? 'checked' : ''}><span class="vis-ico">${ICONS.lock}</span><span><b>Uniquement les membres</b></span></label>
     </div>
   </div>`;
 }
@@ -5487,7 +5488,7 @@ function renderAdminContent(){
           <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeHeroPhoto()">Revenir à la photo précédente</button>
         </div>
       </div>
-      <p class="form-note" style="margin-bottom:16px;">Ajoutez une image qui illustre chaque point de la vision. Cliquez sur l'aperçu pour choisir la partie qui restera visible dans la miniature.</p>
+      <p class="form-note" style="margin-bottom:16px;">Ajoutez une image qui illustre chaque point de la vision. Cliquez sur l'aperçu pour choisir la partie qui restera visible.</p>
       ${CONFIG.vision.map((v,i) => {
         const vi = DATA.visionImages[i];
         return `<div class="check-step" style="margin-bottom:16px;">
@@ -5495,7 +5496,7 @@ function renderAdminContent(){
           ${vi && vi.img ? `<img src="${vi.img}" style="width:100%; max-width:220px; aspect-ratio:16/9; object-fit:cover; object-position:${vi.focal||'50% 50%'}; border-radius:8px; margin-bottom:8px;">` : ''}
           <input type="file" accept="image/*" id="ad-vi-img-${i}">
           <div class="frame-picker" id="frame-ad-vi-img-${i}"></div>
-          <p class="frame-hint">Cliquez sur l'image ci-dessus pour cadrer la miniature.</p>
+          <p class="frame-hint">Cliquez sur l'image ci-dessus pour la cadrer.</p>
           <div class="row">
             <button class="btn-primary" onclick="saveVisionImage(${i})">Enregistrer</button>
             ${vi && vi.img ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="removeVisionImage(${i})">Retirer l'image</button>` : ''}
@@ -5652,12 +5653,10 @@ function renderAdminContent(){
         <label>Description</label>
         ${fmtBarHTML('ad-pj-desc')}
         <textarea id="ad-pj-desc" placeholder="Description">${editingP?editingP.description:''}</textarea>
-        <label>Fichier du projet (PDF, Word, image... max 10 Mo)${editingP&&editingP.fichierNom?`, actuel : ${editingP.fichierNom}`:''}</label>
+        <label>Fichier${editingP&&editingP.fichierNom?` (actuel : ${editingP.fichierNom})`:''}</label>
         <input type="file" id="ad-pj-fichier" accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.zip,.rar,image/*">
-        <p class="form-note">Un PDF génère automatiquement une miniature de sa première page. Laissez vide pour garder le fichier actuel.</p>
-        <label>Ou lien (Google Drive, site web, vidéo...), notamment pour un fichier de plus de 10 Mo</label>
+        <label>Ou lien</label>
         <input id="ad-pj-lien" placeholder="Collez un lien : Google Drive, Docs, PDF, image, site web..." value="${editingP?(editingP.lienExterne||''):''}">
-        <p class="form-note">Pense à régler le partage du fichier sur "Tous les utilisateurs disposant du lien" avant de coller l'adresse ici, sinon les visiteurs ne pourront pas l'ouvrir.</p>
         ${visibilityPickerHTML('ad-pj-vis', !!(editingP && (editingP.reserve || editingP.motDePasse)))}
         <div class="row">
           <button class="btn-primary" onclick="publishProjet()">${editingP?'Enregistrer les modifications':'Publier'}</button>
@@ -6042,7 +6041,7 @@ function setupVideoFrameCapture(fileInputId, previewId){
     delete videoFrameCaptures[fileInputId];
     if(!file || !file.type.startsWith('video/')){ preview.innerHTML=''; return; }
     const url = URL.createObjectURL(file);
-    preview.innerHTML = `<p class="form-note" style="margin:6px 0 4px;">Choisissez l'instant de la vidéo qui servira de miniature :</p>
+    preview.innerHTML = `<p class="form-note" style="margin:6px 0 4px;">Choisissez l'instant de la vidéo à afficher :</p>
       <img id="${previewId}-img" style="width:200px; aspect-ratio:16/9; object-fit:cover; border-radius:8px; background:#0b1c33; display:block; margin-bottom:6px;">
       <input type="range" id="${previewId}-range" min="0" max="95" value="15" style="width:200px;">`;
     const vid = document.createElement('video');

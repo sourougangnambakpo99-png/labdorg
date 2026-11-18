@@ -549,6 +549,12 @@
   .perm-photos .gallery-tile .tile-admin{display:flex;}
   .tile-admin button{width:24px; height:24px; border-radius:50%; background:rgba(11,28,51,0.8); color:#fff; border:none; display:flex; align-items:center; justify-content:center; font-size:0.68rem;}
   .tile-admin button.del{background:#c0392b;}
+  .video-tile .ext-play{opacity:0; transition:opacity .06s ease;}
+  .video-tile:hover .ext-play{opacity:1; transition:opacity .1s ease;}
+  .video-tile:hover[data-playing="1"] .ext-play{opacity:0.7;}
+  .ext-wrap .ext-hover{opacity:0; transition:opacity .06s ease;}
+  .ext-wrap:hover .ext-hover{opacity:1; transition:opacity .1s ease;}
+  @media (hover:none){ .video-tile[data-playing="0"] .ext-play, .ext-wrap .ext-hover{opacity:1;} }
   .mute-toggle{position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
   .play-toggle{position:absolute; top:8px; left:40px; width:26px; height:26px; border-radius:50%; background:rgba(11,28,51,0.75); color:#fff; border:none; display:flex; align-items:center; justify-content:center; z-index:2; cursor:pointer;}
   .tile-progress{position:absolute; bottom:0; left:0; right:0; height:4px; background:rgba(255,255,255,0.25); z-index:2;}
@@ -1328,8 +1334,15 @@ const DEFAULT_VIDEO_POSTER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
 
 // Tuile vidéo qui se lit automatiquement en boucle, en sourdine, dans son propre cadre (comme Telegram).
 // Barre de progression bleue, bouton pause dédié, et arrêt automatique dès qu'elle sort de l'écran.
+// Vidéo « intégrée » = lien YouTube / Vimeo (lu dans un lecteur intégré).
+// Un fichier vidéo envoyé (même hébergé en https) n'en fait PAS partie : il se lit comme une vraie vidéo,
+// sans lecteur intégré, donc sans bandes noires autour.
 function isExternalVideoUrl(src){
-  return typeof src === 'string' && /^https?:\/\//i.test(src) && !src.startsWith('data:');
+  if(typeof src !== 'string' || !/^https?:\/\//i.test(src)) return false;
+  try{
+    const h = new URL(src).hostname.replace(/^www\./,'');
+    return h === 'youtu.be' || h.endsWith('youtube.com') || h.endsWith('youtube-nocookie.com') || h.endsWith('vimeo.com');
+  }catch(e){ return false; }
 }
 function youtubeEmbedSrc(url, auto, tile){
   try{
@@ -1361,7 +1374,6 @@ function toggleExtVideo(btn){
   f.contentWindow.postMessage(JSON.stringify(msg), '*');
   tile.dataset.playing = playing ? '0' : '1';
   btn.innerHTML = playing ? EXT_ICON_PLAY : EXT_ICON_PAUSE;
-  btn.style.opacity = playing ? '1' : '0.6';
 }
 function videoTileHTML(src, poster, expandCall, extraStyle, auto){
   if(isExternalVideoUrl(src)){
@@ -1370,7 +1382,7 @@ function videoTileHTML(src, poster, expandCall, extraStyle, auto){
     return `<div class="video-tile" data-playing="${auto ? '1' : '0'}" style="position:relative; width:100%; height:100%; overflow:hidden; background:#000;">
       <iframe src="${youtubeEmbedSrc(src, auto, true)}" style="${frameStyle} border:0; display:block; pointer-events:none; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" loading="lazy"></iframe>
       ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3;"></div>` : ''}
-      <button type="button" class="ext-play" title="Lecture / Pause" aria-label="Lecture / Pause" onclick="event.stopPropagation(); toggleExtVideo(this)" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:2px solid rgba(255,255,255,0.85); cursor:default; z-index:4; display:flex; align-items:center; justify-content:center; padding:0; opacity:${auto ? '0.6' : '1'};">${auto ? EXT_ICON_PAUSE : EXT_ICON_PLAY}</button>
+      <button type="button" class="ext-play" title="Lecture / Pause" aria-label="Lecture / Pause" onclick="event.stopPropagation(); toggleExtVideo(this)" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:2px solid rgba(255,255,255,0.85); cursor:default; z-index:4; display:flex; align-items:center; justify-content:center; padding:0; ">${auto ? EXT_ICON_PAUSE : EXT_ICON_PLAY}</button>
     </div>`;
   }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
@@ -4507,7 +4519,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
-        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
+        ? `<div class="ext-wrap" style="position:relative; width:100%; aspect-ratio:16/9; border-radius:8px; overflow:hidden;">${videoTileHTML(video, '', 'openFullMedia()')}<button type="button" class="ext-hover" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:6;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
         : `<div class="lb-video" style="position:relative; display:block; width:fit-content; max-width:100%; margin:0 auto; border-radius:8px; overflow:hidden;">
             <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:auto; max-width:100%; height:auto; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
@@ -4809,7 +4821,7 @@ function openArticleLightbox(id){
   if(articleLocked(a)){ openAdminEntry(true); return; }
   const mediaHTML = a.video
     ? (isExternalVideoUrl(a.video)
-        ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
+        ? `<div style="position:relative; width:100%; aspect-ratio:16/9; border-radius:8px; overflow:hidden;">${videoTileHTML(a.video, '', 'openFullMedia()')}</div>`
         : `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
     : a.photo ? `<img src="${a.photo}" style="width:100%; border-radius:8px; display:block;">` : '';
   window.dlSrc = a.photo;
@@ -4817,9 +4829,9 @@ function openArticleLightbox(id){
   if(extVideo) lbCurrent = { src: a.photo || '', video: a.video, legende: '', isLogo: false, mark: '' };
   openModal(`
     <div style="text-align:center;">
-      <div style="position:relative; ${extVideo ? 'display:block; width:min(100%, calc((100dvh - 290px) * 16 / 9)); margin:0 auto;' : 'display:inline-block; max-width:100%;'}">
+      <div class="${extVideo ? 'ext-wrap' : ''}" style="position:relative; ${extVideo ? 'display:block; width:min(100%, calc((100dvh - 290px) * 16 / 9)); margin:0 auto;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
-        ${extVideo ? `<button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
+        ${extVideo ? `<button type="button" class="ext-hover" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:6; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
         ${mediaHTML ? lightboxWatermarkHTML() : ''}
       </div>
     </div>

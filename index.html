@@ -3455,7 +3455,8 @@ function renderPromotionsAdmin(promos, locked){
 // stockés chiffrés : sous le mot de passe général de la promotion (pwSelf) et
 // sous celui de sa promotion créatrice (pwUp).
 let sessionSecret = null;
-// Session « membre » : code personnel, uniquement pour changer sa propre photo de profil.
+// Session « membre » : mot de passe personnel. Il ouvre toutes les parties réservées aux membres et permet de changer sa propre photo de profil.
+// Quand un membre quitte le groupe, son mot de passe est supprimé (dropMemberCode) : il perd tout accès.
 let memberSession = null;
 // ---- Codes personnels des membres ----
 // Chaque membre reçoit un code unique, généré par le site (jamais le même pour deux personnes).
@@ -3827,7 +3828,7 @@ async function removePromotionMember(promoId, num){
   if(!promo) return;
   if(!confirm("Retirer cette personne de cette promotion ?")) return;
   const wasBureau = (promo.bureau||[]).some(m => m.num === num);
-  if(String(num).startsWith('SL-')){ const sl = promo.bureau.find(m => m.num === num); if(sl) Object.assign(sl, { nom:'', phone:'', email:'' }); }
+  if(String(num).startsWith('SL-')){ const sl = promo.bureau.find(m => m.num === num); if(sl) Object.assign(sl, { nom:'', phone:'', email:'', pwHash:null }); }
   else promo.bureau = (promo.bureau||[]).filter(m => m.num !== num);
   promo.membres = (promo.membres||[]).filter(m => m.num !== num);
   await storageSet('promotions', DATA.promotions);
@@ -4568,41 +4569,6 @@ function renderArticles(){
     const el = document.getElementById('grid-'+type);
     const moreBtnExisting = document.getElementById('more-'+type);
 
-    if(type === 'formation' && formationPwGet() && formationUnlockedFor !== activePromotionId && !currentRole){
-      // Aperçu complet, en taille réelle, mais flouté — pour donner envie sans rien révéler de lisible.
-      const previewList = merged.filter(a => a.type === 'formation').sort((a,b) => b.date - a.date);
-      const previewCards = previewList.map(a => {
-        const mediaTag = a.video
-          ? `<div class="thumb" style="position:relative; padding:0;">${videoTileHTML(a.video, a.poster, '')}</div>`
-          : a.photo
-            ? `<div class="thumb" style="position:relative; padding:0;"><img src="${a.photo}" alt="" style="width:100%; height:100%; object-fit:cover; object-position:${a.focal||'50% 50%'};" loading="lazy"></div>`
-            : "";
-        return `
-        <div class="article-card card locked-teaser-card">
-          ${mediaTag}
-          <div class="body">
-            <div class="date">${fmtDateHeure(a.date)}</div>
-            <h4>${a.titre}</h4>
-            <div class="desc-text"><p class="clamped">${formatDescription(a.description)}</p></div>
-            ${a.lien ? `<span class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); margin-top:10px; display:inline-flex;">Ouvrir le lien</span>` : ''}
-          </div>
-        </div>`;
-      }).join("");
-      el.innerHTML = `<div class="locked-preview-wrap">
-        ${previewCards || `<p class="empty-col-note">${emptyLabels.formation}</p>`}
-        <div class="locked-overlay">
-          ${ICONS.lock}
-          <p>Formations réservées : mot de passe requis.</p>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;">
-            <input type="password" id="formationPassInline" placeholder="Mot de passe" style="padding:10px 12px; border:1px solid var(--line); border-radius:8px; font-size:0.85rem;">
-            <button class="btn-primary" onclick="tryFormationUnlock()">Voir</button>
-          </div>
-        </div>
-      </div>`;
-      if(moreBtnExisting) moreBtnExisting.innerHTML = '';
-      return;
-    }
-
     const all = merged.filter(a => a.type === type).sort((a,b) => b.date - a.date);
     const state = articlesWindow[type];
     const maxOffset3 = Math.max(0, all.length - 3);
@@ -4611,12 +4577,13 @@ function renderArticles(){
     const list = all.slice(state.offset, state.offset + state.size);
     if(list.length){
       el.innerHTML = list.map(a => {
+        const locked = articleLocked(a);
         const mediaTag = a.video
           ? `<div class="thumb" style="position:relative; padding:0;">${videoTileHTML(a.video, a.poster, `openArticleLightbox('${a.id}')`)}${miniWatermarkHTML()}</div>`
           : a.photo
             ? `<div class="thumb" style="position:relative; padding:0;"><img src="${a.photo}" alt="${a.titre}" style="width:100%; height:100%; display:block; cursor:pointer; object-fit:cover; object-position:${a.focal||'50% 50%'};" loading="lazy" onclick="openArticleLightbox('${a.id}')">${miniWatermarkHTML()}</div>`
             : "";
-        return `
+        const card = `
         <div class="article-card card">
           ${mediaTag}
           <div class="body">
@@ -4627,6 +4594,7 @@ function renderArticles(){
             ${a.lien ? `<a href="${a.lien}" target="_blank" rel="noopener" class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); margin-top:10px; display:inline-flex;">Ouvrir le lien</a>` : ''}
           </div>
         </div>`;
+        return locked ? lockedCardHTML(card) : card;
       }).join("");
     } else {
       el.innerHTML = `<p class="empty-col-note">${emptyLabels[type]}</p>`;
@@ -4652,16 +4620,49 @@ function renderArticles(){
   requestAnimationFrame(updateDescToggles);
   observeTileVideos();
 }
-let formationUnlockedFor = null;
-// Mot de passe de la section Formations : un par promotion (la fondatrice garde le sien).
-function formationPwGet(){
-  const pr = (currentRole && currentRole.promotionId) ? DATA.promotions[currentRole.promotionId] : activePromotion();
-  return pr ? (pr.formationPassword || null) : DATA.formationPassword;
+// Accès membre : un membre qui a saisi son mot de passe personnel dans l'espace admin (ou toute personne
+// connectée à l'espace admin) voit tout ce qui est réservé. Plus de mots de passe séparés par section.
+let inlineUnlocked = false;
+function memberAccess(){ return !!(memberSession || adminUnlocked || inlineUnlocked); }
+// Deux façons d'ouvrir un élément réservé : se connecter dans l'espace admin, ou saisir son mot de passe directement sur l'élément.
+function passwordIsMember(val){
+  if(!val) return false;
+  const h = pwHash(val);
+  if(CONFIG.adminRoles.some(r => roleHash(r) === h)) return true;
+  for(const promo of Object.values(DATA.promotions || {})){
+    if(promo.pwHash && promo.pwHash === h) return true;
+    if((promo.bureau || []).some(m => m.pwHash && m.pwHash === h)) return true;
+  }
+  const hn = pwHash(normCode(val)), hn2 = pwHash('LABD' + normCode(val));
+  return Object.values(DATA.memberCodes || {}).some(c => c === hn || c === hn2);
 }
-function tryFormationUnlock(){
-  const val = document.getElementById('formationPassInline').value;
-  if(val === (formationPwGet() || '')){ formationUnlockedFor = activePromotionId; renderArticles(); }
+function tryInlineUnlock(inputId){
+  const i = document.getElementById(inputId);
+  if(i && passwordIsMember(i.value)){ inlineUnlocked = true; renderArticles(); renderProjects(); }
   else alert("Mot de passe incorrect.");
+}
+let lockUid = 0;
+function lockFormHTML(compact){
+  const id = 'lk-' + (++lockUid);
+  return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;">
+      <input type="password" id="${id}" placeholder="Mot de passe membre" onkeydown="if(event.key==='Enter') tryInlineUnlock('${id}')" style="${compact ? 'padding:7px 9px; font-size:0.78rem; flex:1; min-width:100px;' : 'padding:10px 12px; font-size:0.85rem; width:170px;'} border:1px solid var(--line); border-radius:8px;">
+      <button class="btn-primary" style="${compact ? 'font-size:0.78rem; padding:7px 12px;' : ''}" onclick="tryInlineUnlock('${id}')">Ouvrir</button>
+    </div>
+    <button type="button" class="link-btn" style="color:${compact ? 'var(--teal-dark)' : '#fff'}; font-size:0.78rem; text-decoration:underline;" onclick="openAdminEntry()">Ou se connecter</button>`;
+}
+// L'administrateur choisit, élément par élément, s'il est réservé aux membres (case « réservé »). Aucun mot de passe à définir.
+// Les formations déjà publiées sans choix restent réservées, comme avant.
+function articleReserved(a){ return a.reserve === undefined ? a.type === 'formation' : !!a.reserve; }
+function articleLocked(a){ return articleReserved(a) && !memberAccess(); }
+function lockedCardHTML(card){
+  return `<div style="position:relative;">
+    <div class="locked-teaser-card">${card}</div>
+    <div class="locked-overlay" style="border-radius:14px;">
+      ${ICONS.lock}
+      <p>Réservé aux membres.</p>
+      ${lockFormHTML(false)}
+    </div>
+  </div>`;
 }
 function articlesNext(type, maxOffset3){
   const state = articlesWindow[type];
@@ -4679,6 +4680,7 @@ function openArticleLightbox(id){
   const all = CONFIG.exampleArticles.concat(DATA.articles);
   const a = all.find(x => x.id === id);
   if(!a) return;
+  if(articleLocked(a)){ openAdminEntry(); return; }
   const mediaHTML = a.video
     ? (isExternalVideoUrl(a.video)
         ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
@@ -4702,7 +4704,6 @@ function openArticleLightbox(id){
   `, true);
 }
 
-const unlockedFiles = new Set();
 const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };
 
 // Extrait l'identifiant d'un fichier Google Drive depuis un lien de partage
@@ -4721,13 +4722,7 @@ function driveThumbUrl(url){
 function findProjetById(pid){
   return (CONFIG.seedProjets||[]).concat(DATA.projets).find(x => x.id === pid);
 }
-function tryUnlockProjectFile(pid){
-  const p = findProjetById(pid);
-  const input = document.getElementById('file-pwd-'+pid);
-  const val = input ? input.value : '';
-  if(p && val === (p.motDePasse || '')){ unlockedFiles.add(pid); renderProjects(); }
-  else alert("Mot de passe incorrect.");
-}
+function projectLocked(p){ return !!(p && (p.reserve || p.motDePasse)) && !memberAccess(); }
 
 function fileNameTruncHTML(name){
   if(!name) return '';
@@ -4736,11 +4731,7 @@ function fileNameTruncHTML(name){
 function openProjectFilePreview(pid){
   const p = findProjetById(pid);
   if(!p || (!p.fichier && !p.lienExterne)) return;
-  if(p.motDePasse && !unlockedFiles.has(pid)){
-    const pwdInput = document.getElementById('file-pwd-'+pid);
-    if(pwdInput){ pwdInput.scrollIntoView({behavior:'smooth', block:'center'}); pwdInput.focus(); }
-    return;
-  }
+  if(projectLocked(p)){ const f = document.querySelector('#projectPanels input[id^="lk-"]'); if(f){ f.scrollIntoView({behavior:'smooth', block:'center'}); f.focus(); } else openAdminEntry(); return; }
   if(!p.fichier && p.lienExterne){ window.open(p.lienExterne, '_blank', 'noopener'); return; }
   // Détection du type via l'extension du nom de fichier (fonctionne aussi bien
   // pour une ancienne dataURL locale que pour une URL Cloudinary — contrairement
@@ -4766,15 +4757,14 @@ function openProjectFilePreview(pid){
 
 function projectFileHTML(p){
   if(!p.fichier && !p.lienExterne) return '';
-  const needsPwd = !!p.motDePasse;
-  const locked = needsPwd && !unlockedFiles.has(p.id);
+  const locked = projectLocked(p);
   const nameLine = p.fichierNom ? `<div class="file-name-trunc" title="${p.fichierNom}">${p.fichierNom}</div>` : '';
   if(locked){
     return `<div style="margin-top:2px;">
       ${nameLine}
       <div style="display:flex; gap:6px; align-items:center; margin-top:4px; flex-wrap:wrap;">
-        <input type="password" id="file-pwd-${p.id}" placeholder="Mot de passe" style="padding:7px 9px; border:1px solid var(--line); border-radius:8px; font-size:0.78rem; flex:1; min-width:100px;">
-        <button class="btn-ghost" style="font-size:0.78rem; padding:7px 12px; border-color:var(--line); color:var(--ink);" onclick="tryUnlockProjectFile('${p.id}')">${ICONS.lock} Ouvrir</button>
+        <span style="font-size:0.78rem; display:inline-flex; align-items:center; gap:6px;">${ICONS.lock} Réservé aux membres</span>
+        ${lockFormHTML(true)}
       </div>
     </div>`;
   }
@@ -4814,7 +4804,7 @@ function renderProjects(){
     return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
       ${items.length ? `<div class="podium">${items.map(p=>`<div class="podium-card card">
           ${(() => {
-            const fileLocked = !!p.motDePasse && !unlockedFiles.has(p.id);
+            const fileLocked = projectLocked(p);
             if(p.thumbnail){
               return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
                 <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy">
@@ -5014,13 +5004,14 @@ function startMemberSession(who){
   doSwitchPromotion(who.promoId);
   renderPromotionSwitches();
   renderMembers();
+  renderArticles(); renderProjects();
   setTimeout(() => { const c = document.querySelector('#membersWrap .bureau-card.mine'); const w = c || document.getElementById('membersWrap'); if(w) w.scrollIntoView({ behavior:'smooth', block:'center' }); }, 400);
-  alert("Bienvenue " + who.nom + ". Touchez la petite icône sur votre photo pour la changer.");
+  alert("Bienvenue " + who.nom + ". Les formations et les fichiers réservés aux membres sont maintenant ouverts. Touchez la petite icône sur votre photo pour la changer.");
 }
 function openMemberPanel(){
   openModal(`
     <h3>Espace membre</h3>
-    <p>${memberSession.nom}, vous pouvez changer votre photo de profil dans la liste des membres : touchez la petite icône sur votre photo.</p>
+    <p>${memberSession.nom}, votre mot de passe vous ouvre toutes les parties réservées aux membres (formations, fichiers de projets). Vous pouvez aussi changer votre photo de profil dans la liste des membres : touchez la petite icône sur votre photo.</p>
     <label style="display:block; margin-top:10px;">Votre anniversaire</label>
     <div style="display:flex; gap:8px; margin-bottom:10px;">
       <select id="mb-bj" style="flex:1;"><option value="">Jour</option>${Array.from({length:31}, (_, i) => `<option value="${i+1}" ${parseInt((currentMemberAnniv().split('-')[1])||0,10)===i+1?'selected':''}>${i+1}</option>`).join('')}</select>
@@ -5037,18 +5028,19 @@ function openMemberPanel(){
   `);
 }
 function memberLogout(){
-  memberSession = null;
+  memberSession = null; inlineUnlocked = false;
   document.body.classList.remove('member-on');
   closeModal();
   renderPromotionSwitches();
   renderMembers();
+  renderArticles(); renderProjects();
 }
 function openAdminEntry(){
   if(adminUnlocked){ openAdminDashboard(); return; }
   if(memberSession){ openMemberPanel(); return; }
   openModal(`
     <h3>Espace admin</h3>
-    <p>Chaque responsable a son propre mot de passe : le contenu visible s'adapte à sa fonction.</p>
+    <p>Chaque responsable a son propre mot de passe : le contenu visible s'adapte à sa fonction. Les membres entrent leur mot de passe personnel : les parties réservées s'ouvrent pour eux.</p>
     <input type="password" id="adminPass" placeholder="Mot de passe ou code membre" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;">
     <div class="row">
       <button class="btn-primary" onclick="tryUnlock()">Déverrouiller</button>
@@ -5281,7 +5273,6 @@ function renderAdminContent(){
     const allowedTypes = (currentRole && currentRole.articleTypes) || ALL_ARTICLE_TYPES; // types d'articles ouverts à ce poste
     const scope = allowedTypes.length === 1 ? allowedTypes[0] : null;
     const promoScope = currentRole && currentRole.promotionId; // bureau d'une promotion → ses propres publications seulement
-    const canSetFormationPassword = !!currentRole && (currentRole.categories.includes('*') || scope === 'formation' || (!!promoScope && allowedTypes.includes('formation')));
     let editing = DATA.articles.find(a => a.id === editingArticleId);
     if(editing && !allowedTypes.includes(editing.type)) editing = null; // garde-fou : jamais hors du périmètre autorisé
     if(promoScope && editing && editing.promotionId !== promoScope) editing = null; // ni hors de sa propre promotion
@@ -5297,7 +5288,7 @@ function renderAdminContent(){
           <input type="hidden" id="ad-art-type" value="${scope}">
         ` : `
           <label>Type</label>
-          <select id="ad-art-type" onchange="document.getElementById('formationPassBlock').style.display = this.value==='formation' ? '' : 'none';">
+          <select id="ad-art-type" onchange="const r=document.getElementById('ad-art-reserve'); if(r) r.checked = this.value==='formation';">
             ${allowedTypes.includes('actualite') ? `<option value="actualite" ${effectiveType==='actualite'?'selected':''}>Actualité</option>` : ''}
             ${allowedTypes.includes('formation') ? `<option value="formation" ${effectiveType==='formation'?'selected':''}>Formation</option>` : ''}
             ${allowedTypes.includes('evenement') ? `<option value="evenement" ${effectiveType==='evenement'?'selected':''}>Événement</option>` : ''}
@@ -5313,12 +5304,7 @@ function renderAdminContent(){
         <input id="ad-art-lien" placeholder="https://drive.google.com/... (Drive, document, formulaire, n'importe quel lien)" value="${editing?(editing.lien||''):''}">
         <p class="frame-hint">S'affiche comme un bouton « Ouvrir le lien » sur la publication. Utile pour partager un dossier Google Drive, un support de cours, etc.</p>
         <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-share" style="width:auto;"> Partager automatiquement sur WhatsApp après publication</label>
-        ${canSetFormationPassword ? `
-        <div id="formationPassBlock" style="${effectiveType==='formation' ? '' : 'display:none;'}">
-          <label style="margin-top:6px;">Mot de passe de la section Formations (optionnel)</label>
-          <p class="frame-hint">S'applique à toutes les formations du site, pas seulement à celle-ci. Enregistré en même temps que cette publication. Laissez vide pour un accès libre.</p>
-          <input id="ad-art-formation-pass" placeholder="Ex : labdformation26" value="${formationPwGet()||''}">
-        </div>` : ''}
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-reserve" style="width:auto;" ${(editing ? articleReserved(editing) : effectiveType==='formation') ? 'checked' : ''}> Réservé aux membres (s'ouvre avec leur mot de passe personnel)</label>
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
           ${editing ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingArticleId=null; renderAdminContent();">Annuler</button>` : ''}
@@ -5535,7 +5521,7 @@ function renderAdminContent(){
         <label>Ou lien externe Google Drive, etc., pour un fichier de plus de 10 Mo${editingP&&editingP.lienExterne?'':''}</label>
         <input id="ad-pj-lien" placeholder="https://drive.google.com/..." value="${editingP?(editingP.lienExterne||''):''}">
         <p class="form-note">Pense à régler le partage du fichier sur "Tous les utilisateurs disposant du lien" avant de coller l'adresse ici, sinon les visiteurs ne pourront pas l'ouvrir.</p>
-        <label>Mot de passe pour ouvrir le fichier (optionnel, laisser vide si accès libre)</label><input id="ad-pj-pwd" placeholder="Mot de passe" value="${editingP?(editingP.motDePasse||''):''}">
+        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-pj-reserve" style="width:auto;" ${editingP && (editingP.reserve || editingP.motDePasse) ? 'checked' : ''}> Fichier réservé aux membres (s'ouvre avec leur mot de passe personnel)</label>
         <div class="row">
           <button class="btn-primary" onclick="publishProjet()">${editingP?'Enregistrer les modifications':'Publier'}</button>
           ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingProjetId=null; renderAdminContent();">Annuler</button>` : ''}
@@ -5634,12 +5620,6 @@ function renderAdminContent(){
   }
   if(adminTab === 'parametres'){
     el.innerHTML = `
-      <div class="check-step" style="margin-bottom:20px; padding-bottom:18px; border-bottom:1px dashed var(--line);">
-        <label>Mot de passe pour la section Formations (optionnel)</label>
-        <p class="form-note" style="margin-bottom:8px;">Si un mot de passe est défini, les visiteurs doivent le saisir avant d'accéder aux formations. Laissez vide pour un accès libre.</p>
-        <input id="ad-formation-pass" placeholder="Ex : labdformation26" value="${DATA.formationPassword||''}">
-        <button class="btn-primary" onclick="saveFormationPassword()">Enregistrer</button>
-      </div>
       <div class="check-step">
         <label>Lien Facebook</label><input id="ad-set-fb" value="${getFacebookUrl()}">
         <label>Email de contact</label><input id="ad-set-email" placeholder="Ex : nom.prenom@gmail.com" value="${getContactEmail()}">
@@ -5649,14 +5629,6 @@ function renderAdminContent(){
         <button class="btn-primary" onclick="saveSettings()">Enregistrer</button>
       </div>`;
   }
-}
-async function saveFormationPassword(){
-  const val = document.getElementById('ad-formation-pass').value.trim();
-  DATA.formationPassword = val || null;
-  await storageSet('formation-password', DATA.formationPassword);
-  formationUnlockedFor = null;
-  renderArticles();
-  alert(DATA.formationPassword ? "Mot de passe enregistré." : "Accès aux formations rendu libre (aucun mot de passe).");
 }
 // Transfère toute image encore stockée à l'ancienne façon (texte encodé dans
 // Firebase, préfixe "data:image") vers Cloudinary, et ne garde qu'un lien.
@@ -6059,6 +6031,7 @@ async function publishArticle(){
   const file = fileInput.files[0];
   const videoUrl = (document.getElementById('ad-art-video-url')?.value || '').trim();
   const lien = (document.getElementById('ad-art-lien')?.value || '').trim();
+  const reserve = !!(document.getElementById('ad-art-reserve') && document.getElementById('ad-art-reserve').checked);
   let photo = null, video = null, focal = null, poster = null;
   if(videoUrl){
     video = videoUrl;
@@ -6076,28 +6049,16 @@ async function publishArticle(){
   if(editingArticleId){
     const article = DATA.articles.find(a => a.id === editingArticleId);
     if(article){
-      article.titre = titre; article.type = type; article.description = description; article.lien = lien || null;
+      article.titre = titre; article.type = type; article.description = description; article.lien = lien || null; article.reserve = reserve;
       if(file || videoUrl){ article.photo = photo; article.video = video; if(focal) article.focal = focal; if(poster) article.poster = poster; }
     }
     editingArticleId = null;
   } else {
-    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, lien: lien || null, date:Date.now(), promotionId: (currentRole && currentRole.promotionId) || null});
+    DATA.articles.unshift({id:uid(), type, titre, description, photo, video, focal, poster, lien: lien || null, reserve, date:Date.now(), promotionId: (currentRole && currentRole.promotionId) || null});
   }
   delete videoFrameCaptures['ad-art-photo'];
   await storageSet('articles', DATA.articles);
 
-  // Le mot de passe des formations (champ affiché seulement pour les rôles
-  // autorisés) s'enregistre avec cette même publication, en un seul geste.
-  const passField = document.getElementById('ad-art-formation-pass');
-  if(passField){
-    const passVal = passField.value.trim();
-    if(passVal !== (formationPwGet() || '')){
-      const prm = (currentRole && currentRole.promotionId) ? DATA.promotions[currentRole.promotionId] : null;
-      if(prm){ prm.formationPassword = passVal || null; await storageSet('promotions', DATA.promotions); }
-      else { DATA.formationPassword = passVal || null; await storageSet('formation-password', DATA.formationPassword); }
-      formationUnlockedFor = null;
-    }
-  }
 
   renderArticles(); renderAdminContent();
   if(shareOnWhatsapp) shareWhatsApp(`LABD : ${titre}\n${description}`);
@@ -6124,7 +6085,7 @@ async function publishProjet(){
   const description = document.getElementById('ad-pj-desc').value.trim();
   const fileInput = document.getElementById('ad-pj-fichier');
   const file = fileInput.files[0];
-  const motDePasse = document.getElementById('ad-pj-pwd').value.trim();
+  const reserve = !!document.getElementById('ad-pj-reserve').checked;
   const lienExterne = document.getElementById('ad-pj-lien').value.trim();
   if(!titre || !description){ alert("Titre et description requis."); return; }
   if(file && file.size > 10*1024*1024){
@@ -6153,12 +6114,12 @@ async function publishProjet(){
   if(editingProjetId){
     const p = DATA.projets.find(p => p.id === editingProjetId);
     if(p){
-      p.titre = titre; p.type = type; p.description = description; p.motDePasse = motDePasse; p.lienExterne = lienExterne;
+      p.titre = titre; p.type = type; p.description = description; p.reserve = reserve; delete p.motDePasse; p.lienExterne = lienExterne;
       if(file){ p.fichier = fichier; p.fichierNom = fichierNom; p.thumbnail = thumbnail; }
     }
     editingProjetId = null;
   } else {
-    DATA.projets.unshift({id:uid(), type, titre, description, fichier, fichierNom, thumbnail, motDePasse, lienExterne, date:Date.now(), promotionId: (currentRole && currentRole.promotionId) || null});
+    DATA.projets.unshift({id:uid(), type, titre, description, fichier, fichierNom, thumbnail, reserve, lienExterne, date:Date.now(), promotionId: (currentRole && currentRole.promotionId) || null});
   }
   await storageSet('projets', DATA.projets);
   renderProjects(); renderAdminContent();

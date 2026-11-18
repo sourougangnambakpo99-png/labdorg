@@ -571,6 +571,7 @@
   .modal-box.lb .lb-frame .watermark-large img{width:max(44px, calc(var(--fs-w, 360px) * 0.085)); height:max(44px, calc(var(--fs-w, 360px) * 0.085)); border:max(2px, calc(var(--fs-w, 360px) * 0.004)) solid rgba(255,255,255,0.95); box-sizing:border-box;}
   .modal-box.lb .lb-frame .watermark-large .wm-text{font-size:max(20px, calc(var(--fs-w, 360px) * 0.042)); line-height:1;}
   /* Logo sur les vignettes de la galerie : même rendu que dans la vue agrandie (logo rond + « LABD Org » en gras), à l'échelle de la vignette. */
+  .frame-picker:empty + .frame-hint{display:none;}
   .fmt-bar{display:flex; align-items:center; gap:6px; margin:4px 0 6px; flex-wrap:wrap;}
   .fmt-bar button{min-width:34px; height:32px; padding:0 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer; font-size:0.9rem;}
   .fmt-bar button:hover{border-color:var(--teal); color:var(--teal-dark);}
@@ -5425,12 +5426,12 @@ function renderAdminContent(){
         ${fmtBarHTML('ad-art-desc')}
         <textarea id="ad-art-desc" placeholder="Description">${editing?editing.description:''}</textarea>
         <label>Photo${editing?' (laisser vide pour garder la photo actuelle)':''}</label><input type="file" accept="image/*,video/*" id="ad-art-photo">
-        <label style="margin-top:4px;">Lien (optionnel)</label>
-        <input id="ad-art-lien" placeholder="Collez un lien : YouTube, Vimeo, Google Drive, Docs, PDF, image, site web..." value="${editing ? ((editing.video && isExternalVideoUrl(editing.video)) ? editing.video : (editing.lien||'')) : ''}" oninput="previewLinkField(this,'ad-art-auto-thumb','ad-art-photo')">
         <div id="ad-art-auto-thumb"></div>
         <div class="frame-picker" id="frame-ad-art-photo"></div>
         <p class="frame-hint">Cliquez sur l'aperçu pour choisir la partie de la photo qui s'affichera.</p>
         <div id="ad-art-poster-preview"></div>
+        <label style="margin-top:8px;">Lien (optionnel)</label>
+        <input id="ad-art-lien" placeholder="Collez un lien : YouTube, Vimeo, Google Drive, Docs, PDF, image, site web..." value="${editing ? ((editing.video && isExternalVideoUrl(editing.video)) ? editing.video : (editing.lien||'')) : ''}" oninput="previewLinkField(this,'ad-art-auto-thumb','ad-art-photo')">
         ${visibilityPickerHTML('ad-art-vis', editing ? articleReserved(editing) : effectiveType==='formation')}
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>

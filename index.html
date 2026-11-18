@@ -756,7 +756,8 @@
   .modal-box.lb > div:first-child{flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center;}
   .modal-box.lb .lb-img{max-height:calc(100vh - 205px); max-height:calc(100dvh - 205px); max-width:100%; width:auto; height:auto; object-fit:contain;}
   .modal-box.lb .lb-video video{max-height:calc(100vh - 205px) !important; max-height:calc(100dvh - 205px) !important;}
-  .modal-box.lb iframe{max-height:calc(100vh - 205px); max-height:calc(100dvh - 205px);}
+  .modal-box.lb iframe{max-height:calc(100vh - 150px); max-height:calc(100dvh - 150px);}
+  .modal-box.lb:has(iframe){max-width:min(1200px, 96vw); padding:10px;}
   .modal-box.lb > p{flex:none; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;}
   .modal-box.lb .row{flex:none;}
   .modal-box.lb .watermark-large{top:10px; right:10px; min-width:0; gap:8px;}
@@ -1354,7 +1355,7 @@ function videoTileHTML(src, poster, expandCall, extraStyle){
   if(isExternalVideoUrl(src)){
     return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
       <iframe src="${youtubeEmbedSrc(src)}" style="width:100%; height:100%; border:0; display:block; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-      ${expandCall ? `<button type="button" title="Agrandir" aria-label="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; top:8px; right:8px; width:34px; height:34px; border-radius:50%; border:0; background:rgba(0,0,0,0.62); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:3;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
+      ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3;"></div>` : ''}
     </div>`;
   }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
@@ -4490,7 +4491,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
-        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:0; border-radius:20px; padding:6px 12px; font-size:0.78rem; cursor:pointer; z-index:3;">Plein écran</button></div>`
+        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; right:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
         : `<div class="lb-video" style="position:relative; width:100%; background:#000; border-radius:8px; overflow:hidden;">
             <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>

@@ -4605,19 +4605,19 @@ async function resolveLinkThumb(info){
 }
 // Aperçu en direct sous le champ « Lien » : type reconnu + miniature choisie.
 let linkPreviewTimer = null;
-function previewLinkField(input, boxId){
+function previewLinkField(input, boxId, fileId){
   const box = document.getElementById(boxId); if(!box) return;
   clearTimeout(linkPreviewTimer);
   const info = detectLink(input.value);
-  if(!input.value.trim()){ box.innerHTML = ''; return; }
-  if(!info){ box.innerHTML = '<p class="frame-hint">Lien non reconnu : collez une adresse complète (https://...).</p>'; return; }
-  box.innerHTML = `<p class="frame-hint" style="color:var(--teal-dark); font-weight:600;">Reconnu : ${info.label}</p>`;
+  const hasFile = () => { const f = fileId && document.getElementById(fileId); return !!(f && f.files && f.files.length); };
+  if(!input.value.trim() || !info || hasFile()){ box.innerHTML = ''; return; }
   linkPreviewTimer = setTimeout(async () => {
     const t = await resolveLinkThumb(info);
-    if(t && box.isConnected && detectLink(input.value) && detectLink(input.value).url === info.url){
-      box.innerHTML = `<p class="frame-hint" style="color:var(--teal-dark); font-weight:600;">Reconnu : ${info.label}. Miniature choisie automatiquement :</p><img src="${t}" alt="" style="max-width:220px; max-height:130px; border-radius:8px; border:1px solid var(--line); display:block; margin-top:6px;" onerror="this.style.display='none'">`;
+    const cur = detectLink(input.value);
+    if(t && box.isConnected && cur && cur.url === info.url && !hasFile()){
+      box.innerHTML = `<img src="${t}" alt="" style="max-width:240px; max-height:150px; border-radius:8px; border:1px solid var(--line); display:block; margin:6px 0 4px;" onerror="this.style.display='none'">`;
     }
-  }, 500);
+  }, 300);
 }
 // ---------- Mise en forme façon WhatsApp : on sélectionne le texte, puis on applique la forme voulue ----------
 function fmtBarHTML(taId){
@@ -5425,11 +5425,12 @@ function renderAdminContent(){
         ${fmtBarHTML('ad-art-desc')}
         <textarea id="ad-art-desc" placeholder="Description">${editing?editing.description:''}</textarea>
         <label>Photo${editing?' (laisser vide pour garder la photo actuelle)':''}</label><input type="file" accept="image/*,video/*" id="ad-art-photo">
+        <label style="margin-top:4px;">Lien (optionnel)</label>
+        <input id="ad-art-lien" placeholder="Collez un lien : YouTube, Vimeo, Google Drive, Docs, PDF, image, site web..." value="${editing ? ((editing.video && isExternalVideoUrl(editing.video)) ? editing.video : (editing.lien||'')) : ''}" oninput="previewLinkField(this,'ad-art-auto-thumb','ad-art-photo')">
+        <div id="ad-art-auto-thumb"></div>
         <div class="frame-picker" id="frame-ad-art-photo"></div>
         <p class="frame-hint">Cliquez sur l'aperçu pour choisir la partie de la photo qui s'affichera.</p>
         <div id="ad-art-poster-preview"></div>
-        <label style="margin-top:10px;">Lien (optionnel)</label>
-        <input id="ad-art-lien" placeholder="Collez un lien : YouTube, Vimeo, Google Drive, Docs, PDF, image, site web..." value="${editing ? ((editing.video && isExternalVideoUrl(editing.video)) ? editing.video : (editing.lien||'')) : ''}">
         ${visibilityPickerHTML('ad-art-vis', editing ? articleReserved(editing) : effectiveType==='formation')}
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
@@ -5439,6 +5440,13 @@ function renderAdminContent(){
       <div>${(visibleArticles.length?visibleArticles:[]).map(a => `<div class="admin-list-row"><span>${a.titre}</span><span class="meta">${ARTICLE_TYPE_LABELS[a.type]} · ${fmtDate(a.date)} <button class="link-btn" style="color:var(--teal-dark);" onclick="editArticle('${a.id}')">Modifier</button><button class="link-btn" onclick="deleteArticle('${a.id}')">Supprimer</button></span></div>`).join("") || `<p class="form-note">${scope ? 'Aucune formation publiée pour le moment.' : "Aucun article publié. Les exemples restent affichés sur le site public en attendant."}</p>`}</div>`;
     setupFramePicker('ad-art-photo', 'frame-ad-art-photo');
     setupVideoFrameCapture('ad-art-photo', 'ad-art-poster-preview');
+    // Lien présent : la photo est reconnue automatiquement et s'affiche ; sinon on choisit la photo à la main.
+    const fi = document.getElementById('ad-art-photo'), li = document.getElementById('ad-art-lien');
+    if(fi && li){
+      fi.addEventListener('change', () => previewLinkField(li, 'ad-art-auto-thumb', 'ad-art-photo'));
+      const ea = DATA.articles.find(a => a.id === editingArticleId);
+      if(!(ea && ea.photo && !ea.thumbAuto)) previewLinkField(li, 'ad-art-auto-thumb', 'ad-art-photo');
+    }
   }
   if(adminTab === 'vision'){
     const ht = DATA.heroText || {};

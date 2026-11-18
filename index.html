@@ -571,6 +571,16 @@
   .modal-box.lb .lb-frame .watermark-large img{width:max(44px, calc(var(--fs-w, 360px) * 0.085)); height:max(44px, calc(var(--fs-w, 360px) * 0.085)); border:max(2px, calc(var(--fs-w, 360px) * 0.004)) solid rgba(255,255,255,0.95); box-sizing:border-box;}
   .modal-box.lb .lb-frame .watermark-large .wm-text{font-size:max(20px, calc(var(--fs-w, 360px) * 0.042)); line-height:1;}
   /* Logo sur les vignettes de la galerie : même rendu que dans la vue agrandie (logo rond + « LABD Org » en gras), à l'échelle de la vignette. */
+  .vis-picker{margin:14px 0 6px;}
+  .vis-picker .vis-title{font-weight:700; font-size:0.9rem; margin-bottom:8px; color:var(--ink);}
+  .vis-picker .vis-opts{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  @media (max-width:520px){ .vis-picker .vis-opts{grid-template-columns:1fr;} }
+  .vis-opt{display:flex !important; align-items:flex-start; gap:10px; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px; cursor:pointer; background:#fff; font-weight:400 !important; transition:border-color .15s, box-shadow .15s, background .15s;}
+  .vis-opt input{width:auto !important; margin-top:3px; accent-color:var(--teal-dark);}
+  .vis-opt .vis-ico{flex:0 0 34px; height:34px; border-radius:50%; background:var(--paper-2); display:flex; align-items:center; justify-content:center; color:var(--teal-dark);}
+  .vis-opt b{display:block; font-size:0.9rem; color:var(--ink);}
+  .vis-opt small{display:block; font-size:0.78rem; color:var(--muted-2); line-height:1.35; margin-top:2px;}
+  .vis-opt:has(input:checked){border-color:var(--teal-dark); background:rgba(5,179,194,0.07); box-shadow:0 0 0 3px rgba(5,179,194,0.15);}
   .gallery-tile .watermark{top:9px; right:9px; gap:7px; font-family:'Space Grotesk', sans-serif; font-size:0.95rem; font-weight:800; letter-spacing:0.01em; color:#fff; text-shadow:0 2px 6px rgba(0,0,0,0.75); white-space:nowrap; z-index:2;}
   .gallery-tile .watermark img{width:30px; height:30px; border-radius:50%; object-fit:cover; opacity:1; box-shadow:0 3px 10px rgba(0,0,0,0.35); flex-shrink:0;}
   .watermark-large{flex-direction:row; align-items:center; gap:16px; top:16px; right:16px; min-width:220px; justify-content:flex-end;}
@@ -1218,7 +1228,7 @@
 
 <button id="adminFab">
   <svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-  Espace admin
+  Se connecter
 </button>
 
 <!-- ==========================================================
@@ -4620,11 +4630,11 @@ function renderArticles(){
   requestAnimationFrame(updateDescToggles);
   observeTileVideos();
 }
-// Accès membre : un membre qui a saisi son mot de passe personnel dans l'espace admin (ou toute personne
-// connectée à l'espace admin) voit tout ce qui est réservé. Plus de mots de passe séparés par section.
+// Accès membre : un membre qui s'est connecté avec son mot de passe personnel (ou toute personne
+// connectée) voit tout ce qui est réservé. Plus de mots de passe séparés par section.
 let inlineUnlocked = false;
 function memberAccess(){ return !!(memberSession || adminUnlocked || inlineUnlocked); }
-// Deux façons d'ouvrir un élément réservé : se connecter dans l'espace admin, ou saisir son mot de passe directement sur l'élément.
+// Ouvrir un élément réservé : se connecter (membre ou admin), et on reste sur la page.
 function passwordIsMember(val){
   if(!val) return false;
   const h = pwHash(val);
@@ -4636,19 +4646,8 @@ function passwordIsMember(val){
   const hn = pwHash(normCode(val)), hn2 = pwHash('LABD' + normCode(val));
   return Object.values(DATA.memberCodes || {}).some(c => c === hn || c === hn2);
 }
-function tryInlineUnlock(inputId){
-  const i = document.getElementById(inputId);
-  if(i && passwordIsMember(i.value)){ inlineUnlocked = true; renderArticles(); renderProjects(); }
-  else alert("Mot de passe incorrect.");
-}
-let lockUid = 0;
 function lockFormHTML(compact){
-  const id = 'lk-' + (++lockUid);
-  return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center;">
-      <input type="password" id="${id}" placeholder="Mot de passe membre" onkeydown="if(event.key==='Enter') tryInlineUnlock('${id}')" style="${compact ? 'padding:7px 9px; font-size:0.78rem; flex:1; min-width:100px;' : 'padding:10px 12px; font-size:0.85rem; width:170px;'} border:1px solid var(--line); border-radius:8px;">
-      <button class="btn-primary" style="${compact ? 'font-size:0.78rem; padding:7px 12px;' : ''}" onclick="tryInlineUnlock('${id}')">Ouvrir</button>
-    </div>
-    <button type="button" class="link-btn" style="color:${compact ? 'var(--teal-dark)' : '#fff'}; font-size:0.78rem; text-decoration:underline;" onclick="openAdminEntry()">Ou se connecter</button>`;
+  return `<button type="button" class="btn-primary" style="${compact ? 'font-size:0.78rem; padding:7px 14px;' : ''}" onclick="openAdminEntry(true)">Se connecter</button>`;
 }
 // L'administrateur choisit, élément par élément, s'il est réservé aux membres (case « réservé »). Aucun mot de passe à définir.
 // Les formations déjà publiées sans choix restent réservées, comme avant.
@@ -4680,7 +4679,7 @@ function openArticleLightbox(id){
   const all = CONFIG.exampleArticles.concat(DATA.articles);
   const a = all.find(x => x.id === id);
   if(!a) return;
-  if(articleLocked(a)){ openAdminEntry(); return; }
+  if(articleLocked(a)){ openAdminEntry(true); return; }
   const mediaHTML = a.video
     ? (isExternalVideoUrl(a.video)
         ? `<iframe src="${youtubeEmbedSrc(a.video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`
@@ -4731,7 +4730,7 @@ function fileNameTruncHTML(name){
 function openProjectFilePreview(pid){
   const p = findProjetById(pid);
   if(!p || (!p.fichier && !p.lienExterne)) return;
-  if(projectLocked(p)){ const f = document.querySelector('#projectPanels input[id^="lk-"]'); if(f){ f.scrollIntoView({behavior:'smooth', block:'center'}); f.focus(); } else openAdminEntry(); return; }
+  if(projectLocked(p)){ openAdminEntry(true); return; }
   if(!p.fichier && p.lienExterne){ window.open(p.lienExterne, '_blank', 'noopener'); return; }
   // Détection du type via l'extension du nom de fichier (fonctionne aussi bien
   // pour une ancienne dataURL locale que pour une URL Cloudinary — contrairement
@@ -5035,15 +5034,28 @@ function memberLogout(){
   renderMembers();
   renderArticles(); renderProjects();
 }
-function openAdminEntry(){
+let loginFromLock = false;
+// Sélecteur « Qui peut voir ? » (Tout le monde / Uniquement les membres), utilisé pour les publications et les projets.
+function visibilityPickerHTML(name, reserved){
+  const globe = '<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>';
+  return `<div class="vis-picker">
+    <div class="vis-title">Qui peut voir cet élément ?</div>
+    <div class="vis-opts">
+      <label class="vis-opt"><input type="radio" name="${name}" value="public" ${reserved ? '' : 'checked'}><span class="vis-ico">${globe}</span><span><b>Tout le monde</b><small>Visible par tous les visiteurs du site.</small></span></label>
+      <label class="vis-opt"><input type="radio" name="${name}" value="membres" ${reserved ? 'checked' : ''}><span class="vis-ico">${ICONS.lock}</span><span><b>Uniquement les membres</b><small>S'ouvre après connexion avec son mot de passe.</small></span></label>
+    </div>
+  </div>`;
+}
+function openAdminEntry(fromLock){
+  loginFromLock = fromLock === true;
   if(adminUnlocked){ openAdminDashboard(); return; }
   if(memberSession){ openMemberPanel(); return; }
   openModal(`
-    <h3>Espace admin</h3>
-    <p>Chaque responsable a son propre mot de passe : le contenu visible s'adapte à sa fonction. Les membres entrent leur mot de passe personnel : les parties réservées s'ouvrent pour eux.</p>
+    <h3>Se connecter</h3>
+    <p>${loginFromLock ? 'Entrez votre mot de passe pour ouvrir les parties réservées aux membres.' : 'Chaque responsable a son propre mot de passe : le contenu visible s\'adapte à sa fonction. Les membres entrent leur mot de passe personnel : les parties réservées s\'ouvrent pour eux.'}</p>
     <input type="password" id="adminPass" placeholder="Mot de passe ou code membre" style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;">
     <div class="row">
-      <button class="btn-primary" onclick="tryUnlock()">Déverrouiller</button>
+      <button class="btn-primary" onclick="tryUnlock()">Se connecter</button>
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Annuler</button>
     </div>
   `);
@@ -5055,6 +5067,13 @@ const PROMOTION_BUREAU_CATEGORIES = PROMO_ALLOWED_CATEGORIES.concat(['acces','pr
 function tryUnlock(){
   const val = document.getElementById('adminPass').value;
   if(!val){ alert("Mot de passe incorrect."); return; }
+  // Connexion lancée depuis un élément verrouillé (membre ou admin) : on ouvre l'accès et on reste sur la page, sans aller dans l'espace admin.
+  if(loginFromLock){
+    if(!passwordIsMember(val)){ alert("Mot de passe incorrect."); return; }
+    loginFromLock = false; inlineUnlocked = true;
+    closeModal(); renderArticles(); renderProjects();
+    return;
+  }
   const h = pwHash(val);
   let match = CONFIG.adminRoles.find(r => r.role !== 'Président' && roleHash(r) === h); // le Président utilise l'Accès général
   if(match && !match.categories.includes('*')){
@@ -5105,7 +5124,7 @@ function tryUnlock(){
     renderProjects();
   } else { alert("Mot de passe incorrect."); }
 }
-adminFab.addEventListener('click', openAdminEntry);
+adminFab.addEventListener('click', () => openAdminEntry());
 
 const ADMIN_CATEGORIES = [
   {id:'articles', label:'Articles & actualités'},
@@ -5288,7 +5307,7 @@ function renderAdminContent(){
           <input type="hidden" id="ad-art-type" value="${scope}">
         ` : `
           <label>Type</label>
-          <select id="ad-art-type" onchange="const r=document.getElementById('ad-art-reserve'); if(r) r.checked = this.value==='formation';">
+          <select id="ad-art-type" onchange="const r=document.querySelector('input[name=ad-art-vis][value='+(this.value==='formation'?'membres':'public')+']'); if(r) r.checked = true;">
             ${allowedTypes.includes('actualite') ? `<option value="actualite" ${effectiveType==='actualite'?'selected':''}>Actualité</option>` : ''}
             ${allowedTypes.includes('formation') ? `<option value="formation" ${effectiveType==='formation'?'selected':''}>Formation</option>` : ''}
             ${allowedTypes.includes('evenement') ? `<option value="evenement" ${effectiveType==='evenement'?'selected':''}>Événement</option>` : ''}
@@ -5303,8 +5322,7 @@ function renderAdminContent(){
         <label style="margin-top:6px;">Lien externe (optionnel)</label>
         <input id="ad-art-lien" placeholder="https://drive.google.com/... (Drive, document, formulaire, n'importe quel lien)" value="${editing?(editing.lien||''):''}">
         <p class="frame-hint">S'affiche comme un bouton « Ouvrir le lien » sur la publication. Utile pour partager un dossier Google Drive, un support de cours, etc.</p>
-        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-share" style="width:auto;"> Partager automatiquement sur WhatsApp après publication</label>
-        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-art-reserve" style="width:auto;" ${(editing ? articleReserved(editing) : effectiveType==='formation') ? 'checked' : ''}> Réservé aux membres (s'ouvre avec leur mot de passe personnel)</label>
+        ${visibilityPickerHTML('ad-art-vis', editing ? articleReserved(editing) : effectiveType==='formation')}
         <div class="row">
           <button class="btn-primary" onclick="publishArticle()">${editing?'Enregistrer les modifications':'Publier'}</button>
           ${editing ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingArticleId=null; renderAdminContent();">Annuler</button>` : ''}
@@ -5510,7 +5528,7 @@ function renderAdminContent(){
         ${editingP ? `<p class="form-note" style="color:var(--teal-dark);">Modification de « ${editingP.titre} »</p>` : ''}
         <label>Titre du projet</label><input id="ad-pj-titre" placeholder="Titre" value="${editingP?editingP.titre:''}">
         <label>Type</label>
-        <select id="ad-pj-type">
+        <select id="ad-pj-type" onchange="const r=document.querySelector('input[name=ad-pj-vis][value='+(this.value==='exercice'?'membres':'public')+']'); if(r) r.checked = true;">
           <option value="realise" ${editingP&&editingP.type==='realise'?'selected':''}>Projet réalisé</option>
           <option value="exercice" ${editingP&&editingP.type==='exercice'?'selected':''}>Projet en cours (exercice de la semaine)</option>
         </select>
@@ -5521,7 +5539,7 @@ function renderAdminContent(){
         <label>Ou lien externe Google Drive, etc., pour un fichier de plus de 10 Mo${editingP&&editingP.lienExterne?'':''}</label>
         <input id="ad-pj-lien" placeholder="https://drive.google.com/..." value="${editingP?(editingP.lienExterne||''):''}">
         <p class="form-note">Pense à régler le partage du fichier sur "Tous les utilisateurs disposant du lien" avant de coller l'adresse ici, sinon les visiteurs ne pourront pas l'ouvrir.</p>
-        <label style="display:flex; align-items:center; gap:8px; font-weight:400;"><input type="checkbox" id="ad-pj-reserve" style="width:auto;" ${editingP && (editingP.reserve || editingP.motDePasse) ? 'checked' : ''}> Fichier réservé aux membres (s'ouvre avec leur mot de passe personnel)</label>
+        ${visibilityPickerHTML('ad-pj-vis', !!(editingP && (editingP.reserve || editingP.motDePasse)))}
         <div class="row">
           <button class="btn-primary" onclick="publishProjet()">${editingP?'Enregistrer les modifications':'Publier'}</button>
           ${editingP ? `<button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="editingProjetId=null; renderAdminContent();">Annuler</button>` : ''}
@@ -6025,13 +6043,12 @@ async function publishArticle(){
   const type = document.getElementById('ad-art-type').value;
   const description = document.getElementById('ad-art-desc').value.trim();
   const fileInput = document.getElementById('ad-art-photo');
-  const shareOnWhatsapp = document.getElementById('ad-art-share').checked;
   if(!titre || !description){ alert("Titre et description requis."); return; }
 
   const file = fileInput.files[0];
   const videoUrl = (document.getElementById('ad-art-video-url')?.value || '').trim();
   const lien = (document.getElementById('ad-art-lien')?.value || '').trim();
-  const reserve = !!(document.getElementById('ad-art-reserve') && document.getElementById('ad-art-reserve').checked);
+  const reserve = (document.querySelector('input[name="ad-art-vis"]:checked') || {}).value === 'membres';
   let photo = null, video = null, focal = null, poster = null;
   if(videoUrl){
     video = videoUrl;
@@ -6061,7 +6078,6 @@ async function publishArticle(){
 
 
   renderArticles(); renderAdminContent();
-  if(shareOnWhatsapp) shareWhatsApp(`LABD : ${titre}\n${description}`);
 }
 function editArticle(id){
   editingArticleId = id;
@@ -6085,7 +6101,7 @@ async function publishProjet(){
   const description = document.getElementById('ad-pj-desc').value.trim();
   const fileInput = document.getElementById('ad-pj-fichier');
   const file = fileInput.files[0];
-  const reserve = !!document.getElementById('ad-pj-reserve').checked;
+  const reserve = (document.querySelector('input[name="ad-pj-vis"]:checked') || {}).value === 'membres';
   const lienExterne = document.getElementById('ad-pj-lien').value.trim();
   if(!titre || !description){ alert("Titre et description requis."); return; }
   if(file && file.size > 10*1024*1024){

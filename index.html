@@ -2264,6 +2264,7 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape' && fsOn) close
 let modalHistoryOn = false, modalBackPending = false;
 function openModal(html, wide){
   modalContent.className = 'modal-box' + (wide ? ' wide' : '');
+  modalContent.style.maxWidth = '';
   modalContent.innerHTML = html;
   modalOverlay.classList.add('open');
   if(!modalHistoryOn && !modalBackPending){
@@ -4491,7 +4492,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   lbCurrent = { src, video, legende, isLogo: isLogoView, mark: mark || '' };
   const mediaHTML = video
     ? (isExternalVideoUrl(video)
-        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; right:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
+        ? `<div style="position:relative; width:100%;"><iframe src="${youtubeEmbedSrc(video)}" style="width:100%; aspect-ratio:16/9; max-width:100%; border:0; border-radius:8px; display:block;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe><button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
         : `<div class="lb-video" style="position:relative; width:100%; background:#000; border-radius:8px; overflow:hidden;">
             <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" style="width:100%; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
@@ -4797,10 +4798,13 @@ function openArticleLightbox(id){
         : `<video src="${a.video}" controls autoplay style="max-width:100%; max-height:70vh; border-radius:8px; display:block;"></video>`)
     : a.photo ? `<img src="${a.photo}" style="width:100%; border-radius:8px; display:block;">` : '';
   window.dlSrc = a.photo;
+  const extVideo = !!(a.video && isExternalVideoUrl(a.video));
+  if(extVideo) lbCurrent = { src: a.photo || '', video: a.video, legende: '', isLogo: false, mark: '' };
   openModal(`
     <div style="text-align:center;">
-      <div style="position:relative; display:inline-block; max-width:100%;">
+      <div style="position:relative; ${extVideo ? 'display:block; width:100%;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
+        ${extVideo ? `<button type="button" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:3; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
         ${mediaHTML ? lightboxWatermarkHTML() : ''}
       </div>
     </div>
@@ -4812,6 +4816,7 @@ function openArticleLightbox(id){
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
+  if(extVideo) modalContent.style.maxWidth = 'min(1200px, 96vw)';
 }
 
 const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };

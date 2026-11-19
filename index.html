@@ -4151,59 +4151,77 @@ async function watermarkImageDataUrl(src, mark){
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    const size = Math.min(Math.max(W * 0.12, 72), W * 0.25);
-    const margin = size * 0.3;
-    // Voile sombre léger en haut pour que le logo soit toujours lisible.
-    const band = size + margin * 2.4;
-    const g = ctx.createLinearGradient(0, 0, 0, band);
-    g.addColorStop(0, 'rgba(0,0,0,0.55)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, band);
-    const cy = margin + size/2, gap = size * 0.14;
-    ctx.font = `700 ${Math.max(16, size*0.3)}px "Space Grotesk", sans-serif`;
-    const tw = ctx.measureText('LABD Org').width;
+    // Même rendu que sur le site : toutes les tailles sont proportionnelles à la largeur de l'image,
+    // avec les mêmes rapports que dans la fenêtre d'affichage (logo, texte, mention du bas).
+    const size = W * 0.085;                 // logo rond
+    const inset = W * 0.022;                // marge en haut et à droite
+    const gap = W * 0.016;                  // espace logo / texte
+    const bw = Math.max(2, W * 0.004);      // contour blanc du logo
+    const fsT = W * 0.042;                  // « LABD Org »
+    const cy = inset + size/2;
+    ctx.font = `800 ${fsT}px "Space Grotesk", sans-serif`;
+    const tw = ctx.measureText('LABD Org').width + fsT * 0.01 * 'LABD Org'.length;   // espacement 0,01em comme sur le site
     let logo = null;
     try{ logo = await loadImageForCanvas(DATA.groupLogo || 'images/visuel_labd_01.jpg'); }catch(e){ console.error('logo', e); }
     // le logo vient AVANT le texte « LABD Org »
-    const x0 = W - margin - tw - (logo ? size + gap : 0);
+    const x0 = W - inset - tw - (logo ? size + gap : 0);
     if(logo){
       const cx = x0 + size/2;
+      ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = size * 0.2; ctx.shadowOffsetY = size * 0.06;
+      wmCircleClip(ctx, cx, cy, size/2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.restore();
       ctx.save();
       wmCircleClip(ctx, cx, cy, size/2); ctx.clip();
       ctx.drawImage(logo, cx - size/2, cy - size/2, size, size);
       ctx.restore();
-      ctx.save(); ctx.lineWidth = Math.max(2, size*0.04); ctx.strokeStyle = 'rgba(255,255,255,0.95)';
-      wmCircleClip(ctx, cx, cy, size/2); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.lineWidth = bw; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+      wmCircleClip(ctx, cx, cy, size/2 - bw/2); ctx.stroke(); ctx.restore();
     }
+    ctx.save();
     ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = Math.max(4, size*0.08);
-    ctx.fillText('LABD Org', logo ? x0 + size + gap : W - margin - tw, cy);
+    ctx.shadowColor = 'rgba(0,0,0,0.75)'; ctx.shadowBlur = fsT * 0.2; ctx.shadowOffsetY = fsT * 0.06;
+    if('letterSpacing' in ctx) ctx.letterSpacing = (fsT * 0.01) + 'px';
+    ctx.fillText('LABD Org', logo ? x0 + size + gap : W - inset - tw, cy);
+    ctx.restore();
     if(mark){
-      // Mention du poste : « PR • LABD » en blanc (police du logo), filets fins de chaque côté, voile bleu nuit très léger, fin trait turquoise en bas.
-      const fsz = Math.max(9, W * 0.02), sp = fsz * 0.5, base = H - fsz * 1.9, lineY = base - fsz * 0.36;
-      const vh = fsz * 6.2, vg = ctx.createLinearGradient(0, H - vh, 0, H);                      // voile très léger, bleu nuit
-      vg.addColorStop(0, 'rgba(8,20,40,0)'); vg.addColorStop(0.55, 'rgba(8,20,40,0.3)'); vg.addColorStop(1, 'rgba(8,20,40,0.66)');
-      ctx.fillStyle = vg; ctx.fillRect(0, H - vh, W, vh);
-      ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, H - Math.max(2, W * 0.0033), W, Math.max(2, W * 0.0033));   // fin trait turquoise en bas
-      ctx.font = `700 ${fsz}px "Space Grotesk", sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      const trkW = t => { let w = 0; for(const ch of t) w += ctx.measureText(ch).width + sp; return w - sp; };
-      let lx0 = 0, lw = 1;   // étendue de la ligne entière (pour que le reflet traverse tout le texte)
-      const drawT = (t, x0) => {
-        let px = x0; const pos = []; for(const ch of t){ pos.push([ch, px]); px += ctx.measureText(ch).width + sp; }
-        ctx.fillStyle = '#ffffff'; pos.forEach(([c, x]) => ctx.fillText(c, x, base));     // texte blanc
-      };
+      // Mention du poste : mêmes proportions que sur le site (bandeau uni bleu nuit, trait turquoise, filets, texte espacé).
+      const F = W * 0.028, pf = F * 1.068, sp = pf * 0.5;
+      const bandH = F * 0.8 + pf + F * 0.95, bandY = H - bandH;
+      ctx.fillStyle = 'rgba(8,20,40,0.66)'; ctx.fillRect(0, bandY, W, bandH);
+      const tl = Math.max(2, W * 0.0036);
+      ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, H - tl, W, tl);                       // trait turquoise en bas
+      const rowCy = H - F * 0.95 - pf / 2, base = rowCy + pf * 0.35;
+      ctx.save();
+      ctx.font = `700 ${pf}px "Space Grotesk", sans-serif`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      if('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+      const trkW = t => { let w = 0; for(const ch of t) w += ctx.measureText(ch).width + sp; return w; };   // chaque lettre est suivie de l'espacement
+      const padL = pf * 0.5;
+      let boxW, texts = [];
       if(mark.a){
-        const d = fsz * 0.36, g1 = fsz * 1.2, g2 = fsz * 1.2, wa = trkW(mark.a), wl = trkW('LABD'), total = wa + g1 + d + g2 + wl;
-        let x = W / 2 - total / 2; lx0 = x; lw = total;
-        drawT(mark.a, x); x += wa + g1;
-        const cyd = base - fsz * 0.36;      // point centré sur la hauteur des majuscules
-        ctx.beginPath(); ctx.arc(x + d / 2, cyd, d / 2, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();   // point blanc
-        x += d + g2; drawT('LABD', x);
+        const wa = trkW(mark.a), wl = trkW('LABD'), dm0 = pf * 0.76, dd = pf * 0.36, dm1 = pf * 1.2;
+        boxW = padL + wa + dm0 + dd + dm1 + wl;
+        texts = { a: mark.a, wa, wl, dm0, dd, dm1 };
       } else {
-        const t = postMarkLine(mark); lw = trkW(t); lx0 = W / 2 - lw / 2; drawT(t, lx0);
+        const t = postMarkLine(mark); boxW = padL + trkW(t); texts = { t };
       }
+      const gapI = F * 0.9;
+      const lenL = Math.max(0, Math.min(F * 3.4, (W - boxW - gapI * 2) / 2));
+      const boxX = (W - boxW) / 2;
+      ctx.shadowColor = 'rgba(0,10,25,0.5)'; ctx.shadowBlur = pf * 0.25; ctx.shadowOffsetY = pf * 0.07;
+      const drawT = (t, x) => { ctx.fillStyle = '#ffffff'; let px = x; for(const ch of t){ ctx.fillText(ch, px, base); px += ctx.measureText(ch).width + sp; } };
+      if(mark.a){
+        let x = boxX + padL;
+        drawT(texts.a, x); x += texts.wa + texts.dm0;
+        ctx.beginPath(); ctx.arc(x + texts.dd / 2, rowCy, texts.dd / 2, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();   // point blanc
+        x += texts.dd + texts.dm1; drawT('LABD', x);
+      } else {
+        drawT(texts.t, boxX + padL);
+      }
+      ctx.restore();
       // filets fins de chaque côté du texte
-      const gapL = fsz * 1.5, lenL = fsz * 5.7; ctx.fillStyle = 'rgba(255,255,255,0.6)'; const lh = Math.max(1, fsz * 0.07);
-      ctx.fillRect(lx0 - gapL - lenL, lineY, lenL, lh); ctx.fillRect(lx0 + lw + gapL, lineY, lenL, lh);
+      const lh = Math.max(1, F * 0.07);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(boxX - gapI - lenL, rowCy - lh / 2, lenL, lh);
+      ctx.fillRect(boxX + boxW + gapI, rowCy - lh / 2, lenL, lh);
     }
     return canvas.toDataURL('image/jpeg', 0.92);
   }catch(e){
@@ -5042,8 +5060,8 @@ function renderProjects(){
           ${(() => {
             const fileLocked = projectLocked(p);
             if(p.thumbnail){
-              return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
-                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy">
+              return `<div style="position:relative; cursor:pointer; overflow:hidden; border-radius:inherit;" onclick="openProjectFilePreview('${p.id}')">
+                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy" ${fileLocked ? 'draggable="false" oncontextmenu="return false" style="filter:blur(14px) saturate(0.85); transform:scale(1.12); pointer-events:none; user-select:none;"' : ''}>
                 ${fileLocked ? `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.32); border-radius:inherit; color:#fff;"><span style="transform:scale(1.8);">${ICONS.lock}</span></div>` : ''}
               </div>`;
             }
@@ -5053,8 +5071,8 @@ function renderProjects(){
               // Aperçu flouté : donne une idée du contenu sans le révéler
               // vraiment, puisque le fichier n'est pas hébergé chez nous et
               // qu'on ne peut pas en générer une vraie miniature nette.
-              return `<div style="position:relative; cursor:pointer;" onclick="openProjectFilePreview('${p.id}')">
-                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(7px) saturate(0.9);" loading="lazy" onerror="this.closest('div').style.display='none';">
+              return `<div style="position:relative; cursor:pointer; overflow:hidden; border-radius:inherit;" onclick="openProjectFilePreview('${p.id}')">
+                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(${fileLocked ? 14 : 7}px) saturate(0.9); ${fileLocked ? 'transform:scale(1.12); pointer-events:none;' : ''}" loading="lazy" onerror="this.closest('div').style.display='none';">
                 <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.18); border-radius:inherit; color:#fff; font-size:0.72rem; gap:6px; flex-direction:column; text-align:center; padding:8px;">
                   ${fileLocked ? `<span style="transform:scale(1.6);">${ICONS.lock}</span>` : ''}
                   <span>Aperçu : fichier hébergé en externe</span>

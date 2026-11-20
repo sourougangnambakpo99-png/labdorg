@@ -143,7 +143,8 @@
   nav.links a.is-active{opacity:1; color:var(--teal-dark);}
   nav.links a.is-active::after{left:0; right:0;}
   .nav-drop{position:relative; display:flex; align-items:center;}
-  .nav-drop .chev{font-size:0.7em; opacity:0.7;}
+  .nav-drop .chev{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin-left:4px; border-radius:50%; background:var(--teal); color:#fff; vertical-align:middle; transition:transform .18s ease, background .18s ease;}
+  .nav-drop:hover .chev, .nav-drop:focus-within .chev{transform:rotate(180deg); background:var(--teal-dark);}
   .nav-drop-menu{position:absolute; top:100%; left:-12px; min-width:170px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 30px rgba(0,0,0,0.14); padding:6px; display:none; flex-direction:column; gap:2px; z-index:310; margin-top:8px;}
   .nav-drop-menu::before{content:''; position:absolute; left:0; right:0; top:-10px; height:10px;}
   .nav-drop:hover .nav-drop-menu, .nav-drop:focus-within .nav-drop-menu{display:flex;}
@@ -854,7 +855,7 @@
       <a href="#cycles">Classements</a>
       <a href="#galerie">Galerie</a>
       <div class="nav-drop">
-        <a href="#actualites">Actualités <span class="chev">&#9662;</span></a>
+        <a href="#actualites">Actualités <span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg></span></a>
         <div class="nav-drop-menu">
           <a href="#actualites">Actualités</a>
           <a href="#evenements">Événements</a>
@@ -4156,7 +4157,7 @@ async function watermarkImageDataUrl(src, mark){
     // Référence = l'affichage sur téléphone (≈ 400 px de large), où le logo a sa taille minimale de 44 px :
     // on calcule comme le site à cette largeur, puis on agrandit à la taille réelle de la photo.
     const D = Math.min(W, 400), k = W / D;
-    const size = Math.max(44, D * 0.085) * k;       // logo rond
+    const size = Math.max(44, D * 0.085) * k * 1.12;   // logo rond (+12 %)
     const inset = Math.max(10, D * 0.022) * k;      // marge en haut et à droite
     const gap = Math.max(8, D * 0.016) * k;         // espace logo / texte
     const bw = Math.max(2, D * 0.004) * k;          // contour blanc du logo
@@ -5061,7 +5062,7 @@ function renderProjects(){
             const fileLocked = projectLocked(p);
             if(p.thumbnail){
               return `<div style="position:relative; cursor:pointer; overflow:hidden; border-radius:inherit;" onclick="openProjectFilePreview('${p.id}')">
-                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy" ${fileLocked ? 'draggable="false" oncontextmenu="return false" style="filter:blur(1.6px) brightness(0.82); transform:scale(1.03); pointer-events:none; user-select:none;"' : ''}>
+                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy" ${fileLocked ? 'draggable="false" oncontextmenu="return false" style="filter:blur(0.8px) brightness(0.9); transform:scale(1.02); pointer-events:none; user-select:none;"' : ''}>
                 ${fileLocked ? `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.32); border-radius:inherit; color:#fff;"><span style="transform:scale(1.8);">${ICONS.lock}</span></div>` : ''}
               </div>`;
             }
@@ -5072,7 +5073,7 @@ function renderProjects(){
               // vraiment, puisque le fichier n'est pas hébergé chez nous et
               // qu'on ne peut pas en générer une vraie miniature nette.
               return `<div style="position:relative; cursor:pointer; overflow:hidden; border-radius:inherit;" onclick="openProjectFilePreview('${p.id}')">
-                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(${fileLocked ? 2 : 7}px) ${fileLocked ? 'brightness(0.82) ' : ''}saturate(0.9); ${fileLocked ? 'transform:scale(1.03); pointer-events:none;' : ''}" loading="lazy" onerror="this.closest('div').style.display='none';">
+                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(${fileLocked ? 1 : 7}px) ${fileLocked ? 'brightness(0.9) ' : ''}saturate(0.9); ${fileLocked ? 'transform:scale(1.02); pointer-events:none;' : ''}" loading="lazy" onerror="this.closest('div').style.display='none';">
                 <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.18); border-radius:inherit; color:#fff; font-size:0.72rem; gap:6px; flex-direction:column; text-align:center; padding:8px;">
                   ${fileLocked ? `<span style="transform:scale(1.6);">${ICONS.lock}</span>` : ''}
                   <span>Aperçu : fichier hébergé en externe</span>

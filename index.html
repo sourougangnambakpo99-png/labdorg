@@ -3373,7 +3373,7 @@ function hideQuickLoader(l){
 function doSwitchPromotion(id){
   activePromotionId = id;
   cyclesOffset = 0; activeCycleIndex = null; // les index de cycles ne sont pas partagés entre promotions
-  projectsWindow.realise = {size:2, offset:0}; projectsWindow.exercice = {size:2, offset:0};
+  projectsWindow.realise = {back:0}; projectsWindow.exercice = {back:0};
   galleryPage = 0;
   renderPromotionSwitches();
   renderBureau();      // bureau + membres + compteurs (renderMembers / renderStats)
@@ -4101,8 +4101,8 @@ function renderCycles(){
     const canPrev = startIdx > 0;
     const canNext = cyclesOffset > 0;
     pagerEl.innerHTML = total > size ? `<div class="pager-nav">
-        <button class="pager-btn" ${canPrev?'':'disabled'} onclick="cyclesPrev()">&larr; Voir précédent</button>
-        <button class="pager-btn" ${canNext?'':'disabled'} onclick="cyclesNext()">Voir suivant &rarr;</button>
+        ${canPrev ? `<button class="pager-btn" onclick="cyclesPrev()">&larr; Voir précédent</button>` : ''}
+        ${canNext ? `<button class="pager-btn" onclick="cyclesNext()">Voir suivant &rarr;</button>` : ''}
       </div>` : '';
   }
   tabs.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { activeCycleIndex = parseInt(btn.dataset.i); renderCycles(); }));
@@ -4153,11 +4153,14 @@ async function watermarkImageDataUrl(src, mark){
     ctx.drawImage(img, 0, 0);
     // Même rendu que sur le site : toutes les tailles sont proportionnelles à la largeur de l'image,
     // avec les mêmes rapports que dans la fenêtre d'affichage (logo, texte, mention du bas).
-    const size = W * 0.085;                 // logo rond
-    const inset = W * 0.022;                // marge en haut et à droite
-    const gap = W * 0.016;                  // espace logo / texte
-    const bw = Math.max(2, W * 0.004);      // contour blanc du logo
-    const fsT = W * 0.042;                  // « LABD Org »
+    // Référence = l'affichage sur téléphone (≈ 400 px de large), où le logo a sa taille minimale de 44 px :
+    // on calcule comme le site à cette largeur, puis on agrandit à la taille réelle de la photo.
+    const D = Math.min(W, 400), k = W / D;
+    const size = Math.max(44, D * 0.085) * k;       // logo rond
+    const inset = Math.max(10, D * 0.022) * k;      // marge en haut et à droite
+    const gap = Math.max(8, D * 0.016) * k;         // espace logo / texte
+    const bw = Math.max(2, D * 0.004) * k;          // contour blanc du logo
+    const fsT = Math.max(20, D * 0.042) * k;        // « LABD Org »
     const cy = inset + size/2;
     ctx.font = `800 ${fsT}px "Space Grotesk", sans-serif`;
     const tw = ctx.measureText('LABD Org').width + fsT * 0.01 * 'LABD Org'.length;   // espacement 0,01em comme sur le site
@@ -4184,10 +4187,10 @@ async function watermarkImageDataUrl(src, mark){
     ctx.restore();
     if(mark){
       // Mention du poste : mêmes proportions que sur le site (bandeau uni bleu nuit, trait turquoise, filets, texte espacé).
-      const F = W * 0.028, pf = F * 1.068, sp = pf * 0.5;
+      const F = Math.max(11, D * 0.028) * k, pf = F * 1.068, sp = pf * 0.5;
       const bandH = F * 0.8 + pf + F * 0.95, bandY = H - bandH;
       ctx.fillStyle = 'rgba(8,20,40,0.66)'; ctx.fillRect(0, bandY, W, bandH);
-      const tl = Math.max(2, W * 0.0036);
+      const tl = 2 * k;
       ctx.fillStyle = '#05b3c2'; ctx.fillRect(0, H - tl, W, tl);                       // trait turquoise en bas
       const rowCy = H - F * 0.95 - pf / 2, base = rowCy + pf * 0.35;
       ctx.save();
@@ -4407,9 +4410,9 @@ function renderGallery(){
   const pagerEl = document.getElementById('galleryPager');
   if(pagerEl){
     pagerEl.innerHTML = totalPages > 1 ? `<div class="pager-nav">
-        <button class="pager-btn" ${galleryPage===0?'disabled':''} onclick="changeGalleryPage(-1)">&larr; Voir précédent</button>
+        ${galleryPage < totalPages-1 ? `<button class="pager-btn" onclick="changeGalleryPage(1)">&larr; Voir précédent</button>` : ''}
         <span class="form-note" style="align-self:center;">Page ${galleryPage+1} / ${totalPages}</span>
-        <button class="pager-btn" ${galleryPage>=totalPages-1?'disabled':''} onclick="changeGalleryPage(1)">Voir suivant &rarr;</button>
+        ${galleryPage > 0 ? `<button class="pager-btn" onclick="changeGalleryPage(-1)">Voir suivant &rarr;</button>` : ''}
       </div>` : '';
   }
   observeTileVideos();
@@ -4815,7 +4818,7 @@ function updateDescToggles(){
   });
 }
 
-const articlesWindow = { actualite:{size:2,offset:0}, evenement:{size:2,offset:0}, formation:{size:2,offset:0} };
+const articlesWindow = { actualite:{back:0}, evenement:{back:0}, formation:{back:0} };
 
 function renderArticles(){
   // Actualités/formations/événements de la promotion fondatrice par défaut ;
@@ -4832,10 +4835,9 @@ function renderArticles(){
 
     const all = merged.filter(a => a.type === type).sort((a,b) => b.date - a.date);
     const state = articlesWindow[type];
-    const maxOffset3 = Math.max(0, all.length - 3);
-    if(state.size === 3 && state.offset > maxOffset3) state.offset = maxOffset3;
-    if(state.size === 2) state.offset = 0;
-    const list = all.slice(state.offset, state.offset + state.size);
+    const maxBack = Math.max(0, all.length - 2);
+    if(state.back > maxBack) state.back = maxBack;
+    const list = all.slice(state.back, state.back + 2);
     if(list.length){
       el.innerHTML = list.map(a => {
         const locked = articleLocked(a);
@@ -4868,11 +4870,11 @@ function renderArticles(){
       el.insertAdjacentElement('afterend', moreBtn);
     }
     if(all.length > 2){
-      const canPrev = state.size === 3;
-      const canNext = state.size < 3 ? all.length > state.size : state.offset < maxOffset3;
+      const canPrev = state.back < maxBack;   // il reste des publications plus anciennes
+      const canNext = state.back > 0;         // on peut revenir vers les plus récentes
       moreBtn.innerHTML = `<div class="pager-nav">
-        <button class="pager-btn" ${canPrev?'':'disabled'} onclick="articlesPrev('${type}')">&larr; Voir précédent</button>
-        <button class="pager-btn" ${canNext?'':'disabled'} onclick="articlesNext('${type}', ${maxOffset3})">Voir suivant &rarr;</button>
+        ${canPrev ? `<button class="pager-btn" onclick="articlesPrev('${type}')">&larr; Voir précédent</button>` : ''}
+        ${canNext ? `<button class="pager-btn" onclick="articlesNext('${type}')">Voir suivant &rarr;</button>` : ''}
       </div>`;
     } else {
       moreBtn.innerHTML = '';
@@ -4880,6 +4882,7 @@ function renderArticles(){
   });
   requestAnimationFrame(updateDescToggles);
   observeTileVideos();
+  renderStats();
 }
 // Accès membre : un membre qui s'est connecté avec son mot de passe personnel (ou toute personne
 // connectée) voit tout ce qui est réservé. Plus de mots de passe séparés par section.
@@ -4914,16 +4917,12 @@ function lockedCardHTML(card){
     </div>
   </div>`;
 }
-function articlesNext(type, maxOffset3){
-  const state = articlesWindow[type];
-  if(state.size < 3){ state.size = 3; }
-  else { state.offset = Math.min(maxOffset3, state.offset + 1); }
+function articlesPrev(type){   // reculer vers des publications plus anciennes
+  articlesWindow[type].back += 1;
   renderArticles();
 }
-function articlesPrev(type){
-  const state = articlesWindow[type];
-  if(state.size === 3 && state.offset > 0){ state.offset -= 1; }
-  else if(state.size === 3){ state.size = 2; }
+function articlesNext(type){   // revenir vers les plus récentes
+  articlesWindow[type].back = Math.max(0, articlesWindow[type].back - 1);
   renderArticles();
 }
 function openArticleLightbox(id){
@@ -4958,7 +4957,7 @@ function openArticleLightbox(id){
   if(extVideo) modalContent.style.padding = '18px';
 }
 
-const projectsWindow = { realise:{size:2,offset:0}, exercice:{size:2,offset:0} };
+const projectsWindow = { realise:{back:0}, exercice:{back:0} };
 
 // Extrait l'identifiant d'un fichier Google Drive depuis un lien de partage
 // (formats /d/ID/ ou ?id=ID), pour construire une URL de miniature publique.
@@ -5048,20 +5047,21 @@ function renderProjects(){
     const all = pPromo
       ? DATA.projets.filter(p => p.type === t && p.promotionId === pPromo.id)
       : CONFIG.seedProjets.filter(p => p.type === t).concat(DATA.projets.filter(p => p.type === t && !p.promotionId));
+    const PJ_SIZE = 2;
+    all.sort((a,b) => (b.date||0) - (a.date||0));            // du plus récent au plus ancien
     const state = projectsWindow[t];
-    const maxOffset3 = Math.max(0, all.length - 3);
-    if(state.size === 3 && state.offset > maxOffset3) state.offset = maxOffset3;
-    if(state.size === 2) state.offset = 0;
-    const items = all.slice(state.offset, state.offset + state.size);
-    const canPrev = state.size === 3;
-    const canNext = state.size < 3 ? all.length > state.size : state.offset < maxOffset3;
+    const maxBack = Math.max(0, all.length - PJ_SIZE);
+    if(state.back > maxBack) state.back = maxBack;
+    const items = all.slice(state.back, state.back + PJ_SIZE).reverse();   // plus ancien à gauche, plus récent à droite
+    const canPrev = state.back < maxBack;   // il reste des projets plus anciens
+    const canNext = state.back > 0;         // on peut revenir vers les plus récents
     return `<div class="tab-panel${t===activeProjectTab?' active':''}" id="pj-${t}">
       ${items.length ? `<div class="podium">${items.map(p=>`<div class="podium-card card">
           ${(() => {
             const fileLocked = projectLocked(p);
             if(p.thumbnail){
               return `<div style="position:relative; cursor:pointer; overflow:hidden; border-radius:inherit;" onclick="openProjectFilePreview('${p.id}')">
-                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy" ${fileLocked ? 'draggable="false" oncontextmenu="return false" style="filter:blur(4px) brightness(0.72) saturate(0.9); transform:scale(1.06); pointer-events:none; user-select:none;"' : ''}>
+                <img class="thumb" src="${p.thumbnail}" alt="${p.titre}" loading="lazy" ${fileLocked ? 'draggable="false" oncontextmenu="return false" style="filter:blur(1.6px) brightness(0.82); transform:scale(1.03); pointer-events:none; user-select:none;"' : ''}>
                 ${fileLocked ? `<div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.32); border-radius:inherit; color:#fff;"><span style="transform:scale(1.8);">${ICONS.lock}</span></div>` : ''}
               </div>`;
             }
@@ -5072,7 +5072,7 @@ function renderProjects(){
               // vraiment, puisque le fichier n'est pas hébergé chez nous et
               // qu'on ne peut pas en générer une vraie miniature nette.
               return `<div style="position:relative; cursor:pointer; overflow:hidden; border-radius:inherit;" onclick="openProjectFilePreview('${p.id}')">
-                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(${fileLocked ? 5 : 7}px) ${fileLocked ? 'brightness(0.72) ' : ''}saturate(0.9); ${fileLocked ? 'transform:scale(1.06); pointer-events:none;' : ''}" loading="lazy" onerror="this.closest('div').style.display='none';">
+                <img class="thumb" src="${driveThumb}" alt="${p.titre}" style="filter:blur(${fileLocked ? 2 : 7}px) ${fileLocked ? 'brightness(0.82) ' : ''}saturate(0.9); ${fileLocked ? 'transform:scale(1.03); pointer-events:none;' : ''}" loading="lazy" onerror="this.closest('div').style.display='none';">
                 <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.18); border-radius:inherit; color:#fff; font-size:0.72rem; gap:6px; flex-direction:column; text-align:center; padding:8px;">
                   ${fileLocked ? `<span style="transform:scale(1.6);">${ICONS.lock}</span>` : ''}
                   <span>Aperçu : fichier hébergé en externe</span>
@@ -5088,9 +5088,9 @@ function renderProjects(){
           ${projectFileHTML(p)}
         </div>`).join("")}</div>`
         : `<div class="empty-state">${ICONS.info} Aucun ${PROJET_TYPE_LABELS[t].toLowerCase()} publié pour le moment.</div>`}
-      ${all.length > 2 ? `<div class="pager-nav">
-          <button class="pager-btn" ${canPrev?'':'disabled'} onclick="projectsPrev('${t}')">&larr; Voir précédent</button>
-          <button class="pager-btn" ${canNext?'':'disabled'} onclick="projectsNext('${t}', ${maxOffset3})">Voir suivant &rarr;</button>
+      ${all.length > PJ_SIZE ? `<div class="pager-nav">
+          ${canPrev ? `<button class="pager-btn" onclick="projectsPrev('${t}')">&larr; Voir précédent</button>` : ''}
+          ${canNext ? `<button class="pager-btn" onclick="projectsNext('${t}')">Voir suivant &rarr;</button>` : ''}
         </div>` : ''}
     </div>`;
   }).join("");
@@ -5104,16 +5104,12 @@ function renderProjects(){
   requestAnimationFrame(updateDescToggles);
   renderStats();
 }
-function projectsNext(t, maxOffset3){
-  const state = projectsWindow[t];
-  if(state.size < 3){ state.size = 3; }
-  else { state.offset = Math.min(maxOffset3, state.offset + 1); }
+function projectsPrev(t){   // reculer vers des projets plus anciens
+  projectsWindow[t].back += 1;
   renderProjects();
 }
-function projectsPrev(t){
-  const state = projectsWindow[t];
-  if(state.size === 3 && state.offset > 0){ state.offset -= 1; }
-  else if(state.size === 3){ state.size = 2; }
+function projectsNext(t){   // revenir vers les plus récents
+  projectsWindow[t].back = Math.max(0, projectsWindow[t].back - 1);
   renderProjects();
 }
 
@@ -6505,10 +6501,15 @@ function renderStats(){
     ? (DATA.projets||[]).filter(p => p.promotionId === sPromo.id).length
     : (CONFIG.seedProjets||[]).length + (DATA.projets||[]).filter(p => !p.promotionId).length;
   const moisCount = sPromo ? monthsSince(new Date(sPromo.dateDebut || Date.now())) : monthsSinceFounding();
+  const formationsCount = (sPromo
+    ? (DATA.articles||[]).filter(a => a.promotionId === sPromo.id)
+    : (CONFIG.exampleArticles||[]).concat((DATA.articles||[]).filter(a => !a.promotionId))
+  ).filter(a => a.type === 'formation').length;
   const stats = [
     { n: membresCount, label: membresCount === 1 ? 'Membre actif' : 'Membres actifs' },
     { n: allCycles().length, label: 'Cycles menés' },
     { n: projetsCount, label: projetsCount === 1 ? 'Projet publié' : 'Projets publiés' },
+    { n: formationsCount, label: formationsCount === 1 ? 'Formation publiée' : 'Formations publiées' },
     { n: moisCount, label: 'Mois d\'existence' }
   ];
   el.innerHTML = stats.map(s => `<div class="stat-item"><span class="stat-num" data-target="${s.n}">0</span><span class="stat-label">${s.label}</span></div>`).join("");

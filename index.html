@@ -143,8 +143,8 @@
   nav.links a.is-active{opacity:1; color:var(--teal-dark);}
   nav.links a.is-active::after{left:0; right:0;}
   .nav-drop{position:relative; display:flex; align-items:center;}
-  .nav-drop .chev{display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin-left:4px; border-radius:50%; background:var(--teal); color:#fff; vertical-align:middle; transition:transform .18s ease, background .18s ease;}
-  .nav-drop:hover .chev, .nav-drop:focus-within .chev{transform:rotate(180deg); background:var(--teal-dark);}
+  .nav-drop .chev{display:inline-flex; align-items:center; margin-left:3px; opacity:0.65; vertical-align:middle; transition:transform .18s ease, opacity .18s ease;}
+  .nav-drop:hover .chev, .nav-drop:focus-within .chev{transform:rotate(180deg); opacity:1;}
   .nav-drop-menu{position:absolute; top:100%; left:-12px; min-width:170px; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 30px rgba(0,0,0,0.14); padding:6px; display:none; flex-direction:column; gap:2px; z-index:310; margin-top:8px;}
   .nav-drop-menu::before{content:''; position:absolute; left:0; right:0; top:-10px; height:10px;}
   .nav-drop:hover .nav-drop-menu, .nav-drop:focus-within .nav-drop-menu{display:flex;}
@@ -855,7 +855,7 @@
       <a href="#cycles">Classements</a>
       <a href="#galerie">Galerie</a>
       <div class="nav-drop">
-        <a href="#actualites">Actualités <span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l7 7 7-7"/></svg></span></a>
+        <a href="#actualites">Actualités <span class="chev"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></a>
         <div class="nav-drop-menu">
           <a href="#actualites">Actualités</a>
           <a href="#evenements">Événements</a>
@@ -5025,7 +5025,7 @@ function projectFileHTML(p){
   if(!p.fichier && p.lienExterne){
     return `<div style="margin-top:2px;">
       ${nameLine}
-      <a href="${p.lienExterne}" target="_blank" rel="noopener" style="font-size:0.78rem; color:var(--teal-dark); text-decoration:underline;">Ouvrir le fichier (lien externe)</a>
+      <a href="${p.lienExterne}" target="_blank" rel="noopener" class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); margin-top:10px; display:inline-flex;">Ouvrir le lien</a>
     </div>`;
   }
   return `<div style="margin-top:2px;">
@@ -5034,6 +5034,7 @@ function projectFileHTML(p){
       ${!p.thumbnail ? `<button class="link-btn" style="color:var(--teal-dark); padding:0;" onclick="openProjectFilePreview('${p.id}')">Lire</button>` : ''}
       <a href="${p.fichier}" download="${p.fichierNom||('projet-'+p.id)}" style="font-size:0.78rem; color:var(--teal-dark); text-decoration:underline;">Télécharger</a>
     </div>
+    ${p.lienExterne ? `<a href="${p.lienExterne}" target="_blank" rel="noopener" class="btn-ghost" style="border-color:var(--line); color:var(--teal-dark); margin-top:10px; display:inline-flex;">Ouvrir le lien</a>` : ''}
   </div>`;
 }
 

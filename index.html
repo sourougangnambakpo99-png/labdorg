@@ -2829,17 +2829,17 @@ function openBdayModal(){
   if(document.getElementById('bdayModal') || !bdayToday.length) return;
   const many = promotionsSorted().length > 0, multi = bdayToday.length > 1;
   // Repli si l'image n'a pas pu être préparée : photo + nom en texte.
-  const fallback = x => {
-    const ph = x.group
+  const fallback = (x, textOnly) => {
+    const ph = textOnly ? '' : x.group
       ? (x.photo ? `<img class="bday-photo group" src="${x.photo}" alt="LABD">` : `<div class="bday-photo ph group">&#127881;</div>`)
-      : (x.photo ? `<img class="bday-photo${multi ? ' small' : ''}" src="${x.photo}" alt="${bdayEsc(x.nom)}">` : `<div class="bday-photo ph${multi ? ' small' : ''}">${bdayEsc(initials(x.nom))}</div>`);
+      : (x.photo ? `<img class="avatar" style="width:${multi ? 96 : 140}px; height:${multi ? 96 : 140}px; display:block; margin:0 auto 12px;" src="${x.photo}" alt="${bdayEsc(x.nom)}">` : `<div class="avatar" style="width:${multi ? 96 : 140}px; height:${multi ? 96 : 140}px; font-size:${multi ? '1.7rem' : '2.4rem'}; margin:0 auto 12px; background:var(--navy);">${bdayEsc(initials(x.nom))}</div>`);
     const sub = x.group ? `LABD fête ses ${x.years} an${x.years > 1 ? 's' : ''} !` : [x.abbr ? bdayEsc(x.abbr) + ' LABD' : '', many ? bdayEsc(x.label) : ''].filter(Boolean).join(' · ');
     return `${ph}<div class="bday-names">${bdayEsc(x.nom)}${sub ? `<small>${sub}</small>` : ''}</div><p class="bday-msg">${x.group ? 'Merci à chacun de vous : ensemble, nous avons fait grandir LABD !' : 'Toute la famille LABD vous souhaite une très belle journée !'}</p>`;
   };
-  // L'affiche complète (photo, logo, nom, poste, message) s'affiche directement : rien à ouvrir pour la voir.
+  // Membre : sa photo exactement comme le site l'affiche (logo + bandeau du poste), sans autre décor. Seul l'anniversaire du groupe LABD garde l'affiche.
   const people = bdayToday.map((x, i) => `<div class="bday-person" data-i="${i}">
-      <div class="bday-slot"><div class="bday-wait">Préparation de l'image…</div></div>
-      <div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div></div>`).join('');
+      <div class="bday-slot">${(!x.group && !x.photo) ? fallback(x) : '<div class="bday-wait">Préparation de l\'image…</div>'}</div>
+      ${(x.group || x.photo) ? `<div class="bday-actions"><button type="button" class="bday-wa" onclick="bdayShare(${i}, this)">${ICONS.whatsapp} Partager sur WhatsApp</button></div>` : ''}</div>`).join('');
   const m = document.createElement('div'); m.id = 'bdayModal';
   const colors = ['#05b3c2','#13284a','#048b98','#7fe3ec','#f59e0b','#ffffff'];
   let conf = ''; for(let i = 0; i < 40; i++){ conf += `<i class="bday-confetti" style="left:${Math.random()*100}%; background:${colors[i % colors.length]}; animation-duration:${3 + Math.random()*3}s; animation-delay:${Math.random()*2}s;"></i>`; }
@@ -2850,11 +2850,16 @@ function openBdayModal(){
   m.addEventListener('click', e => { if(e.target === m) bdayClose(); });
   document.body.appendChild(m);
   bdayToday.forEach((x, i) => {
+    if(!x.group && !x.photo) return;
     const slot = m.querySelector(`.bday-person[data-i="${i}"] .bday-slot`);
-    bdayPoster(x).then(blob => {
+    (x.group ? bdayPoster(x) : bdayProfileImage(x)).then(blob => {
       if(!slot.isConnected) return;
       const img = new Image(); img.className = 'bday-poster'; img.alt = 'Joyeux anniversaire ' + x.nom;
-      img.onload = () => { slot.innerHTML = ''; slot.appendChild(img); };
+      img.onload = () => {
+        slot.innerHTML = ''; slot.appendChild(img);
+        // Membre : la photo est affichée comme sur le site ; le nom et le message sont écrits sous la photo, pas dessus.
+        if(!x.group){ img.style.maxHeight = 'calc(100dvh - 340px)'; slot.style.flexDirection = 'column'; const t = document.createElement('div'); t.innerHTML = fallback(x, true); slot.appendChild(t); }
+      };
       img.src = URL.createObjectURL(blob);
     }).catch(() => { if(slot.isConnected) slot.innerHTML = fallback(x); });
   });
@@ -3015,14 +3020,25 @@ function bdayPoster(x){
     return await new Promise((res, rej) => c.toBlob(b => b ? res(b) : rej(new Error('image impossible')), 'image/jpeg', 0.92));
   })();
 }
+// Photo d'un membre rendue exactement comme sur le site (clic sur son avatar) : logo « LABD Org » en haut à droite + bandeau du poste en bas.
+function bdayProfileImage(x){
+  const key = 'profil|' + x.nom + '|' + (x.abbr || '') + '|' + (x.photo ? x.photo.length : 0);
+  if(bdayPosterCache[key]) return bdayPosterCache[key];
+  return bdayPosterCache[key] = (async () => {
+    let mark = ''; try{ mark = postMarkText(x.nom); }catch(e){ mark = ''; }
+    const out = await watermarkImageDataUrl(x.photo, mark);
+    return out.startsWith('data:') ? dataUrlToBlob(out) : await (await fetch(out)).blob();
+  })();
+}
 async function bdayShare(i, btn){
   const x = bdayToday[i]; if(!x) return;
   const old = btn.innerHTML;
   const say = (t, ms) => { btn.textContent = t; setTimeout(() => { btn.innerHTML = old; }, ms || 6000); };
   try{
-    const blob = await bdayPoster(x);
-    const fname = 'anniversaire-' + String(x.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.jpg';
-    const file = new File([blob], fname, { type:'image/jpeg' });
+    const blob = x.group ? await bdayPoster(x) : await bdayProfileImage(x);
+    const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, '');
+    const fname = 'anniversaire-' + String(x.nom).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.' + ext;
+    const file = new File([blob], fname, { type: blob.type || 'image/jpeg' });
     // 1) Menu de partage du système (téléphone, et Windows/Mac quand le navigateur le permet) : l'image seule.
     if(navigator.canShare && navigator.canShare({ files:[file] })){
       try{ await navigator.share({ files:[file] }); return; }

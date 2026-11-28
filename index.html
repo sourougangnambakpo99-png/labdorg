@@ -789,6 +789,18 @@
   }
   #fsViewer .fs-stage .fs-media > img, #fsViewer .fs-stage .fs-media > video{max-width:100vw; max-height:100vh; max-height:100dvh;}
 
+  /* Fenêtre « affichage moyen » d'une vidéo : marges réduites pour que la vidéo soit le plus grande possible, tout reste dans l'écran. */
+  #modalOverlay.vfit{padding:12px;}
+  .modal-box.vfit{padding:12px;}
+  .modal-box.vfit h3{margin:10px 0 6px !important; font-size:1.1rem;}
+  .modal-box.vfit .desc-text{max-height:20dvh; overflow-y:auto;}
+  .modal-box.vfit .desc-text p{margin-bottom:6px;}
+  .modal-box.vfit .row{margin-top:10px;}
+  @media(max-width:600px){ #modalOverlay.vfit{padding:6px;} .modal-box.vfit{padding:6px;} .modal-box.vfit h3{font-size:1rem;} }
+  /* Pendant la lecture d'une vidéo YouTube / Vimeo : le logo et le bandeau du poste s'effacent. */
+  .watermark-large, .post-mark, #fsViewer .fs-mark, #fsViewer .fs-post{transition:opacity .25s ease;}
+  #modalContent.is-playing .watermark-large, #modalContent.is-playing .post-mark, #fsViewer.is-playing .fs-mark, #fsViewer.is-playing .fs-post{opacity:0 !important;}
+  @media (hover:none){ #modalContent.is-playing .ext-wrap .ext-hover{opacity:0;} }
   .modal-box h3{font-family:'Space Grotesk', sans-serif; margin-bottom:14px;}
   .modal-box p{font-size:0.9rem; color:var(--muted); margin-bottom:14px;}
   .modal-box .row{display:flex; gap:10px; margin-top:16px;}
@@ -1381,15 +1393,136 @@ function youtubeEmbedSrc(url, auto, tile){
 const EXT_ICON_PLAY = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const EXT_ICON_PAUSE = '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
 // Allume / éteint la vidéo YouTube ou Vimeo directement sur le site.
+// Envoie « lecture » ou « pause » à un lecteur YouTube / Vimeo intégré.
+function vidCmd(f, cmd){
+  try{
+    if(!f || !f.contentWindow) return false;
+    if(/player\.vimeo\.com/.test(f.src)) f.contentWindow.postMessage(JSON.stringify({ method: cmd }), '*');
+    else if(/youtube(-nocookie)?\.com\/embed/.test(f.src)) f.contentWindow.postMessage(JSON.stringify({ event:'command', func: cmd === 'play' ? 'playVideo' : 'pauseVideo', args:'' }), '*');
+    else return false;
+    return true;
+  }catch(e){ return false; }
+}
+function tileSetPlaying(tile, on){
+  tile.dataset.playing = on ? '1' : '0';
+  const b = tile.querySelector('.ext-play'); if(b) b.innerHTML = on ? EXT_ICON_PAUSE : EXT_ICON_PLAY;
+}
+// Quand une vidéo est lancée en affichage moyen ou grand, toutes les autres vidéos du site (en arrière-plan) sont mises en pause.
+// Elles reprennent toutes seules quand la fenêtre est refermée.
+function pauseOtherVideos(keep){
+  const isKept = el => !!keep && (el === keep || keep.contains(el));
+  document.querySelectorAll('video').forEach(v => {
+    if(isKept(v) || v.paused) return;
+    v.pause(); v.dataset.bgPaused = '1';
+  });
+  document.querySelectorAll('iframe').forEach(f => {
+    if(isKept(f)) return;
+    const tile = f.closest('.video-tile');
+    if(tile){
+      if(tile.dataset.playing !== '1') return;
+      if(vidCmd(f, 'pause')){ tileSetPlaying(tile, false); tile.dataset.bgPaused = '1'; }
+    } else {
+      vidCmd(f, 'pause');
+    }
+  });
+  // la vidéo qui prend la place n'a plus à être relancée plus tard
+  if(keep){ const t = keep.closest ? keep.closest('.video-tile') : null; if(t) delete t.dataset.bgPaused; if(keep.dataset) delete keep.dataset.bgPaused; }
+}
+function resumeBackgroundVideos(){
+  const ov = document.getElementById('modalOverlay');
+  if(document.getElementById('fsViewer') || (ov && ov.classList.contains('open'))) return;
+  document.querySelectorAll('video[data-bg-paused="1"]').forEach(v => {
+    delete v.dataset.bgPaused;
+    if(v.dataset.userPaused !== '1') v.play().catch(()=>{});
+  });
+  document.querySelectorAll('.video-tile[data-bg-paused="1"]').forEach(t => {
+    delete t.dataset.bgPaused;
+    const f = t.querySelector('iframe');
+    if(f && vidCmd(f, 'play')) tileSetPlaying(t, true);
+  });
+}
+// Allume / éteint la vidéo YouTube ou Vimeo directement sur le site.
 function toggleExtVideo(btn){
   const tile = btn.closest('.video-tile'); if(!tile) return;
   const f = tile.querySelector('iframe'); if(!f || !f.contentWindow) return;
   const playing = tile.dataset.playing === '1';
-  const vimeo = /player\.vimeo\.com/.test(f.src);
-  const msg = vimeo ? { method: playing ? 'pause' : 'play' } : { event:'command', func: playing ? 'pauseVideo' : 'playVideo', args:'' };
-  f.contentWindow.postMessage(JSON.stringify(msg), '*');
-  tile.dataset.playing = playing ? '0' : '1';
-  btn.innerHTML = playing ? EXT_ICON_PLAY : EXT_ICON_PAUSE;
+  const layer = tile.closest('#modalContent, #fsViewer');
+  if(!playing && layer) pauseOtherVideos(tile);     // lancée en affichage moyen / grand : toute autre vidéo s'arrête
+  vidCmd(f, playing ? 'pause' : 'play');
+  tileSetPlaying(tile, !playing);
+  if(layer) layer.classList.toggle('is-playing', !playing);   // le logo et le bandeau s'effacent pendant la lecture
+}
+// Écoute l'état du lecteur YouTube (lecture / pause / fin) pour les vidéos des fenêtres moyen et grand affichage,
+// y compris quand la personne utilise les boutons du lecteur lui-même.
+document.addEventListener('load', e => {
+  const f = e.target;
+  if(!f || f.tagName !== 'IFRAME' || !/youtube(-nocookie)?\.com\/embed/.test(f.src) || !f.closest('#modalOverlay, #fsViewer')) return;
+  const hello = () => { try{ f.contentWindow.postMessage(JSON.stringify({ event:'listening', id:1, channel:'widget' }), '*'); }catch(err){} };
+  hello(); setTimeout(hello, 400); setTimeout(hello, 1500);
+}, true);
+window.addEventListener('message', ev => {
+  if(typeof ev.data !== 'string' || String(ev.origin).indexOf('youtube') < 0) return;
+  let d; try{ d = JSON.parse(ev.data); }catch(e){ return; }
+  let st = null;
+  if(d.event === 'onStateChange') st = d.info;
+  else if(d.event === 'infoDelivery' && d.info && typeof d.info.playerState === 'number') st = d.info.playerState;
+  if(st !== 1 && st !== 2 && st !== 0) return;
+  const f = Array.prototype.find.call(document.querySelectorAll('iframe'), i => i.contentWindow === ev.source);
+  if(!f) return;
+  const layer = f.closest('#modalContent, #fsViewer'); if(!layer) return;
+  if(f.dataset.ytState === String(st)) return;
+  f.dataset.ytState = String(st);
+  const tile = f.closest('.video-tile');
+  if(st === 1){
+    pauseOtherVideos(tile || f);
+    layer.classList.add('is-playing');
+    if(tile) tileSetPlaying(tile, true);
+  } else {
+    layer.classList.remove('is-playing');
+    if(tile) tileSetPlaying(tile, false);
+  }
+});
+// Fenêtre « affichage moyen » d'une vidéo : on l'agrandit au maximum, mais pour qu'elle reste entièrement dans l'écran
+// (vidéo + titre + boutons en bas visibles), sans avoir à faire défiler.
+function fitVideoModal(){
+  const ov = document.getElementById('modalOverlay'), box = document.getElementById('modalContent');
+  if(!ov || !box || !ov.classList.contains('open') || !box.classList.contains('vfit')) return;
+  const ext = box.querySelector('[data-vfit="ext"]');
+  const fv = ext ? null : box.querySelector('.lb-video video');
+  if(!ext && !(fv && fv.videoWidth && fv.videoHeight)) return;
+  const frame = ext || fv.closest('.lb-video') || fv;
+  const aspect = ext ? 16/9 : fv.videoWidth / fv.videoHeight;
+  const ocs = getComputedStyle(ov), bcs = getComputedStyle(box);
+  const oV = parseFloat(ocs.paddingTop) + parseFloat(ocs.paddingBottom), oH = parseFloat(ocs.paddingLeft) + parseFloat(ocs.paddingRight);
+  const bV = parseFloat(bcs.paddingTop) + parseFloat(bcs.paddingBottom), bH = parseFloat(bcs.paddingLeft) + parseFloat(bcs.paddingRight);
+  const vw = ov.clientWidth || window.innerWidth, vh = Math.min(ov.clientHeight || 99999, window.innerHeight);
+  const setW = w => {
+    if(ext) ext.style.width = w + 'px';
+    else { fv.style.setProperty('max-width', 'none', 'important'); fv.style.setProperty('max-height', 'none', 'important'); fv.style.width = w + 'px'; fv.style.height = 'auto'; }
+  };
+  box.style.maxHeight = 'none';
+  let boxW = Math.min(1240, vw - oH);
+  for(let i = 0; i < 3; i++){
+    box.style.maxWidth = boxW + 'px';
+    const innerW = boxW - bH;
+    setW(innerW);
+    const other = (box.scrollHeight - bV) - frame.getBoundingClientRect().height;   // titre, texte, boutons
+    const maxH = vh - oV - bV - other - 2;
+    const w = Math.max(180, Math.min(innerW, maxH * aspect));
+    setW(w);
+    boxW = Math.max(Math.min(340, vw - oH), w + bH);
+  }
+  box.style.maxWidth = boxW + 'px';
+  box.style.maxHeight = (vh - oV) + 'px';
+  if(typeof lbSizeMark === 'function') lbSizeMark();
+}
+window.addEventListener('resize', fitVideoModal);
+function startVideoModal(){
+  const ov = document.getElementById('modalOverlay'), box = document.getElementById('modalContent');
+  if(ov) ov.classList.add('vfit'); if(box) box.classList.add('vfit');
+  fitVideoModal(); requestAnimationFrame(fitVideoModal); setTimeout(fitVideoModal, 250); setTimeout(fitVideoModal, 800);
+  const fv = box && box.querySelector('.lb-video video');
+  if(fv) fv.addEventListener('loadedmetadata', fitVideoModal);
 }
 function videoTileHTML(src, poster, expandCall, extraStyle, auto){
   if(isExternalVideoUrl(src)){
@@ -1430,7 +1563,7 @@ const tileObserver = ('IntersectionObserver' in window) ? new IntersectionObserv
   entries.forEach(entry => {
     const vid = entry.target;
     if(entry.isIntersecting){
-      if(vid.dataset.userPaused !== '1') vid.play().catch(()=>{});
+      if(vid.dataset.userPaused !== '1' && vid.dataset.bgPaused !== '1') vid.play().catch(()=>{});
     } else {
       vid.pause();
     }
@@ -1450,7 +1583,7 @@ function observeTileVideos(){
 // Filet de sécurité : si une miniature visible est à l'arrêt sans que l'utilisateur l'ait mise en pause, on relance.
 setInterval(() => {
   document.querySelectorAll('.tile-video').forEach(v => {
-    if(v.paused && v.dataset.userPaused !== '1'){
+    if(v.paused && v.dataset.userPaused !== '1' && v.dataset.bgPaused !== '1'){
       const r = v.getBoundingClientRect();
       if(r.bottom > 0 && r.top < window.innerHeight && !document.querySelector('.lb-video')){ v.muted = true; v.play().catch(()=>{}); }
     }
@@ -2229,6 +2362,7 @@ function fsPost(t){ return `<div class="fs-post">${postMarkHTML(t)}</div>`; }
 function fsMark(logo){ return `<div class="fs-mark"><img src="${logo}" alt="Logo LABD"><span>LABD Org</span></div>`; }
 function openFullMedia(){
   const c = lbCurrent; if(!c || fsOn) return;
+  pauseOtherVideos(null);      // en affichage en grand, plus aucune autre vidéo ne joue en arrière-plan
   const lbVid = document.querySelector('.lb-video video');
   const t0 = lbVid ? lbVid.currentTime : 0;
   if(lbVid) lbVid.pause();
@@ -2291,6 +2425,7 @@ function closeFullMediaNow(){
   if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(()=>{});
   fsOn = false;
   const lbVid = document.querySelector('.lb-video video'); if(lbVid) lbVid.play().catch(()=>{});
+  resumeBackgroundVideos();
 }
 function closeFullMedia(){
   closeFullMediaNow();
@@ -2307,7 +2442,8 @@ document.addEventListener('keydown', e => { if(e.key === 'Escape' && fsOn) close
 let modalHistoryOn = false, modalBackPending = false;
 function openModal(html, wide){
   modalContent.className = 'modal-box' + (wide ? ' wide' : '');
-  modalContent.style.maxWidth = ''; modalContent.style.padding = '';
+  modalContent.style.maxWidth = ''; modalContent.style.padding = ''; modalContent.style.maxHeight = '';
+  modalOverlay.classList.remove('vfit');
   modalContent.innerHTML = html;
   modalOverlay.classList.add('open');
   if(!modalHistoryOn && !modalBackPending){
@@ -2332,7 +2468,11 @@ function closeModalNow(){
   modalOverlay.classList.remove('open');
   // Arrête toute vidéo lue dans la fenêtre (sinon elle continue de jouer en arrière-plan, invisible).
   modalContent.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
+  modalContent.classList.remove('is-playing', 'vfit');
+  modalOverlay.classList.remove('vfit');
+  modalContent.style.maxHeight = '';
   modalContent.innerHTML = '';
+  resumeBackgroundVideos();
 }
 modalOverlay.addEventListener('click', e => { if(e.target === modalOverlay) closeModal(); });
 
@@ -4619,7 +4759,7 @@ function galleryTileHTML({photo, video, poster, legende, key, id, editable, seed
 let lbCurrent = null;
 function lbTogglePlay(vid){
   const st = vid.parentElement.querySelector('.lb-state');
-  if(vid.paused){ vid.play().catch(()=>{}); if(st) st.style.display = 'none'; }
+  if(vid.paused){ pauseOtherVideos(vid); vid.play().catch(()=>{}); if(st) st.style.display = 'none'; }
   else { vid.pause(); if(st) st.style.display = 'flex'; }
 }
 const BIG_ICON_EXPAND = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>';
@@ -4660,7 +4800,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
     : `<img id="lb-img-${key.replace(/[^a-z0-9]/gi,'')}" class="lb-img" src="${src}" onclick="openFullMedia()" style="max-width:100%; width:auto; height:auto; border-radius:8px; display:block; cursor:pointer;">`;
   openModal(`
     <div style="text-align:center;">
-      <div class="lb-frame" style="position:relative; ${video ? (isExternalVideoUrl(video) ? 'display:block; width:min(100%, calc((100dvh - 215px) * 16 / 9)); margin:0 auto;' : 'display:block; width:fit-content; max-width:100%; margin:0 auto;') : 'display:inline-block; max-width:100%;'}">
+      <div class="lb-frame"${video && isExternalVideoUrl(video) ? ' data-vfit="ext"' : ''} style="position:relative; ${video ? (isExternalVideoUrl(video) ? 'display:block; width:min(100%, calc((100dvh - 215px) * 16 / 9)); margin:0 auto;' : 'display:block; width:fit-content; max-width:100%; margin:0 auto;') : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${!isLogoView ? lightboxWatermarkHTML() : ''}
         ${mark ? `<div class="post-mark">${postMarkHTML(mark)}</div>` : ''}
@@ -4676,6 +4816,11 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
   `, true);
   modalContent.classList.add('lb');
   lbSizeMark();
+  if(video){
+    startVideoModal();
+    const fv = modalContent.querySelector('.lb-video video');
+    if(fv) pauseOtherVideos(fv);      // vidéo qui démarre toute seule : les autres s'arrêtent
+  }
   const lbEl = modalContent.querySelector('.lb-frame img, .lb-frame video');
   if(lbEl){ lbEl.addEventListener('load', lbSizeMark); lbEl.addEventListener('loadedmetadata', lbSizeMark); }
 }
@@ -4957,7 +5102,7 @@ function openArticleLightbox(id){
   if(extVideo) lbCurrent = { src: a.photo || '', video: a.video, legende: '', isLogo: false, mark: '' };
   openModal(`
     <div style="text-align:center;">
-      <div class="${extVideo ? 'ext-wrap' : ''}" style="position:relative; ${extVideo ? 'display:block; width:min(100%, calc((100dvh - 290px) * 16 / 9)); margin:0 auto;' : 'display:inline-block; max-width:100%;'}">
+      <div class="${extVideo ? 'ext-wrap' : ''}"${extVideo ? ' data-vfit="ext"' : ''} style="position:relative; ${extVideo ? 'display:block; width:min(100%, calc((100dvh - 290px) * 16 / 9)); margin:0 auto;' : 'display:inline-block; max-width:100%;'}">
         ${mediaHTML}
         ${extVideo ? `<button type="button" class="ext-hover" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; z-index:6; display:flex; align-items:center; justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>` : ''}
         ${mediaHTML ? lightboxWatermarkHTML() : ''}
@@ -4971,7 +5116,8 @@ function openArticleLightbox(id){
       <button class="btn-ghost" style="border-color:var(--line); color:var(--ink);" onclick="closeModal()">Fermer</button>
     </div>
   `, true);
-  if(extVideo) modalContent.style.padding = '18px';
+  if(extVideo) startVideoModal();
+  else { const av = modalContent.querySelector('video'); if(av){ pauseOtherVideos(av); av.addEventListener('play', () => pauseOtherVideos(av)); } }
 }
 
 const projectsWindow = { realise:{back:0}, exercice:{back:0} };

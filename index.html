@@ -805,14 +805,34 @@
   .modal-box.vfit .row{margin-top:10px;}
   /* Téléphone : la vidéo prend toute la largeur de l'écran (plus aucune marge sur les côtés) ; le texte garde ses marges. */
   @media(max-width:600px){
-    #modalOverlay.vfit{padding:0;}
-    .modal-box.vfit{padding:6px 0; border-radius:0;}
-    .modal-box.vfit > :not(:first-child){padding-left:10px; padding-right:10px;}
-    .modal-box.vfit .ext-wrap, .modal-box.vfit .lb-video{border-radius:0 !important;}
+    #modalOverlay.vfit{padding:0 6px;}
+    .modal-box.vfit{padding:6px 0;}
+    .modal-box.vfit > :not(:first-child){padding-left:6px; padding-right:6px;}
     .modal-box.vfit h3{font-size:1rem;}
   }
   /* Pendant la lecture d'une vidéo YouTube / Vimeo : le logo et le bandeau du poste s'effacent. */
-  @media (hover:none){ #modalContent.is-playing .ext-wrap .ext-hover{opacity:0;} }
+  /* Affichage moyen : pendant la lecture d'une vidéo YouTube / Vimeo, tout s'efface (logo, bandeau, bouton lecture, bouton plein écran).
+     PC : les boutons reviennent quand la souris passe sur la vidéo. Téléphone : un appui sur la vidéo les ré-affiche 3 secondes. */
+  .watermark-large, .post-mark{transition:opacity .25s ease;}
+  #modalContent.is-playing .watermark-large, #modalContent.is-playing .post-mark{opacity:0 !important;}
+  #modalContent.is-playing .video-tile .ext-play, #modalContent.is-playing .ext-wrap .ext-hover{opacity:0 !important; pointer-events:none;}
+  @media (hover:hover){
+    #modalContent.is-playing .video-tile:hover .ext-play{opacity:0.7 !important; pointer-events:auto;}
+    #modalContent.is-playing .ext-wrap:hover .ext-hover{opacity:1 !important; pointer-events:auto;}
+  }
+  #modalContent.is-playing.show-ctrl .video-tile .ext-play, #modalContent.is-playing.show-ctrl .ext-wrap .ext-hover{opacity:1 !important; pointer-events:auto;}
+  /* Barre de progression maniable : zone de toucher plus large, poignée visible au survol / pendant le glissement */
+  .ext-bar, .tile-progress{touch-action:none; cursor:pointer;}
+  .ext-bar{height:22px;}
+  @media (pointer:coarse){ .ext-bar{height:32px;} }
+  .ext-bar.dragging::before, .ext-bar.dragging .ext-bar-fill{height:8px;}
+  .ext-bar-fill::after{content:''; position:absolute; right:-7px; top:50%; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.55); transform:translateY(-50%) scale(0); transition:transform .12s ease;}
+  .ext-bar:hover .ext-bar-fill::after, .ext-bar.dragging .ext-bar-fill::after{transform:translateY(-50%) scale(1);}
+  @media (hover:none){ .ext-bar-fill::after{transform:translateY(-50%) scale(0.7);} .ext-bar.dragging .ext-bar-fill::after{transform:translateY(-50%) scale(1.15);} }
+  .tile-progress::after{content:''; position:absolute; left:0; right:0; bottom:0; height:14px;}
+  .tile-progress.dragging{height:8px;}
+  /* Affichage en grand : logo dans le noir au-dessus de la vidéo (centré), quand il y a la place. */
+  #fsViewer .fs-media.mark-top-out .fs-mark{top:auto; bottom:calc(100% + 12px); right:auto; left:50%; transform:translateX(-50%); white-space:nowrap;}
   .modal-box.vfit [data-vfit] .watermark-large{top:max(10px, calc(var(--fs-w, 360px) * 0.022)); right:max(10px, calc(var(--fs-w, 360px) * 0.022)); gap:max(8px, calc(var(--fs-w, 360px) * 0.016)); min-width:0;}
   .modal-box.vfit [data-vfit] .watermark-large img{width:max(44px, calc(var(--fs-w, 360px) * 0.085)); height:max(44px, calc(var(--fs-w, 360px) * 0.085)); border:max(3px, calc(var(--fs-w, 360px) * 0.005)) solid rgba(255,255,255,0.95); box-sizing:border-box;}
   .modal-box.vfit [data-vfit] .watermark-large .wm-text{font-size:max(20px, calc(var(--fs-w, 360px) * 0.042)); line-height:1;}
@@ -1481,25 +1501,46 @@ document.addEventListener('load', e => {
   hello(); setTimeout(hello, 400); setTimeout(hello, 1500);
 }, true);
 // Barre de progression de lecture des vidéos YouTube / Vimeo (partout : sur le site, en affichage moyen) et clic pour avancer / reculer.
-function extBarSet(host, cur, dur){
-  const fill = host && host.querySelector('.ext-bar-fill');
+function extBarSet(host, cur, dur, force){
+  if(!force && host && host.dataset && host.dataset.scrub === '1') return;     // pendant que la personne glisse la barre, la lecture ne la fait pas reculer
+  const fill = host && host.querySelector('.ext-bar-fill, .tile-progress-fill');
   if(fill && dur > 0) fill.style.width = Math.max(0, Math.min(100, cur / dur * 100)) + '%';
 }
-function extSeek(ev, bar){
-  const rect = bar.getBoundingClientRect();
-  const r = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
-  const host = bar.parentElement;
+// Se placer à un endroit de la vidéo (ratio de 0 à 1). Vidéo fichier : immédiat ; YouTube / Vimeo : envoyé au lecteur (au plus toutes les 150 ms pendant le glissement).
+function extSeekRatio(host, ratio, final){
   const v = host.querySelector('video');
-  if(v){ if(v.duration) v.currentTime = r * v.duration; return; }
+  if(v){ if(v.duration){ v.currentTime = ratio * v.duration; extBarSet(host, v.currentTime, v.duration, true); } return; }
   const f = host.querySelector('iframe'); const dur = f ? parseFloat(f.dataset.dur) : 0;
   if(!f || !dur) return;
-  const t = r * dur;
+  const t = ratio * dur;
+  extBarSet(host, t, dur, true);
+  const now = Date.now();
+  if(!final && now - (host._lastSeek || 0) < 150) return;
+  host._lastSeek = now;
   try{
     if(/player\.vimeo\.com/.test(f.src)) f.contentWindow.postMessage(JSON.stringify({ method:'setCurrentTime', value:t }), '*');
     else f.contentWindow.postMessage(JSON.stringify({ event:'command', func:'seekTo', args:[t, true] }), '*');
   }catch(e){}
-  extBarSet(host, t, dur);
-  if(host.dataset.playing === '0') setTimeout(() => vidCmd(f, 'pause'), 150);   // vidéo en pause : on se place simplement à l'endroit voulu
+  if(final && host.dataset.playing === '0') setTimeout(() => vidCmd(f, 'pause'), 150);   // vidéo en pause : on se place simplement à l'endroit voulu
+}
+// Appui sur la barre (souris ou doigt) : on peut cliquer à un endroit, ou maintenir et glisser vers l'avant / l'arrière.
+function extBarDown(ev, bar){
+  if(ev.pointerType === 'mouse' && ev.button !== 0) return;
+  ev.stopPropagation(); ev.preventDefault();
+  const host = bar.parentElement;
+  host.dataset.scrub = '1'; bar.classList.add('dragging');
+  try{ bar.setPointerCapture(ev.pointerId); }catch(e){}
+  const ratioOf = e => { const r = bar.getBoundingClientRect(); return Math.max(0, Math.min(1, (e.clientX - r.left) / (r.width || 1))); };
+  const move = e => extSeekRatio(host, ratioOf(e), false);
+  const up = e => {
+    bar.removeEventListener('pointermove', move); bar.removeEventListener('pointerup', up); bar.removeEventListener('pointercancel', up);
+    bar.classList.remove('dragging');
+    extSeekRatio(host, ratioOf(e), true);
+    delete host.dataset.scrub;
+    try{ bar.releasePointerCapture(ev.pointerId); }catch(_){}
+  };
+  bar.addEventListener('pointermove', move); bar.addEventListener('pointerup', up); bar.addEventListener('pointercancel', up);
+  extSeekRatio(host, ratioOf(ev), false);
 }
 window.addEventListener('message', ev => {
   if(typeof ev.data !== 'string') return;
@@ -1583,20 +1624,20 @@ function videoTileHTML(src, poster, expandCall, extraStyle, auto){
     return `<div class="video-tile" data-playing="${auto ? '1' : '0'}" style="position:relative; width:100%; height:100%; overflow:hidden; background:#000;">
       <iframe src="${youtubeEmbedSrc(src, auto, true)}" style="${frameStyle} border:0; display:block; pointer-events:none; ${extraStyle||''}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" loading="lazy"></iframe>
       ${expandCall ? `<div title="Agrandir" onclick="event.stopPropagation(); ${expandCall}" style="position:absolute; inset:0; cursor:pointer; z-index:3;"></div>` : ''}
-      <div class="ext-bar" title="Progression de la lecture" onclick="event.stopPropagation(); extSeek(event, this)"><div class="ext-bar-fill"></div></div>
+      <div class="ext-bar" title="Progression de la lecture" onpointerdown="extBarDown(event, this)" onclick="event.stopPropagation()"><div class="ext-bar-fill"></div></div>
       <button type="button" class="ext-play" title="Lecture / Pause" aria-label="Lecture / Pause" onclick="event.stopPropagation(); toggleExtVideo(this)" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:2px solid rgba(255,255,255,0.85); cursor:default; z-index:4; display:flex; align-items:center; justify-content:center; padding:0; ">${auto ? EXT_ICON_PAUSE : EXT_ICON_PLAY}</button>
     </div>`;
   }
   return `<div class="video-tile" style="position:relative; width:100%; height:100%;">
     <video class="tile-video" src="${src}" muted loop autoplay playsinline preload="metadata" poster="${poster || DEFAULT_VIDEO_POSTER}" style="width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; ${extraStyle||''}" onclick="${expandCall}" ontimeupdate="updateTileProgress(this)"></video>
-    <div class="tile-progress"><div class="tile-progress-fill"></div></div>
+    <div class="tile-progress" onpointerdown="extBarDown(event, this)" onclick="event.stopPropagation()"><div class="tile-progress-fill"></div></div>
     <button class="mute-toggle" title="Activer/couper le son" onclick="event.stopPropagation(); toggleTileMute(this)">${ICONS.mute}</button>
     <button class="play-toggle" title="Lecture/Pause" onclick="event.stopPropagation(); toggleTilePlay(this)">${ICONS.pause}</button>
   </div>`;
 }
 function updateTileProgress(vid){
   const bar = vid.parentElement.querySelector('.tile-progress-fill');
-  if(bar && vid.duration) bar.style.width = (vid.currentTime / vid.duration * 100) + '%';
+  if(bar && vid.duration && vid.parentElement.dataset.scrub !== '1') bar.style.width = (vid.currentTime / vid.duration * 100) + '%';
 }
 function toggleTileMute(btn){
   const vid = btn.parentElement.querySelector('.tile-video');
@@ -2412,10 +2453,21 @@ const modalContent = document.getElementById('modalContent');
 /* ---------- Plein écran (comme Facebook ou WhatsApp) ---------- */
 let fsOn = false, fsHistory = false, fsBackPending = false;
 function fsPost(t){ return `<div class="fs-post">${postMarkHTML(t)}</div>`; }
+let medCtrlTimer = null;
+function showMediumControls(){
+  const mc = document.getElementById('modalContent'); if(!mc) return;
+  mc.classList.add('show-ctrl');
+  clearTimeout(medCtrlTimer);
+  medCtrlTimer = setTimeout(() => mc.classList.remove('show-ctrl'), 3000);
+}
 function fsEmbedSrc(url){ const u = youtubeEmbedSrc(url); return /youtube(-nocookie)?\.com\/embed/.test(u) ? u + '&fs=0' : u; }
 function fsMark(logo){ return `<div class="fs-mark"><img src="${logo}" alt="Logo LABD"><span>LABD Org</span></div>`; }
 function openFullMedia(){
   const c = lbCurrent; if(!c || fsOn) return;
+  if(window.matchMedia('(hover: none)').matches){
+    const mc = document.getElementById('modalContent');
+    if(mc && mc.classList.contains('is-playing') && !mc.classList.contains('show-ctrl')){ showMediumControls(); return; }   // 1er appui : les boutons reviennent ; 2e appui : plein écran
+  }
   pauseOtherVideos(null);      // en affichage en grand, plus aucune autre vidéo ne joue en arrière-plan
   const lbVid = document.querySelector('.lb-video video');
   const t0 = lbVid ? lbVid.currentTime : 0;
@@ -2472,6 +2524,13 @@ function fsSizeMark(){
   }
   // Le logo suit la taille réelle de l'image affichée : plus l'image est grande, plus il grandit.
   if(w) m.style.setProperty('--fs-w', Math.max(240, Math.min(w, 2400)) + 'px');
+  // Vidéo : s'il reste assez de noir au-dessus d'elle (téléphone en vertical), le logo y reste en permanence, au-dessus de la vidéo.
+  if(el.tagName === 'VIDEO' || el.tagName === 'IFRAME'){
+    const st = document.querySelector('#fsViewer .fs-stage');
+    const boxH = m.getBoundingClientRect().height, stH = (st && st.clientHeight) || window.innerHeight;
+    const gap = (stH - boxH) / 2, need = Math.max(44, (w || 0) * 0.085) + 30;
+    m.classList.toggle('mark-top-out', boxH > 0 && gap >= need);
+  }
 }
 window.addEventListener('resize', () => { if(fsOn) fsSizeMark(); });
 function fsTogglePlay(v){ if(v.paused) v.play().catch(()=>{}); else v.pause(); }
@@ -2529,7 +2588,7 @@ function closeModalNow(){
   modalOverlay.classList.remove('open');
   // Arrête toute vidéo lue dans la fenêtre (sinon elle continue de jouer en arrière-plan, invisible).
   modalContent.querySelectorAll('video').forEach(v => { v.pause(); v.removeAttribute('src'); v.load(); });
-  modalContent.classList.remove('is-playing', 'vfit');
+  modalContent.classList.remove('is-playing', 'vfit', 'show-ctrl');
   modalOverlay.classList.remove('vfit');
   modalContent.style.maxHeight = '';
   modalContent.innerHTML = '';
@@ -4854,7 +4913,7 @@ function openLightboxData(src, video, legende, isLogoView, key, mark, stamp){
         ? `<div class="ext-wrap" style="position:relative; width:100%; aspect-ratio:16/9; border-radius:8px; overflow:hidden;">${videoTileHTML(video, '', 'openFullMedia()')}<button type="button" class="ext-hover" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; top:10px; left:10px; width:42px; height:42px; border-radius:50%; background:rgba(0,0,0,0.62); color:#fff; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:6;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button></div>`
         : `<div class="lb-video ext-wrap" style="position:relative; display:block; width:fit-content; max-width:100%; margin:0 auto; border-radius:8px; overflow:hidden;">
             <video src="${video}" muted loop autoplay playsinline preload="auto" onclick="lbTogglePlay(this)" ontimeupdate="extBarSet(this.parentElement, this.currentTime, this.duration)" style="width:auto; max-width:100%; height:auto; max-height:72vh; object-fit:contain; display:block; cursor:pointer;"></video>
-            <div class="ext-bar" title="Progression de la lecture" onclick="event.stopPropagation(); extSeek(event, this)" style="z-index:1;"><div class="ext-bar-fill"></div></div>
+            <div class="ext-bar" title="Progression de la lecture" onpointerdown="extBarDown(event, this)" onclick="event.stopPropagation()" style="z-index:1;"><div class="ext-bar-fill"></div></div>
             <div class="lb-state" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; pointer-events:none;"><span style="background:rgba(0,0,0,0.55); color:#fff; border-radius:50%; width:58px; height:58px; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">&#9654;</span></div>
             <button type="button" class="ext-hover" title="Plein écran" aria-label="Plein écran" onclick="event.stopPropagation(); openFullMedia()" style="position:absolute; bottom:10px; left:10px; width:40px; height:40px; border-radius:50%; background:rgba(0,0,0,0.6); color:#fff; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">${BIG_ICON_EXPAND}</button>
             <button type="button" class="lb-mute ext-hover" title="Activer le son" aria-label="Son" onclick="event.stopPropagation(); lbToggleMute(this)" style="position:absolute; bottom:10px; right:10px; width:40px; height:40px; border-radius:50%; background:rgba(0,0,0,0.6); color:#fff; border:0; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">${bigIcon('mute')}</button>
